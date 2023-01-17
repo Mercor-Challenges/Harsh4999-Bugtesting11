@@ -1,0 +1,189 @@
+/**
+ * Copyright (C) 2015 Red Hat, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package io.fabric8.openshift.client.internal;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import io.fabric8.kubernetes.api.model.HasMetadata;
+import io.fabric8.kubernetes.api.model.authorization.v1.SelfSubjectAccessReview;
+import io.fabric8.kubernetes.client.KubernetesClientException;
+import io.fabric8.kubernetes.client.utils.Serialization;
+import io.fabric8.kubernetes.client.utils.URLUtils;
+import io.fabric8.kubernetes.client.utils.Utils;
+import io.fabric8.openshift.api.model.LocalResourceAccessReview;
+import io.fabric8.openshift.api.model.LocalSubjectAccessReview;
+import io.fabric8.openshift.api.model.ResourceAccessReview;
+import io.fabric8.openshift.api.model.SelfSubjectRulesReview;
+import io.fabric8.openshift.api.model.SubjectAccessReview;
+import io.fabric8.openshift.api.model.SubjectRulesReview;
+import io.fabric8.openshift.client.OpenShiftConfig;
+import okhttp3.Credentials;
+import okhttp3.Interceptor;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+
+import java.io.IOException;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Predicate;
+
+import static java.net.HttpURLConnection.HTTP_FORBIDDEN;
+import static java.net.HttpURLConnection.HTTP_UNAUTHORIZED;
+
+public class OpenShiftOAuthInterceptor implements Interceptor {
+
+  private static final String AUTHORIZATION = "Authorization";
+  private static final String LOCATION = "Location";
+  private static final String AUTHORIZATION_SERVER_PATH = ".well-known/oauth-authorization-server";
+  private static final String AUTHORIZE_QUERY = "?response_type=token&client_id=openshift-challenging-client";
+
+  private static final String BEFORE_TOKEN = "access_token=";
+  private static final String AFTER_TOKEN = "&expires";
+  private static final String K8S_AUTHORIZATION = "authorization.k8s.io";
+  private static final String OPENSHIFT_AUTHORIZATION = "authorization.openshift.io";
+  private static final Predicate<String> isAuthorizationApiGroupRequest = s -> s.contains(K8S_AUTHORIZATION) || s.contains(OPENSHIFT_AUTHORIZATION);
+  private static final List<String> createOnlyResources = new ArrayList<>();
+  static {{
+    initCreateOnlyResources();
+  }}
+
+  private final OkHttpClient client;
+  private final OpenShiftConfig config;
+  private final AtomicReference<String> oauthToken = new AtomicReference<>();
+
+  public OpenShiftOAuthInterceptor(OkHttpClient client, OpenShiftConfig config) {
+    this.client = client;
+    this.config = config;
+  }
+
+  @Override
+  public Response intercept(Chain chain) throws IOException {
+    Request request = chain.request();
+
+    //Build new request
+    Request.Builder builder = request.newBuilder();
+
+    String token = oauthToken.get();
+    // avoid overwriting basic auth token with stale bearer token
+    if (Utils.isNotNullOrEmpty(token) && Utils.isNullOrEmpty(request.header(AUTHORIZATION))) {
+      setAuthHeader(builder, token);
+    }
+
+    request = builder.build();
+    Response response = chain.proceed(request);
+
+    //If response is Forbidden or Unauthorized, try to obtain a token via authorize() or via config.
+    if (isResponseSuccessful(request, response)) {
+      return response;
+    } else if (Utils.isNotNullOrEmpty(config.getUsername()) && Utils.isNotNullOrEmpty(config.getPassword())) {
+      synchronized (client) {
+        // current token (if exists) is borked, don't resend
+        oauthToken.set(null);
+        token = authorize();
+        if (token != null) {
+          oauthToken.set(token);
+        }
+      }
+    } else if (Utils.isNotNullOrEmpty(config.getOauthToken())) {
+      token = config.getOauthToken();
+      oauthToken.set(token);
+    }
+
+
+    //If token was obtained, then retry request using the obtained token.
+    if (Utils.isNotNullOrEmpty(token)) {
+      // Close the previous response to prevent leaked connections.
+      response.body().close();
+
+      setAuthHeader(builder, token);
+      request = builder.build();
+      return chain.proceed(request); //repeat request with new token
+    } else {
+      return response;
+    }
+  }
+
+  private void setAuthHeader(Request.Builder builder, String token) {
+    if (token != null) {
+      builder.header(AUTHORIZATION, String.format("Bearer %s", token));
+    }
+  }
+
+  private  String authorize() {
+    try {
+      OkHttpClient.Builder builder = client.newBuilder();
+      builder.interceptors().remove(this);
+      OkHttpClient clone = builder.build();
+
+      URL url = new URL(URLUtils.join(config.getMasterUrl(), AUTHORIZATION_SERVER_PATH));
+      Response response = clone.newCall(new Request.Builder().get().url(url).build()).execute();
+
+      if (!response.isSuccessful() || response.body() == null) {
+        throw new KubernetesClientException("Unexpected response (" + response.code() + " " + response.message() + ")");
+      }
+
+      String body = response.body().string();
+      JsonNode jsonResponse = Serialization.jsonMapper().readTree(body);
+      String authorizationServer = jsonResponse.get("authorization_endpoint").asText();
+      response.close();
+
+      url = new URL(authorizationServer + AUTHORIZE_QUERY);
+
+      String credential = Credentials.basic(config.getUsername(), config.getPassword());
+      response = clone.newCall(new Request.Builder().get().url(url).header(AUTHORIZATION, credential).build()).execute();
+
+      response.close();
+      response = response.priorResponse() != null ? response.priorResponse() : response;
+      response = response.networkResponse() != null ? response.networkResponse() : response;
+      String token = response.header(LOCATION);
+      if (token == null || token.isEmpty()) {
+        throw new KubernetesClientException("Unexpected response (" + response.code() + " " + response.message() + "), to the authorization request. Missing header:[" + LOCATION + "]!");
+      }
+      token = token.substring(token.indexOf(BEFORE_TOKEN) + BEFORE_TOKEN.length());
+      token = token.substring(0, token.indexOf(AFTER_TOKEN));
+      return token;
+    } catch (Exception e) {
+      throw KubernetesClientException.launderThrowable(e);
+    }
+  }
+
+  private boolean isResponseSuccessful(Request request, Response response) {
+    String url = request.url().toString();
+    // always retry in case of authorization endpoints; since they also return 200 when no
+    // authorization header is provided
+    if (isAuthorizationApiGroupRequest.test(url) && isCreateOnlyResourcePluralInUrl(url)) {
+      return false;
+    }
+    return response.code() != HTTP_UNAUTHORIZED && response.code() != HTTP_FORBIDDEN;
+  }
+
+  private boolean isCreateOnlyResourcePluralInUrl(String url) {
+    return createOnlyResources.stream().anyMatch(url::contains);
+  }
+
+  private static void initCreateOnlyResources() {
+    createOnlyResources.add(HasMetadata.getPlural(LocalSubjectAccessReview.class));
+    createOnlyResources.add(HasMetadata.getPlural(LocalResourceAccessReview.class));
+    createOnlyResources.add(HasMetadata.getPlural(ResourceAccessReview.class));
+    createOnlyResources.add(HasMetadata.getPlural(SelfSubjectRulesReview.class));
+    createOnlyResources.add(HasMetadata.getPlural(SubjectRulesReview.class));
+    createOnlyResources.add(HasMetadata.getPlural(SubjectAccessReview.class));
+    createOnlyResources.add(HasMetadata.getPlural(SelfSubjectAccessReview.class));
+  }
+}
