@@ -1,0 +1,226 @@
+/**
+ * Copyright (C) 2015 Red Hat, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package io.fabric8.kubernetes.internal;
+
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonDeserializer;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import io.fabric8.kubernetes.api.model.GenericKubernetesResource;
+import io.fabric8.kubernetes.api.model.HasMetadata;
+import io.fabric8.kubernetes.api.model.KubernetesListBuilder;
+import io.fabric8.kubernetes.api.model.KubernetesResource;
+import io.fabric8.kubernetes.api.model.runtime.RawExtension;
+import io.fabric8.kubernetes.model.annotation.Group;
+import io.fabric8.kubernetes.model.annotation.Version;
+import io.fabric8.kubernetes.model.util.Helper;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.ServiceLoader;
+import java.util.concurrent.ConcurrentHashMap;
+
+public class KubernetesDeserializer extends JsonDeserializer<KubernetesResource> {
+
+  static class TypeKey {
+    final String kind;
+    final String apiGroup;
+    final String version;
+
+    TypeKey(String kind, String apiGroup, String version) {
+      this.kind = kind;
+      this.apiGroup = apiGroup;
+      this.version = version;
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(kind, apiGroup, version);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (this == obj) {
+        return true;
+      }
+      if (!(obj instanceof TypeKey)) {
+        return false;
+      }
+      TypeKey o = (TypeKey) obj;
+      return Objects.equals(kind, o.kind) && Objects.equals(apiGroup, o.apiGroup)
+          && Objects.equals(version, o.version);
+    }
+
+  }
+
+  private static final String KIND = "kind";
+  private static final String API_VERSION = "apiVersion";
+
+  private static final Mapping mapping = new Mapping();
+
+  @Override
+  public KubernetesResource deserialize(JsonParser jp, DeserializationContext ctxt) throws IOException {
+    JsonNode node = jp.readValueAsTree();
+    if (node.isObject()) {
+      return fromObjectNode(jp, node);
+    } else if (node.isArray()) {
+      return fromArrayNode(jp, node);
+    }
+    Object object = node.traverse(jp.getCodec()).readValueAs(Object.class);
+    if (object == null) {
+      return null;
+    }
+    return new RawExtension(object);
+  }
+
+  private KubernetesResource fromArrayNode(JsonParser jp, JsonNode node) throws IOException {
+    Iterator<JsonNode> iterator = node.elements();
+    List<HasMetadata> list = new ArrayList<>();
+    while (iterator.hasNext()) {
+      JsonNode jsonNode = iterator.next();
+      if (jsonNode.isObject()) {
+        KubernetesResource resource = fromObjectNode(jp, jsonNode);
+        if (!(resource instanceof HasMetadata)) {
+          throw new JsonMappingException(jp, "Cannot parse a nested array containing a non-HasMetadata resource");
+        }
+        list.add((HasMetadata) resource);
+      } else {
+        throw new JsonMappingException(jp, "Cannot parse a nested array containing non-object resource");
+      }
+    }
+    return new KubernetesListBuilder().withItems(list).build();
+  }
+
+  private static KubernetesResource fromObjectNode(JsonParser jp, JsonNode node) throws IOException {
+    TypeKey key = getKey(node);
+    Class<? extends KubernetesResource> resourceType = mapping.getForKey(key);
+    if (resourceType == null) {
+      if (key == null) {
+        // just a wrapper around a map
+        // if this raw mapping typed as HasMetadata, a failure will result
+        return jp.getCodec().treeToValue(node, RawExtension.class);
+      }
+      // this is not quite correct as not all resources have metadata - see LocalResourceAccessReview
+      return jp.getCodec().treeToValue(node, GenericKubernetesResource.class);
+    } else if (KubernetesResource.class.isAssignableFrom(resourceType)) {
+      return jp.getCodec().treeToValue(node, resourceType);
+    }
+    throw new JsonMappingException(jp, String.format(
+        "There's a class loading issue, %s is registered as a KubernetesResource, but is not an instance of KubernetesResource",
+        resourceType.getName()));
+  }
+
+  /**
+   * Return a string representation of the key of the type: <version>#<kind>.
+   */
+  private static TypeKey getKey(JsonNode node) {
+    JsonNode apiVersion = node.get(API_VERSION);
+    JsonNode kind = node.get(KIND);
+
+    return mapping.createKey(
+        apiVersion != null ? apiVersion.textValue() : null,
+        kind != null ? kind.textValue() : null);
+  }
+
+  /**
+   * Registers a Custom Resource Definition Kind
+   */
+  public static void registerCustomKind(String kind, Class<? extends KubernetesResource> clazz) {
+    registerCustomKind(null, kind, clazz);
+  }
+
+  /**
+   * Registers a Custom Resource Definition Kind
+   */
+  public static void registerCustomKind(String apiVersion, String kind, Class<? extends KubernetesResource> clazz) {
+    mapping.registerKind(apiVersion, kind, clazz);
+  }
+
+  static class Mapping {
+
+    private Map<TypeKey, Class<? extends KubernetesResource>> mappings = new ConcurrentHashMap<>();
+
+    Mapping() {
+      registerClasses(Thread.currentThread().getContextClassLoader());
+      registerClasses(KubernetesDeserializer.class.getClassLoader());
+    }
+
+    public Class<? extends KubernetesResource> getForKey(TypeKey key) {
+      if (key == null) {
+        return null;
+      }
+      return mappings.get(key);
+    }
+
+    public void registerKind(String apiVersion, String kind, Class<? extends KubernetesResource> clazz) {
+      Optional.ofNullable(createKey(apiVersion, kind)).ifPresent(k -> mappings.put(k, clazz));
+    }
+
+    /**
+     * Returns a composite key for apiVersion and kind.
+     */
+    TypeKey createKey(String apiVersion, String kind) {
+      if (kind == null || apiVersion == null) {
+        return null;
+      }
+      String[] versionParts = new String[] { null, apiVersion };
+      if (apiVersion.contains("/")) {
+        versionParts = apiVersion.split("/", 2);
+      }
+      return new TypeKey(kind, versionParts[0], versionParts[1]);
+    }
+
+    private void registerClasses(ClassLoader classLoader) {
+      Iterable<KubernetesResource> resources = () -> ServiceLoader
+          .load(KubernetesResource.class, classLoader)
+          .iterator();
+      for (KubernetesResource resource : resources) {
+        addMapping(resource.getClass());
+      }
+    }
+
+    TypeKey getKeyFromClass(Class<? extends KubernetesResource> clazz) {
+      String apiGroup = Helper.getAnnotationValue(clazz, Group.class);
+      String apiVersion = Helper.getAnnotationValue(clazz, Version.class);
+      String kind = HasMetadata.getKind(clazz);
+      if (apiGroup != null && !apiGroup.isEmpty() && apiVersion != null && !apiVersion.isEmpty()) {
+        return new TypeKey(kind, apiGroup, apiVersion);
+      } else if (apiVersion != null && !apiVersion.isEmpty()) {
+        return createKey(apiVersion, kind);
+      }
+      return null;
+    }
+
+    private void addMapping(Class<? extends KubernetesResource> clazz) {
+      TypeKey keyFromClass = getKeyFromClass(clazz);
+      if (keyFromClass == null) {
+        return;
+      }
+      mappings.put(keyFromClass, clazz);
+
+      // oc behavior - allow resolving against just the version
+      if (keyFromClass.apiGroup != null && keyFromClass.apiGroup.endsWith(".openshift.io")) {
+        mappings.putIfAbsent(new TypeKey(keyFromClass.kind, null, keyFromClass.version), clazz);
+      }
+    }
+  }
+}
