@@ -15,55 +15,65 @@
  */
 package io.fabric8.kubernetes;
 
-import io.fabric8.junit.jupiter.api.LoadKubernetesManifests;
-import io.fabric8.junit.jupiter.api.RequireK8sVersionAtLeast;
+import io.fabric8.commons.ClusterEntity;
 import io.fabric8.kubernetes.api.model.APIService;
 import io.fabric8.kubernetes.api.model.APIServiceBuilder;
 import io.fabric8.kubernetes.api.model.APIServiceList;
 import io.fabric8.kubernetes.client.KubernetesClient;
-import org.assertj.core.api.InstanceOfAssertFactories;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
+import org.arquillian.cube.kubernetes.impl.requirement.RequiresKubernetes;
+import org.arquillian.cube.requirement.ArquillianConditionalRunner;
+import org.jboss.arquillian.test.api.ArquillianResource;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static junit.framework.TestCase.assertTrue;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
-@LoadKubernetesManifests("/apiservice-it.yml")
-@RequireK8sVersionAtLeast(majorVersion = 1, minorVersion = 16)
-class APIServiceIT {
-
+@RunWith(ArquillianConditionalRunner.class)
+@RequiresKubernetes
+public class APIServiceIT {
+  @ArquillianResource
   KubernetesClient client;
 
-  @Test
-  void get() {
-    APIService result = client.apiServices().withName("v1.tests.example.com").get();
-    assertThat(result)
-        .hasFieldOrPropertyWithValue("spec.group", "tests.example.com")
-        .hasFieldOrPropertyWithValue("spec.version", "v1");
+  @BeforeClass
+  public static void init() {
+    ClusterEntity.apply(APIServiceIT.class.getResourceAsStream("/apiservice-it.yml"));
   }
 
   @Test
-  void list() {
-    APIServiceList result = client.apiServices().list();
-    assertThat(result).extracting(APIServiceList::getItems)
-        .asInstanceOf(InstanceOfAssertFactories.list(APIService.class))
-        .anyMatch(t -> t.getMetadata().getName().equals("v1.tests.example.com"));
+  public void get() {
+    APIService apiService = client.apiServices().withName("v1beta1.get.fabric8.io").get();
+    assertThat(apiService).isNotNull();
   }
 
   @Test
-  void update() {
-    APIService result = client.apiServices().withName("v1.tests.example.com")
-        .edit(c -> new APIServiceBuilder(c)
-            .editOrNewMetadata().addToAnnotations("foo", "bar").endMetadata()
-            .build());
-    assertThat(result)
-        .hasFieldOrPropertyWithValue("metadata.annotations.foo", "bar")
-        .hasFieldOrPropertyWithValue("spec.group", "tests.example.com")
-        .hasFieldOrPropertyWithValue("spec.version", "v1");
+  public void list() {
+    APIServiceList aAPIServiceList = client.apiServices().list();
+    assertNotNull(aAPIServiceList);
+    assertTrue(aAPIServiceList.getItems().size() >= 1);
   }
 
   @Test
-  @Disabled(value = "https://github.com/fabric8io/kubernetes-client/issues/3668")
-  void delete() {
-    assertThat(client.apiServices().withName("v1beta1.delete.fabric8.io").delete().size() == 1).isTrue();
+  public void update() {
+    APIService apiService = client.apiServices().withName("v1beta1.update.fabric8.io").edit(c -> new APIServiceBuilder(c)
+      .editOrNewMetadata().addToAnnotations("foo", "bar").endMetadata()
+      .build());
+
+    assertNotNull(apiService);
+    assertEquals("bar", apiService.getMetadata().getAnnotations().get("foo"));
+  }
+
+  @Test
+  public void delete() {
+    assertTrue(client.apiServices().withName("v1beta1.delete.fabric8.io").delete());
+  }
+
+  @AfterClass
+  public static void cleanup() {
+    ClusterEntity.remove(APIServiceIT.class.getResourceAsStream("/apiservice-it.yml"));
   }
 }

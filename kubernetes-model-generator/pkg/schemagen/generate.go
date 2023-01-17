@@ -23,27 +23,27 @@ import (
 )
 
 type PackageDescriptor struct {
-	GoPackage   string
-	ApiGroup    string
-	JavaPackage string
-	Prefix      string
-	Generate    bool
+	GoPackage       string
+	ApiGroup        string
+	JavaPackage     string
+	Prefix          string
+	Generate        bool
 }
 
 type schemaGenerator struct {
-	types         map[reflect.Type]*JSONObjectDescriptor
-	typeNames     map[reflect.Type]string
-	manualTypeMap map[reflect.Type]string
-	packages      map[string]PackageDescriptor
-	typeMap       map[reflect.Type]reflect.Type
+	types           map[reflect.Type]*JSONObjectDescriptor
+	typeNames       map[reflect.Type]string
+	manualTypeMap   map[reflect.Type]string
+	packages        map[string]PackageDescriptor
+	typeMap         map[reflect.Type]reflect.Type
 }
 
 type CrdScope int32
 
 const (
-	Namespaced  CrdScope = iota
-	Cluster     CrdScope = iota
-	BasePackage string   = "io.fabric8.kubernetes.api.model"
+	Namespaced CrdScope = iota
+	Cluster    CrdScope = iota
+	BasePackage string = "io.fabric8.kubernetes.api.model"
 )
 
 func GenerateSchema(t reflect.Type, packages []PackageDescriptor, typeMap map[reflect.Type]reflect.Type, manualTypeMapping map[reflect.Type]string, moduleName string) (*JSONSchema, error) {
@@ -57,11 +57,11 @@ func newSchemaGenerator(packages []PackageDescriptor, typeMap map[reflect.Type]r
 		pkgMap[p.GoPackage] = p
 	}
 	g := schemaGenerator{
-		types:         make(map[reflect.Type]*JSONObjectDescriptor),
-		typeNames:     make(map[reflect.Type]string),
-		manualTypeMap: manualTypeMap,
-		packages:      pkgMap,
-		typeMap:       typeMap,
+		types:           make(map[reflect.Type]*JSONObjectDescriptor),
+		typeNames:       make(map[reflect.Type]string),
+		manualTypeMap:   manualTypeMap,
+		packages:        pkgMap,
+		typeMap:         typeMap,
 	}
 	return &g
 }
@@ -128,7 +128,7 @@ func (g *schemaGenerator) generateReference(t reflect.Type) string {
 func (g *schemaGenerator) javaTypeArrayList(t reflect.Type) string {
 	typeName := g.javaTypeWrapPrimitive(t)
 	switch typeName {
-	case "Byte":
+	case "Byte", "Integer":
 		return "String"
 	default:
 		return "java.util.ArrayList<" + typeName + ">"
@@ -163,7 +163,7 @@ func (g *schemaGenerator) javaType(t reflect.Type) string {
 	}
 	pkgDesc, ok := g.packages[pkgPath(t)]
 
-	manualType, isFound := g.manualTypeMap[t]
+	manualType, isFound := g.manualTypeMap[t];
 	if isFound {
 		return manualType
 	}
@@ -178,9 +178,9 @@ func (g *schemaGenerator) javaType(t reflect.Type) string {
 		case "Time":
 			return "String"
 		case "RawExtension":
-			return "io.fabric8.kubernetes.api.model.KubernetesResource"			
+			return BasePackage + ".HasMetadata"
 		case "List":
-			return pkgDesc.JavaPackage + ".KubernetesList"
+			return pkgDesc.JavaPackage + ".BaseKubernetesList"
 		default:
 			return pkgDesc.JavaPackage + "." + t.Name()
 		}
@@ -193,11 +193,9 @@ func (g *schemaGenerator) javaType(t reflect.Type) string {
 	switch t.Kind() {
 	case reflect.Bool:
 		return "bool"
-	case reflect.Uint8:
-	  return "Byte"
 	case reflect.Int, reflect.Int8, reflect.Int16,
 		reflect.Int32, reflect.Uint,
-		reflect.Uint16, reflect.Uint32:
+		reflect.Uint8, reflect.Uint16, reflect.Uint32:
 		return "int"
 	case reflect.Int64, reflect.Uint64:
 		return "Long"
@@ -211,10 +209,7 @@ func (g *schemaGenerator) javaType(t reflect.Type) string {
 	case reflect.Map:
 		return "java.util.Map<String," + g.javaTypeWrapPrimitive(t.Elem()) + ">"
 	default:
-	    if t.Name() == "RawExtension" {
-	        return "io.fabric8.kubernetes.api.model.KubernetesResource"
-	    }
-	    if t.Name() == "Time" {
+		if t.Name() == "Time" {
 			return "String"
 		}
 		if len(t.Name()) == 0 && t.NumField() == 0 {
@@ -229,9 +224,7 @@ func (g *schemaGenerator) resourceListWithGeneric(t reflect.Type) string {
 }
 
 func (g *schemaGenerator) javaInterfaces(t reflect.Type) []string {
-	_, hasMeta := t.FieldByName("ObjectMeta")
-
-	if t.Name() != "JobTemplateSpec" && t.Name() != "PodTemplateSpec" && t.Name() != "PersistentVolumeClaimTemplate" && t.Name() != "MachineSpec" && t.Name() != "MachineTemplateSpec" && hasMeta {
+	if _, ok := t.FieldByName("ObjectMeta"); t.Name() != "JobTemplateSpec" && t.Name() != "PodTemplateSpec" && t.Name() != "PersistentVolumeClaimTemplate" && ok {
 		scope := g.crdScope(t)
 
 		if scope == Namespaced {
@@ -245,11 +238,6 @@ func (g *schemaGenerator) javaInterfaces(t reflect.Type) []string {
 	if hasItems && hasListMeta {
 		return []string{BasePackage + ".KubernetesResource", g.resourceListWithGeneric(itemsField.Type)}
 	}
-
-	if !hasMeta && g.isNamespaceScopedResource(t) {
-		return []string{BasePackage + ".KubernetesResource", BasePackage + ".Namespaced"}
-	}
-
 	return []string{BasePackage + ".KubernetesResource"}
 }
 
@@ -293,15 +281,53 @@ func (g *schemaGenerator) generate(t reflect.Type, moduleName string) (*JSONSche
 			}
 			javaType := g.javaType(k)
 			if g.generateJavaType(k) && strings.HasPrefix(javaType, "io.fabric8.") {
-				value.JavaTypeDescriptor = &JavaTypeDescriptor{
+				value.JavaTypeDescriptor = &JavaTypeDescriptor {
 					JavaType: javaType,
 				}
 			} else {
-				value.ExistingJavaTypeDescriptor = &ExistingJavaTypeDescriptor{
+				value.ExistingJavaTypeDescriptor = &ExistingJavaTypeDescriptor {
 					ExistingJavaType: javaType,
 				}
 			}
-			
+			/* Added a specific class for DockerImageMetadata because its kind of RawExtension
+			and is set to HasMetadata Java Type. Because of this thing its not getting marshalled
+			and throwing error. We need to change it to RawExtension but to change it to Raw Extension
+			we need to create a special class for DockerMetadata Only.Reason is all the RawExtension Object
+			are set to HasMetadata Java Type and if we change all the objects to RawExtension then
+			classes like KubernetesList etc. are throwing error If we change the class of DockerMetadata
+			only then also it will get generated of kind HasMetadata because RawExtension Object is also set
+			to HasMetadata Jaya Type If we further change RawExtension Object to RawExtension Java Type then
+			again all KubernetesList like object throw error so created a special Class ImageRawExtension
+			for DockerImageData which will be of Raw Extension Java Type and the problem of marshalling
+			get Resolved. This will be applied to DockerMetadata only and all the other will refer to
+			original RawExtension which is of HasMetadata Java Type.*/
+
+			if name == "kubernetes_apimachinery_pkg_runtime_RawExtension" {
+				dockermetadata_name := "kubernetes_apimachinery_pkg_runtime_ImageRawExtension"
+				dockermetadata_resource := "imagerawextension"
+				dockermetadata_value := JSONPropertyDescriptor{
+					JSONDescriptor: &JSONDescriptor{
+						Type: "object",
+					},
+					JSONObjectDescriptor: v,
+					JavaTypeDescriptor: &JavaTypeDescriptor{
+						JavaType: g.javaType(k),
+					},
+					JavaInterfacesDescriptor: &JavaInterfacesDescriptor{
+						JavaInterfaces: g.javaInterfaces(k),
+					},
+				}
+				javaTypeStr := "io.fabric8."
+				if moduleName == "openshift" {
+					javaTypeStr = javaTypeStr + "openshift"
+				} else {
+					javaTypeStr = javaTypeStr + "kubernetes"
+				}
+				javaTypeStr = javaTypeStr + ".api.model.runtime.RawExtension"
+				dockermetadata_value.JavaType = javaTypeStr
+				s.Definitions[dockermetadata_name] = dockermetadata_value
+				s.Resources[dockermetadata_resource] = v
+			}
 			s.Definitions[name] = value
 			s.Resources[resource] = v
 		}
@@ -425,7 +451,23 @@ func (g *schemaGenerator) getStructProperties(t reflect.Type) map[string]JSONPro
 		if name == "-" {
 			continue
 		}
+		/* Specifying dockerImageMetadata field separately Because by default it is taking
+		HasMetadata as type and we have declared a special class ImageRawExtension
+		for this to remove marshalling error.*/
 		path := pkgPath(t)
+		if t.Name() == "Image" && name == "dockerImageMetadata" {
+			prop := JSONPropertyDescriptor{
+				JSONReferenceDescriptor: &JSONReferenceDescriptor{
+					Reference: "#/definitions/kubernetes_apimachinery_pkg_runtime_ImageRawExtension",
+				},
+				JavaTypeDescriptor: &JavaTypeDescriptor{
+					JavaType: BasePackage + ".runtime.RawExtension",
+				},
+			}
+			props[name] = prop
+			continue
+		}
+
 		desc := getFieldDescription(field)
 		omitEmpty := isOmitEmpty(field)
 		prop := g.getPropertyDescriptor(field.Type, desc, omitEmpty)
@@ -458,12 +500,12 @@ func (g *schemaGenerator) getStructProperties(t reflect.Type) map[string]JSONPro
 					if ok && pkgDesc.ApiGroup != "" {
 						apiGroup = pkgDesc.ApiGroup
 					}
-					/*
-					 * ApiGroup for apiextensions is apiextensions.k8s.io
-					 */
-					if apiGroup == "apiextensions" {
-						apiGroup = "apiextensions.k8s.io"
-					}
+                                        /*
+                                         * ApiGroup for apiextensions is apiextensions.k8s.io
+                                         */
+                                        if apiGroup == "apiextensions" {
+                                            apiGroup = "apiextensions.k8s.io"
+                                        }
 
 					/*
 					 * Skip appending apiGroup in apiVersion for case of core and meta resources since
@@ -542,22 +584,8 @@ func (g *schemaGenerator) crdScope(t reflect.Type) CrdScope {
 	return Namespaced
 }
 
-func (g *schemaGenerator) isNamespaceScopedResource(t reflect.Type) bool {
-	namespaceScopedResourcesList := []string{
-		"github.com/openshift/api/authorization/v1/LocalResourceAccessReview",
-		"github.com/openshift/api/authorization/v1/LocalSubjectAccessReview",
-		"github.com/openshift/api/authorization/v1/SelfSubjectRulesReview",
-		"github.com/openshift/api/authorization/v1/SubjectRulesReview",
-		"github.com/openshift/api/security/v1/PodSecurityPolicyReview",
-		"github.com/openshift/api/security/v1/PodSecurityPolicySelfSubjectReview",
-		"github.com/openshift/api/security/v1/PodSecurityPolicySubjectReview",
-	}
-
-	return Contains(namespaceScopedResourcesList, t.PkgPath()+"/"+t.Name())
-}
-
 func (g *schemaGenerator) isClusterScopedResource(t reflect.Type) bool {
-	clusterScopedResourcesList := []string{
+	clusterScopedResourcesList := []string {
 		"k8s.io/api/core/v1/Namespace",
 		"k8s.io/api/core/v1/Node",
 		"k8s.io/api/core/v1/ComponentStatus",
@@ -581,6 +609,12 @@ func (g *schemaGenerator) isClusterScopedResource(t reflect.Type) bool {
 		"k8s.io/api/rbac/v1/ClusterRoleBinding",
 		"k8s.io/api/scheduling/v1/PriorityClass",
 		"k8s.io/api/scheduling/v1beta1/PriorityClass",
+		"k8s.io/api/authorization/v1beta1/SelfSubjectAccessReview",
+		"k8s.io/api/authorization/v1beta1/SelfSubjectRulesReview",
+		"k8s.io/api/authorization/v1/SelfSubjectRulesReview",
+		"k8s.io/api/authorization/v1beta1/SubjectAccessReview",
+		"k8s.io/api/authorization/v1/SelfSubjectAccessReview",
+		"k8s.io/api/authorization/v1/SubjectAccessReview",
 		"k8s.io/api/certificates/v1beta1/CertificateSigningRequest",
 		"k8s.io/api/certificates/v1/CertificateSigningRequest",
 		"k8s.io/api/storage/v1beta1/CSIDriver",
@@ -588,32 +622,18 @@ func (g *schemaGenerator) isClusterScopedResource(t reflect.Type) bool {
 		"k8s.io/api/storage/v1/CSIDriver",
 		"k8s.io/api/storage/v1/CSINode",
 		"k8s.io/api/storage/v1/VolumeAttachment",
-		"k8s.io/metrics/pkg/apis/metrics/v1beta1/NodeMetrics",
 		"k8s.io/api/node/v1beta1/RuntimeClass",
 		"k8s.io/api/node/v1/RuntimeClass",
 		"k8s.io/api/node/v1alpha1/RuntimeClass",
 		"k8s.io/api/networking/v1beta1/IngressClass",
 		"k8s.io/api/networking/v1/IngressClass",
-		"k8s.io/api/storage/v1/StorageClass",
-		"k8s.io/api/storage/v1beta1/StorageClass",
-		"k8s.io/api/flowcontrol/v1beta1/FlowSchema",
-		"k8s.io/api/flowcontrol/v1beta1/PriorityLevelConfiguration",
-		"k8s.io/api/flowcontrol/v1beta2/FlowSchema",
-		"k8s.io/api/flowcontrol/v1beta2/PriorityLevelConfiguration",
-		"github.com/openshift/api/authorization/v1/ClusterRole",
-		"github.com/openshift/api/authorization/v1/ClusterRoleBinding",
-		"github.com/openshift/api/authorization/v1/ResourceAccessReview",
-		"github.com/openshift/api/authorization/v1/SubjectAccessReview",
-		"github.com/openshift/api/oauth/v1/UserOAuthAccessToken",
-		"github.com/openshift/api/oauth/v1/OAuthClientAuthorization",
-		"github.com/openshift/api/config/v1/Authentication",
-		"github.com/openshift/api/config/v1/Build",
-		"github.com/openshift/api/config/v1/Console",
-		"github.com/openshift/api/config/v1/DNS",
-		"github.com/openshift/api/config/v1/Network",
+                "k8s.io/api/storage/v1/StorageClass",
+                "k8s.io/api/storage/v1beta1/StorageClass",
+                "k8s.io/api/flowcontrol/v1beta1/FlowSchema",
+                "k8s.io/api/flowcontrol/v1beta1/PriorityLevelConfiguration",
+                "github.com/openshift/api/authorization/v1/ClusterRole",
+                "github.com/openshift/api/authorization/v1/ClusterRoleBinding",
 		"github.com/openshift/api/config/v1/Infrastructure",
-		"github.com/openshift/api/config/v1/Image",
-		"github.com/openshift/api/config/v1/ImageContentPolicy",
 		"github.com/openshift/api/config/v1/FeatureGate",
 		"github.com/openshift/api/config/v1/OperatorHub",
 		"github.com/openshift/api/config/v1/APIServer",
@@ -625,17 +645,10 @@ func (g *schemaGenerator) isClusterScopedResource(t reflect.Type) bool {
 		"github.com/openshift/api/config/v1/ClusterOperator",
 		"github.com/openshift/api/network/v1/NetNamespace",
 		"github.com/openshift/api/config/v1/Proxy",
-		"github.com/openshift/api/config/v1/Project",
 		"github.com/openshift/api/security/v1/RangeAllocation",
-		"github.com/openshift/api/image/v1/Image",
-		"github.com/openshift/api/image/v1/ImageSignature",
 		"github.com/openshift/api/operator/v1/CSISnapshotController",
-		"github.com/openshift/api/operator/v1/ClusterCSIDriver",
-		"github.com/openshift/api/operator/v1/Config",
-		"github.com/openshift/api/operator/v1/CloudCredential",
 		"github.com/openshift/api/operator/v1/Etcd",
 		"github.com/openshift/api/operator/v1/ServiceCatalogControllerManager",
-		"github.com/openshift/api/operator/v1/Storage",
 		"github.com/openshift/api/operator/v1/KubeStorageVersionMigrator",
 		"github.com/openshift/api/operator/v1/Console",
 		"github.com/openshift/api/operator/v1/KubeAPIServer",
@@ -649,48 +662,16 @@ func (g *schemaGenerator) isClusterScopedResource(t reflect.Type) bool {
 		"github.com/openshift/api/operator/v1/Network",
 		"github.com/openshift/api/operator/v1/KubeScheduler",
 		"github.com/openshift/api/operator/v1/Authentication",
-		"github.com/operator-framework/api/pkg/operators/v1/Operator",
 		"github.com/openshift/api/imageregistry/v1/ImagePruner",
-		"github.com/openshift/api/imageregistry/v1/Config",
 		"github.com/openshift/api/console/v1/ConsoleLink",
 		"github.com/openshift/api/console/v1/ConsoleCLIDownload",
 		"github.com/openshift/api/console/v1/ConsoleNotification",
 		"github.com/openshift/api/console/v1/ConsoleYAMLSample",
 		"github.com/openshift/api/console/v1/ConsoleExternalLogLink",
-		"github.com/openshift/api/console/v1/ConsoleQuickStart",
-		"github.com/openshift/api/console/v1alpha1/ConsolePlugin",
-		"github.com/openshift/api/config/v1/Ingress",
-		"github.com/openshift/api/template/v1/BrokerTemplateInstance",
-		"github.com/openshift/api/helm/v1beta1/HelmChartRepository",
-		"github.com/openshift/api/network/v1/HostSubnet",
-		"github.com/openshift/api/user/v1/UserIdentityMapping",
-		"github.com/openshift/api/user/v1/Identity",
-		"github.com/openshift/api/apiserver/v1/APIRequestCount",
-		"github.com/openshift/api/project/v1/Project",
-		"github.com/openshift/api/project/v1/ProjectRequest",
-		"github.com/openshift/api/user/v1/Group",
-		"github.com/openshift/api/user/v1/User",
-		"github.com/openshift/api/oauth/v1/OAuthAccessToken",
-		"github.com/openshift/api/oauth/v1/OAuthAuthorizeToken",
-		"github.com/openshift/api/oauth/v1/OAuthClient",
-		"github.com/openshift/api/security/v1/SecurityContextConstraints",
-		"github.com/openshift/machine-config-operator/pkg/apis/machineconfiguration.openshift.io/v1/ContainerRuntimeConfig",
-		"github.com/openshift/machine-config-operator/pkg/apis/machineconfiguration.openshift.io/v1/ControllerConfig",
-		"github.com/openshift/machine-config-operator/pkg/apis/machineconfiguration.openshift.io/v1/KubeletConfig",
-		"github.com/openshift/machine-config-operator/pkg/apis/machineconfiguration.openshift.io/v1/MachineConfigPool",
-		"github.com/openshift/machine-config-operator/pkg/apis/machineconfiguration.openshift.io/v1/MachineConfig",
-		"github.com/openshift/cluster-autoscaler-operator/pkg/apis/autoscaling/v1/ClusterAutoscaler",
-                "github.com/openshift/hive/apis/hive/v1/ClusterImageSet",
-                "github.com/openshift/hive/apis/hive/v1/SelectorSyncIdentityProvider",
-                "github.com/openshift/hive/apis/hive/v1/SelectorSyncSet",
-                "github.com/openshift/hive/apis/hive/v1/HiveConfig",
-		"sigs.k8s.io/kube-storage-version-migrator/pkg/apis/migration/v1alpha1/StorageState",
-		"sigs.k8s.io/kube-storage-version-migrator/pkg/apis/migration/v1alpha1/StorageVersionMigration",
-                "sigs.k8s.io/gateway-api/apis/v1alpha2/GatewayClass",
-                "sigs.k8s.io/gateway-api/apis/v1beta1/GatewayClass",
+                "github.com/openshift/api/config/v1/Ingress",
 	}
 
-	return Contains(clusterScopedResourcesList, t.PkgPath()+"/"+t.Name())
+	return Contains(clusterScopedResourcesList, t.PkgPath() + "/" + t.Name())
 }
 
 func Contains(a []string, x string) bool {

@@ -15,8 +15,6 @@
  */
 package io.fabric8.openshift;
 
-import io.fabric8.junit.jupiter.api.RequireK8sSupport;
-import io.fabric8.kubernetes.api.model.Namespace;
 import io.fabric8.kubernetes.api.model.ServiceAccount;
 import io.fabric8.kubernetes.api.model.ServiceAccountBuilder;
 import io.fabric8.kubernetes.api.model.rbac.ClusterRole;
@@ -28,81 +26,126 @@ import io.fabric8.kubernetes.api.model.rbac.RoleRefBuilder;
 import io.fabric8.kubernetes.api.model.rbac.SubjectBuilder;
 import io.fabric8.kubernetes.client.RequestConfig;
 import io.fabric8.kubernetes.client.RequestConfigBuilder;
-import io.fabric8.openshift.api.model.Project;
 import io.fabric8.openshift.api.model.ProjectRequest;
 import io.fabric8.openshift.api.model.ProjectRequestBuilder;
 import io.fabric8.openshift.api.model.User;
 import io.fabric8.openshift.client.OpenShiftClient;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.arquillian.cube.kubernetes.api.Session;
+import org.arquillian.cube.openshift.impl.requirement.RequiresOpenshift;
+import org.arquillian.cube.requirement.ArquillianConditionalRunner;
+import org.jboss.arquillian.test.api.ArquillianResource;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
-@RequireK8sSupport(Project.class)
-class UserImpersonationIT {
+@RunWith(ArquillianConditionalRunner.class)
+@RequiresOpenshift
+public class UserImpersonationIT {
 
   private static final String SERVICE_ACCOUNT = "serviceaccount1";
   private static final String NEW_PROJECT = "impersonation" + System.nanoTime();
 
+  @ArquillianResource
   OpenShiftClient client;
 
-  Namespace namespace;
+  @ArquillianResource
+  Session session;
 
   private ServiceAccount serviceAccount1;
   private ClusterRole impersonatorRole;
   private ClusterRoleBinding impersonatorRoleBinding;
 
-  @BeforeEach
+  private String currentNamespace;
+
+  @Before
   public void init() {
+    currentNamespace = session.getNamespace();
     // Create impersonator cluster role
     impersonatorRole = new ClusterRoleBuilder()
-        .withNewMetadata()
-        .withName("impersonator")
-        .endMetadata()
-        .addToRules(new PolicyRuleBuilder()
-            .addToApiGroups("")
-            .addToResources("users", "groups", "userextras", "serviceaccounts")
-            .addToVerbs("impersonate")
-            .build())
-        .build();
-    client.rbac().clusterRoles().createOrReplace(impersonatorRole);
+      .withNewMetadata()
+      .withName("impersonator")
+      .endMetadata()
+      .addToRules(new PolicyRuleBuilder()
+        .addToApiGroups("")
+        .addToResources("users", "groups", "userextras", "serviceaccounts")
+        .addToVerbs("impersonate")
+        .build()
+      )
+      .build();
+    client.rbac().clusterRoles().inNamespace(currentNamespace).createOrReplace(impersonatorRole);
 
     // Create Service Account
     serviceAccount1 = new ServiceAccountBuilder()
-        .withNewMetadata().withName(SERVICE_ACCOUNT).endMetadata()
-        .build();
-    client.serviceAccounts().create(serviceAccount1);
+      .withNewMetadata().withName(SERVICE_ACCOUNT).endMetadata()
+      .build();
+    client.serviceAccounts().inNamespace(currentNamespace).create(serviceAccount1);
 
     // Bind Impersonator Role to current user
     impersonatorRoleBinding = new ClusterRoleBindingBuilder()
-        .withNewMetadata()
-        .withName("impersonate-role")
-        .endMetadata()
-        .addToSubjects(new SubjectBuilder()
-            .withApiGroup("rbac.authorization.k8s.io")
-            .withKind("User")
-            .withName(client.currentUser().getMetadata().getName())
-            .withNamespace(namespace.getMetadata().getName())
-            .build())
-        .withRoleRef(new RoleRefBuilder()
-            .withApiGroup("rbac.authorization.k8s.io")
-            .withKind("ClusterRole")
-            .withName("impersonator")
-            .build())
-        .build();
+      .withNewMetadata()
+      .withName("impersonate-role")
+      .endMetadata()
+      .addToSubjects(new SubjectBuilder()
+        .withApiGroup("rbac.authorization.k8s.io")
+        .withKind("User")
+        .withName(client.currentUser().getMetadata().getName())
+        .withNamespace(currentNamespace)
+        .build()
+      )
+      .withRoleRef(new RoleRefBuilder()
+        .withApiGroup("rbac.authorization.k8s.io")
+        .withKind("ClusterRole")
+        .withName("impersonator")
+        .build()
+      )
+      .build();
 
-    client.rbac().clusterRoleBindings().createOrReplace(impersonatorRoleBinding);
+    client.rbac().clusterRoleBindings().inNamespace(currentNamespace).createOrReplace(impersonatorRoleBinding);
   }
 
-  @AfterEach
+
+  @Test
+  public void should_be_able_to_return_service_account_name_when_impersonating_current_user() {
+    RequestConfig requestConfig = new RequestConfigBuilder()
+    .withImpersonateUsername(SERVICE_ACCOUNT)
+    .withImpersonateGroups("system:authenticated", "system:authenticated:oauth")
+    .withImpersonateExtras(Collections.singletonMap("scopes", Arrays.asList("cn=jane","ou=engineers","dc=example","dc=com"))).build();
+
+    User user = client.withRequestConfig(requestConfig).call(OpenShiftClient::currentUser);
+    assertThat(user.getMetadata().getName()).isEqualTo(SERVICE_ACCOUNT);
+  }
+
+  @Test
+  public void should_be_able_to_create_a_project_impersonating_service_account() {
+    RequestConfig requestConfig = new RequestConfigBuilder()
+    .withImpersonateUsername(SERVICE_ACCOUNT)
+    .withImpersonateGroups("system:authenticated", "system:authenticated:oauth")
+    .withImpersonateExtras(Collections.singletonMap("scopes", Collections.singletonList("development")))
+    .build();
+
+    // Create a project
+    ProjectRequest projectRequest = client.withRequestConfig(requestConfig).call(c -> c.projectrequests().create(new ProjectRequestBuilder()
+      .withNewMetadata()
+      .withName(NEW_PROJECT)
+      .endMetadata()
+      .build()));
+
+    // Grab the requester annotation
+    String requester = projectRequest.getMetadata().getAnnotations().get("openshift.io/requester");
+    assertThat(requester).isEqualTo(SERVICE_ACCOUNT);
+  }
+
+
+  @After
   public void cleanup() {
     // Reset original authentication
     RequestConfig requestConfig = client.getConfiguration().getRequestConfig();
@@ -110,61 +153,37 @@ class UserImpersonationIT {
     requestConfig.setImpersonateGroups((String) null);
 
     // DeleteEntity Cluster Role
-    client.rbac().clusterRoles().delete(impersonatorRole);
-    client.rbac().clusterRoles().withName("impersonator")
-        .waitUntilCondition(Objects::isNull, 30, TimeUnit.SECONDS);
+    client.rbac().clusterRoles().inNamespace(currentNamespace).delete(impersonatorRole);
+    await().atMost(30, TimeUnit.SECONDS).until(kubernetesClusterRoleIsDeleted());
 
     // DeleteEntity Cluster Role binding
-    client.rbac().clusterRoleBindings().delete(impersonatorRoleBinding);
-    client.rbac().clusterRoleBindings().withName("impersonator-role")
-        .waitUntilCondition(Objects::isNull, 30, TimeUnit.SECONDS);
+    client.rbac().clusterRoleBindings().inNamespace(currentNamespace).delete(impersonatorRoleBinding);
+    await().atMost(30, TimeUnit.SECONDS).until(kubernetesClusterRoleBindingIsDeleted());
 
     // DeleteEntity project
     client.projects().withName(NEW_PROJECT).delete();
     await().atMost(30, TimeUnit.SECONDS).until(projectIsDeleted());
 
     // DeleteEntity ServiceAccounts
-    client.serviceAccounts().delete(serviceAccount1);
-    client.serviceAccounts().withName(serviceAccount1.getMetadata().getName())
-        .waitUntilCondition(Objects::isNull, 30, TimeUnit.SECONDS);
+    client.serviceAccounts().inNamespace(currentNamespace).delete(serviceAccount1);
+    await().atMost(30, TimeUnit.SECONDS).until(serviceAccountIsDeleted());
   }
 
-  @Test
-  void should_be_able_to_return_service_account_name_when_impersonating_current_user() {
-    RequestConfig requestConfig = new RequestConfigBuilder()
-        .withImpersonateUsername(SERVICE_ACCOUNT)
-        .withImpersonateGroups("system:authenticated", "system:authenticated:oauth")
-        .withImpersonateExtras(
-            Collections.singletonMap("scopes", Arrays.asList("cn=jane", "ou=engineers", "dc=example", "dc=com")))
-        .build();
-
-    User user = client.withRequestConfig(requestConfig).call(OpenShiftClient::currentUser);
-    assertThat(user.getMetadata().getName()).isEqualTo(SERVICE_ACCOUNT);
-  }
-
-  @Test
-  void should_be_able_to_create_a_project_impersonating_service_account() {
-    RequestConfig requestConfig = new RequestConfigBuilder()
-        .withImpersonateUsername(SERVICE_ACCOUNT)
-        .withImpersonateGroups("system:authenticated", "system:authenticated:oauth")
-        .withImpersonateExtras(Collections.singletonMap("scopes", Collections.singletonList("development")))
-        .build();
-
-    // Create a project
-    ProjectRequest projectRequest = client.withRequestConfig(requestConfig)
-        .call(c -> c.projectrequests().create(new ProjectRequestBuilder()
-            .withNewMetadata()
-            .withName(NEW_PROJECT)
-            .endMetadata()
-            .build()));
-
-    // Grab the requester annotation
-    String requester = projectRequest.getMetadata().getAnnotations().get("openshift.io/requester");
-    assertThat(requester).isEqualTo(SERVICE_ACCOUNT);
+  private Callable<Boolean> serviceAccountIsDeleted() {
+    return () -> client.serviceAccounts().inNamespace(currentNamespace).withName(serviceAccount1.getMetadata().getName()).get() == null;
   }
 
   private Callable<Boolean> projectIsDeleted() {
     return () -> client.projects().withName(NEW_PROJECT).get() == null;
   }
+
+  private Callable<Boolean> kubernetesClusterRoleBindingIsDeleted() {
+    return () -> client.rbac().clusterRoleBindings().inNamespace(currentNamespace).withName("impersonator-role").get() == null;
+  }
+
+  private Callable<Boolean> kubernetesClusterRoleIsDeleted() {
+    return () -> client.rbac().clusterRoles().inNamespace(currentNamespace).withName("impersonator").get() == null;
+  }
+
 
 }

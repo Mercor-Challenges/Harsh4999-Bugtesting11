@@ -17,8 +17,9 @@ package io.fabric8.kubernetes.examples;
 
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.ObjectMeta;
+import io.fabric8.kubernetes.api.model.apiextensions.v1beta1.CustomResourceDefinition;
+import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClient;
-import io.fabric8.kubernetes.client.KubernetesClientBuilder;
 import io.fabric8.kubernetes.client.informers.ResourceEventHandler;
 import io.fabric8.kubernetes.client.informers.SharedIndexInformer;
 import io.fabric8.kubernetes.client.informers.SharedInformerFactory;
@@ -33,34 +34,32 @@ public class CustomResourceInformerExample {
   private static final Logger logger = LoggerFactory.getLogger(CustomResourceInformerExample.class);
 
   public static void main(String[] args) {
-    try (KubernetesClient client = new KubernetesClientBuilder().build()) {
+    try (KubernetesClient client = new DefaultKubernetesClient()) {
       SharedInformerFactory sharedInformerFactory = client.informers();
-      SharedIndexInformer<Dummy> podInformer = sharedInformerFactory.sharedIndexInformerFor(Dummy.class, 60 * 1000L);
+      SharedIndexInformer<Dummy> podInformer = sharedInformerFactory.sharedIndexInformerForCustomResource(Dummy.class, 60 * 1000L);
       logger.info("Informer factory initialized.");
 
       podInformer.addEventHandler(
-          new ResourceEventHandler<Dummy>() {
-            @Override
-            public void onAdd(Dummy pod) {
-              logger.info("{} dummy added", pod.getMetadata().getName());
-            }
+        new ResourceEventHandler<Dummy>() {
+          @Override
+          public void onAdd(Dummy pod) {
+            logger.info("{} dummy added", pod.getMetadata().getName());
+          }
 
-            @Override
-            public void onUpdate(Dummy oldPod, Dummy newPod) {
-              logger.info("{} dummy updated", oldPod.getMetadata().getName());
-            }
+          @Override
+          public void onUpdate(Dummy oldPod, Dummy newPod) {
+            logger.info("{} dummy updated", oldPod.getMetadata().getName());
+          }
 
-            @Override
-            public void onDelete(Dummy pod, boolean deletedFinalStateUnknown) {
-              logger.info("{} dummy deleted", pod.getMetadata().getName());
-            }
-          });
-
-      podInformer.stopped().whenComplete((v, t) -> {
-        if (t != null) {
-          logger.error("Exception occurred, caught: {}", t.getMessage());
+          @Override
+          public void onDelete(Dummy pod, boolean deletedFinalStateUnknown) {
+            logger.info("{} dummy deleted", pod.getMetadata().getName());
+          }
         }
-      });
+      );
+
+      sharedInformerFactory.addSharedInformerEventListener(ex ->
+        logger.error("Exception occurred, but caught: {}", ex.getMessage()));
 
       logger.info("Starting all registered informers");
       sharedInformerFactory.startAllRegisteredInformers();
@@ -74,7 +73,7 @@ public class CustomResourceInformerExample {
           }
         } catch (InterruptedException inEx) {
           Thread.currentThread().interrupt();
-          logger.warn("HAS_SYNCED_THREAD interrupted: {}", inEx.getMessage());
+          logger.info("HAS_SYNCED_THREAD INTERRUPTED!");
         }
       });
 
@@ -86,15 +85,15 @@ public class CustomResourceInformerExample {
         toCreate.getMetadata().setNamespace(client.getNamespace());
       } else {
         toCreate.getMetadata().setNamespace(client.namespaces().list().getItems().stream().findFirst()
-            .map(HasMetadata::getMetadata).map(ObjectMeta::getNamespace).orElse("default"));
+          .map(HasMetadata::getMetadata).map(ObjectMeta::getNamespace).orElse("default"));
       }
 
-      client.resources(Dummy.class).createOrReplace(toCreate);
+      client.customResources(Dummy.class).createOrReplace(toCreate);
       // Wait for some time now
       TimeUnit.MINUTES.sleep(5);
     } catch (InterruptedException interruptedException) {
       Thread.currentThread().interrupt();
-      logger.warn("interrupted: {}", interruptedException.getMessage());
+      logger.info("interrupted: {}", interruptedException.getMessage());
     }
   }
 }

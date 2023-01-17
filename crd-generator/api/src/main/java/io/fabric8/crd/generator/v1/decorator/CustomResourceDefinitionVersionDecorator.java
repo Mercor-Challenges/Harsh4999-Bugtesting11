@@ -15,6 +15,8 @@
  */
 package io.fabric8.crd.generator.v1.decorator;
 
+import static io.fabric8.crd.generator.utils.Metadata.getMetadata;
+
 import io.fabric8.crd.generator.decorator.Decorator;
 import io.fabric8.crd.generator.utils.Generics;
 import io.fabric8.kubernetes.api.builder.TypedVisitor;
@@ -22,10 +24,7 @@ import io.fabric8.kubernetes.api.builder.VisitableBuilder;
 import io.fabric8.kubernetes.api.model.ObjectMeta;
 import io.fabric8.kubernetes.api.model.apiextensions.v1.CustomResourceDefinitionVersionBuilder;
 import io.fabric8.kubernetes.client.utils.Utils;
-
 import java.util.Optional;
-
-import static io.fabric8.crd.generator.utils.Metadata.getMetadata;
 
 public abstract class CustomResourceDefinitionVersionDecorator<T> extends Decorator<VisitableBuilder> {
 
@@ -40,14 +39,6 @@ public abstract class CustomResourceDefinitionVersionDecorator<T> extends Decora
   public CustomResourceDefinitionVersionDecorator(String name, String version) {
     this.name = name;
     this.version = version;
-  }
-
-  public String getName() {
-    return this.name;
-  }
-
-  public String getVersion() {
-    return this.version;
   }
 
   @Override
@@ -67,7 +58,7 @@ public abstract class CustomResourceDefinitionVersionDecorator<T> extends Decora
 
     @Override
     public void visit(CustomResourceDefinitionVersionBuilder builder) {
-      if (Utils.isNullOrEmpty(version) || builder.getName().equals(version)) {
+      if (builder.getName().equals(version)) {
         builder.accept(versionVisitor);
       }
     }
@@ -82,52 +73,21 @@ public abstract class CustomResourceDefinitionVersionDecorator<T> extends Decora
 
     public Class<T> getType() {
       return (Class) Generics
-          .getTypeArguments(CustomResourceDefinitionVersionDecorator.class,
-              CustomResourceDefinitionVersionDecorator.this.getClass())
+          .getTypeArguments(CustomResourceDefinitionVersionDecorator.class, CustomResourceDefinitionVersionDecorator.this.getClass())
           .get(0);
     }
   }
 
   @Override
   public Class<? extends Decorator>[] after() {
-    return new Class[] {
-        AddCustomResourceDefinitionResourceDecorator.class,
-        AddCustomResourceDefinitionVersionDecorator.class };
+    return new Class[]{
+      AddCustomResourceDefinitionResourceDecorator.class,
+      AddCustomResourceDefinitionVersionDecorator.class};
   }
 
   @Override
   public Class<? extends Decorator>[] before() {
-    return new Class[] {};
+    return new Class[] {  };
   }
 
-  @Override
-  public int hashCode() {
-    final int prime = 31;
-    int result = 1;
-    result = prime * result + ((name == null) ? 0 : name.hashCode());
-    result = prime * result + ((version == null) ? 0 : version.hashCode());
-    return result;
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    if (this == obj)
-      return true;
-    if (obj == null)
-      return false;
-    if (getClass() != obj.getClass())
-      return false;
-    CustomResourceDefinitionVersionDecorator other = (CustomResourceDefinitionVersionDecorator) obj;
-    if (name == null) {
-      if (other.name != null)
-        return false;
-    } else if (!name.equals(other.name))
-      return false;
-    if (version == null) {
-      if (other.version != null)
-        return false;
-    } else if (!version.equals(other.version))
-      return false;
-    return true;
-  }
 }

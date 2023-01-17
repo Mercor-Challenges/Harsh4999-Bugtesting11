@@ -15,47 +15,51 @@
  */
 package io.fabric8.openshift;
 
-import io.fabric8.junit.jupiter.api.RequireK8sSupport;
+import io.fabric8.kubernetes.client.dsl.Resource;
 import io.fabric8.openshift.api.model.Project;
 import io.fabric8.openshift.api.model.ProjectRequest;
 import io.fabric8.openshift.api.model.ProjectRequestBuilder;
 import io.fabric8.openshift.client.OpenShiftClient;
-import org.junit.jupiter.api.Test;
+import org.arquillian.cube.openshift.impl.requirement.RequiresOpenshift;
+import org.arquillian.cube.requirement.ArquillianConditionalRunner;
+import org.jboss.arquillian.test.api.ArquillianResource;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.util.concurrent.TimeUnit;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.awaitility.Awaitility.await;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
-@RequireK8sSupport(ProjectRequest.class)
-class ProjectRequestIT {
-
+@RunWith(ArquillianConditionalRunner.class)
+@RequiresOpenshift
+public class ProjectRequestIT {
+  @ArquillianResource
   OpenShiftClient client;
 
   @Test
-  void create() throws Exception {
+  public void create() {
     // Given
     String name = "projectrequestit-create";
     ProjectRequest projectRequest = new ProjectRequestBuilder()
-        .withNewMetadata().withName(name).endMetadata()
-        .withDisplayName("ProjectRequestIT Create")
-        .withDescription("Testing")
-        .build();
+      .withNewMetadata().withName(name).endMetadata()
+      .withDisplayName("ProjectRequestIT Create")
+      .withDescription("Testing")
+      .build();
 
     // When
     client.projectrequests().create(projectRequest);
 
     // Then
-    client.projects()
-        .withName(name)
-        .informOnCondition(pl -> pl.stream().anyMatch(p -> p.getMetadata().getName().equals(name)))
-        .get(30, TimeUnit.SECONDS);
-    final Project createdProject = client.projects().withName(name).get();
+    Resource<Project> projectOp = client.projects().withName(name);
+    await().atMost(1, TimeUnit.SECONDS).until(() -> projectOp.get() != null);
+    Project createdProject = projectOp.get();
     assertNotNull(createdProject);
     assertEquals(name, createdProject.getMetadata().getName());
     assertEquals("Testing", createdProject.getMetadata().getAnnotations().get("openshift.io/description"));
     assertEquals("ProjectRequestIT Create", createdProject.getMetadata().getAnnotations().get("openshift.io/display-name"));
-    assertTrue(client.projects().withName(name).delete().size() == 1);
+    assertTrue(client.projects().withName(name).delete());
   }
 }

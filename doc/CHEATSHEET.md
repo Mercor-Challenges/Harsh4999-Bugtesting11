@@ -29,16 +29,12 @@ This document contains common usages of different resources using Fabric8 Kubern
   * [SubjectAccessReview](#subjectaccessreview)
   * [LocalSubjectAccessReview](#localsubjectaccessreview)
   * [SelfSubjectRulesReview](#selfsubjectrulesreview)
-  * [ClusterRole](#clusterrole)
-  * [ClusterRoleBinding](#clusterrolebinding)
-  * [Role](#role)
-  * [RoleBinding](#rolebinding)
   * [Top/Metrics](#fetching-metrics)
   * [Generic Resource API](#resource-api)
   * [Generic ResourceList API](#resourcelist-api)
   * [CustomResourceDefinition](#customresourcedefinition)
-  * [Resource Typed API](#resource-typed-api)
-  * [Resource Typeless API](#resource-typeless-api)
+  * [CustomResource Typed API](#customresource-typed-api)
+  * [CustomResource Typeless API](#customresource-typeless-api)
   * [CertificateSigningRequest](#certificatesigningrequest)
   * [SharedInformers](#sharedinformers)
   * [List Options](#list-options)
@@ -47,7 +43,6 @@ This document contains common usages of different resources using Fabric8 Kubern
   * [Log Options](#log-options)
   * [Serializing to yaml](#serializing-to-yaml)
   * [Running a Pod](#running-a-pod)
-  * [Server Side Apply](#server-side-apply)
 
 * [OpenShift Client DSL Usage](#openshift-client-dsl-usage)  
   * [Initializing OpenShift Client](#initializing-openshift-client)
@@ -59,7 +54,7 @@ This document contains common usages of different resources using Fabric8 Kubern
   * [CatalogSource](#catalogsource)
   * [PrometheusRule](#prometheusrule)
   * [ServiceMonitor](#servicemonitor)
-  * [ClusterResourceQuota](#clusterresourcequota)
+  * [CluserResourceQuota](#clusterresourcequota)
   * [ClusterVersion](#clusterversion)
   * [EgressNetworkPolicy](#egressnetworkpolicy)
 
@@ -70,21 +65,20 @@ This document contains common usages of different resources using Fabric8 Kubern
 * [Knative Client](#knative-client)
   * [Initializing Knative Client](#initializing-knative-client)
   * [Knative Client DSL Usage](#knative-client-dsl-usage)
-* [Logging](#Logging)
-  
+
 ### Initializing Kubernetes Client
 Typically, we create Kubernetes Client like this:
 ```
-try (final KubernetesClient client = new KubernetesClientBuilder().build()) {
+try (final KubernetesClient client = new DefaultKubernetesClient()) {
   // Do stuff with client
 }
 ```
-This would pick up default settings, reading your `kubeconfig` file from `~/.kube/config` directory or whatever is defined inside `KUBECONFIG` environment variable. But if you want to customize creation of client, you can also pass a `Config` object inside the builder like this:
+This would pick up default settings, reading your `kubeconfig` file from `~/.kube/config` directory or whatever is defined inside `KUBECONFIG` environment variable. But if you want to customize creation of client, you can also pass a `Config` object inside `DefaultKubernetesClient` like this:
 ```
 Config kubeConfig = new ConfigBuilder()
   .withMasterUrl("https://192.168.42.20:8443/")
   .build()
-try (final KubernetesClient client = new KubernetesClientBuilder().withConfig(kubeConfig).build()) {
+try (final KubernetesClient client = new DefaultKubernetesClient(config)) {
   // Do stuff with client
 }
 ```
@@ -146,11 +140,11 @@ LogWatch watch = client.pods().inNamespace(namespace).withName(podName).tailingL
 ```
 - Delete a `Pod`:
 ```
-client.pods().inNamespace("default").withName("nginx").delete();
+Boolean isDeleted = client.pods().inNamespace("default").withName("nginx").delete();
 ```
 - Delete multiple `Pod` objects:
 ```
-client.pods().inNamespace("default").delete(pod1, pod2);
+Boolean isDeleted = client.pods().inNamespace("default").delete(pod1, pod2);
 ```
 - Wait until a `Pod` is ready:
 ```
@@ -197,7 +191,7 @@ deleteLatch.await(10, TimeUnit.MINUTES)
 When trying to access Kubernetes API from within a `Pod` authentication is done a bit differently as compared to when being done on your system. If you checkout [documentation](https://kubernetes.io/docs/tasks/access-application-cluster/access-cluster/#accessing-the-api-from-a-pod). Client authenticates by reading `ServiceAccount` from `/var/run/secrets/kubernetes.io/serviceaccount/` and reads environment variables like `KUBERNETES_SERVICE_HOST` and `KUBERNETES_SERVICE_PORT` for apiServer URL. You don't have to worry about all this when using Fabric8 Kubernetes Client. You can simply use it like this and client will take care of everything:
 ```
 // reads serviceaccount from mounted volume and gets apiServer url from environment variables itself.
-KubernetesClient client = new KubernetesClientBuilder().build();
+KubernetesClient client = new DefaultKubernetesClient();
 ```
 You can also checkout a demo example here: [kubernetes-client-inside-pod](https://github.com/rohanKanojia/kubernetes-client-inside-pod)
 
@@ -234,7 +228,7 @@ ServiceList svcList = client.services().inNamespace("default").withLabel("foo", 
 ```
 - Delete a `Service`:
 ```
-client.services().inNamespace("default").withName("some-svc").delete();
+Boolean isDeleted = client.services().inNamespace("default").withName("some-svc").delete();
 ```
 - Watching a `Service`:
 ```
@@ -365,7 +359,7 @@ Deployment deployment = client.apps().deployments()
 ```
 - Deleting a `Deployment`:
 ```
-client.apps().deployments().inNamespace("default").withName("foo").delete();
+Boolean isDeleted = client.apps().deployments().inNamespace("default").withName("foo").delete();
 ```
 - Watching a `Deployment`:
 ```
@@ -455,7 +449,7 @@ ReplicaSetList rsList = client.apps().replicaSets().inNamespace("default").withL
 ```
 - Delete `ReplicaSet`:
 ```
-client.apps().replicaSets().inNamespace("default").withName("rs1").delete();
+Boolean isDeleted = client.apps().replicaSets().inNamespace("default").withName("rs1").delete();
 ```
 - Watch `ReplicaSet`:
 ```
@@ -543,7 +537,7 @@ ReplicationControllerList rcList = client.replicationControllers().inNamespace("
 ```
 - Delete `ReplicationController`:
 ```
-client.replicationControlers().inNamespace("default").withName("nginx-controller").delete();
+Boolean isDeleted = client.replicationControlers().inNamespace("default").withName("nginx-controller").delete();
 ```
 - Watch `ReplicationController` in some specific namespace:
 ```
@@ -621,7 +615,7 @@ ConfigMapList configMapList = client.configMaps().inNamespace("default").withLab
 ```
 - Delete `ConfigMap`:
 ```
-client.configMaps().inNamespace("default").withName("configmap1").delete();
+Boolean isDeleted = client.configMaps().inNamespace("default").withName("configmap1").delete();
 ```
 - Watch `ConfigMap`:
 ```
@@ -666,7 +660,7 @@ Secret secretCreated = client.secrets().inNamespace("default").create(secret1);
 ```
 - Create or Replace an existing `Secret`:
 ```
-Secret createdSecret = client.secrets().inNamespace("default").resource(secret1).createOrReplace();
+Secret createdSecret = client.secrets().inNamespace("default").createOrReplace(secret1);
 ```
 - List `Secret` resources in some namespace:
 ```
@@ -688,7 +682,7 @@ Secret secret1 = client.secrets().inNamespace(currentNamespace).withName("secret
 ```
 - Delete `Secret`:
 ```
-client.secrets().inNamespace("default").withName("secret1").delete();
+Boolean isDeleted = client.secrets().inNamespace("default").withName("secret1").delete();
 ```
 - Watch `Secret`:
 ```
@@ -742,7 +736,7 @@ client.batch().jobs().inNamespace("default").create(job);
 ```
 - Create or Replace an existing `Job`:
 ```
-Job job = client.batch().v1().jobs().inNamespace("default").resource(job).createOrReplace();
+Job job = client.batch().jobs().inNamespace("default").createOrReplace(job);
 ```
 - List `Job` in some namespace:
 ```
@@ -758,7 +752,7 @@ JobList jobList = client.batch().jobs().inNamespace("default").withLabel("foo", 
 ```
 - Delete `Job`:
 ```
-client.batch().jobs().inNamespace("default").withName("pi").delete();
+Boolean isDeleted = client.batch().jobs().inNamespace("default").withName("pi").delete();
 ```
 - Watch `Job`:
 ```
@@ -838,7 +832,7 @@ CronJob cronJob1 = client.batch().cronjobs().inNamespace("default").withName(cro
 ```
 - Delete `CronJob`:
 ```
-client.batch().cronjobs().inNamespace("default").withName("pi").delete();
+Boolean isDeleted = client.batch().cronjobs().inNamespace("default").withName("pi").delete();
 ```
 
 ### Namespace
@@ -861,7 +855,7 @@ NamespaceList namespaceList = client.namespaces().withLabel("key1", "value1").li
 ```
 - Delete `Namespace` objects:
 ```
-client.namespaces().withName("ns1").delete();
+Boolean isDeleted = client.namespaces().withName("ns1").delete();
 ```
 
 ### ServiceAccount
@@ -906,18 +900,18 @@ ServiceAccount serviceAccount1 = client.serviceAccounts().inNamespace("default")
 ```
 - Delete `ServiceAccount`:
 ```
-client.serviceAccounts().inNamespace("default").withName("serviceaccount1").delete();
+Boolean bDeleted = client.serviceAccounts().inNamespace("default").withName("serviceaccount1").delete();
 ```
 
 ### Ingress
-`Ingress` resource is available in Kubernetes Client API via `client.network().v1().ingress()`. Here are some examples regarding its usage:
+`Ingress` resource is available in Kubernetes Client API via `client.network().ingress()`. Here are some examples regarding its usage:
 - Load `Ingress` from yaml:
 ```
-Ingress ingress = client.network().v1().ingress().load(new FileInputStream("ingress.yml")).get();
+Ingress ingress = client.network().ingress().load(new FileInputStream("ingress.yml")).get();
 ```
 - Get `Ingress` from Kubernetes API server:
 ```
-Ingress ingress = client.network().v1().ingress().inNamespace("default").withName("ingress1").get();
+Ingress ingress = client.network().ingress().inNamespace("default").withName("ingress1").get();
 ```
 - Create `Ingress`:
 ```
@@ -933,27 +927,27 @@ Ingress ingress = new IngressBuilder()
   .endRule()
   .endSpec()
   .build();
-client.network().v1().ingress().inNamespace("default").create(ingress);
+client.network().ingress().inNamespace("default").create(ingress);
 ```
 - Create or Replace `Ingress`:
 ```
-Ingress igx = client.network().v1().ingress().inNamespace("default").createOrReplace(ingress);
+Ingress igx = client.network().ingress().inNamespace("default").createOrReplace(ingress);
 ```
 - List `Ingress` in some namespace:
 ```
-IngressList ingressList = client.network().v1().ingress().inNamespace("default").list();
+IngressList ingressList = client.network().ingress().inNamespace("default").list();
 ```
 - List `Ingress` in any namespace:
 ```
-IngressList ingressList = client.network().v1().ingress().inAnyNamespace().list();
+IngressList ingressList = client.network().ingress().inAnyNamespace().list();
 ```
 - List `Ingress` with some label in any namespace:
 ```
-IngressList ingressList = client.network().v1().ingress().inNamespace("default").withLabel("foo", "bar").list();
+IngressList ingressList = client.network().ingress().inNamespace("default").withLabel("foo", "bar").list();
 ```
 - Delete `Ingress`:
 ```
-client.network().v1().ingress().inNamespace("default").withName("ingress1").delete();
+Boolean isDeleted = client.network().ingress().inNamespace("default").withName("ingress1").delete();
 ```
 
 ### StatefulSet
@@ -1028,7 +1022,7 @@ StatefulSetList statefulSetList = client.apps().statefulSets().inNamespace("defa
 ```
 - Delete `StatefulSet`:
 ```
-client.apps().statefulSets().inNamespace("default").withName("ss1").delete();
+Boolean bDeleted = client.apps().statefulSets().inNamespace("default").withName("ss1").delete();
 ```
 - Scale `StatefulSet`:
 ```
@@ -1157,7 +1151,7 @@ DaemonSetList dsList = client.apps().daemonSets().inNamespace("default").withLab
 ```
 - Delete `DaemonSet`:
 ```
-client.apps().daemonSets().inNamespace("default").withName("ds1").delete();
+Boolean isDeleted = client.apps().daemonSets().inNamespace("default").withName("ds1").delete();
 ```
 - Watch `DaemonSet`:
 ```
@@ -1224,7 +1218,7 @@ EndpointSliceList esList = client.discovery().v1beta1().endpointSlices().inNames
 ```
 - Delete `EndpointSlice`:
 ```java
-client.discovery().v1beta1().endpointSlices().inNamespace("default").withName("test-es").delete();
+Boolean isDeleted = client.discovery().v1beta1().endpointSlices().inNamespace("default").withName("test-es").delete();
 ```
 - Watch `EndpointSlice`:
 ```java
@@ -1284,7 +1278,7 @@ PersistentVolumeClaimList pvcList = client.persistentVolumeClaims().inNamespace(
 ```
 - Delete `PersistentVolumeClaim`:
 ```
-client.persistentVolumeClaims().inNamespace("default").withName("test-pv-claim").delete();
+Boolean isDeleted = client.persistentVolumeClaims().inNamespace("default").withName("test-pv-claim").delete();
 ```
 
 ### PersistentVolume
@@ -1340,7 +1334,7 @@ PersistentVolumeList pvList = client.persistentVolumes().withLabel("foo", "bar")
 ```
 - Delete `PersistentVolume`:
 ```
-client.persistentVolumes().withName("test-local-pv").delete();
+Boolean isDeleted = client.persistentVolumes().withName("test-local-pv").delete();
 ```
 
 ### NetworkPolicy
@@ -1399,7 +1393,7 @@ NetworkPolicyList networkPolicyList = client.network().networkPolicies()
 ```
 - Delete `NetworkPolicy`:
 ```
-client.network().networkPolicies().withName("np-test").delete();
+Boolean deleted = client.network().networkPolicies().withName("np-test").delete();
 ```
 
 ### PodDisruptionBudget
@@ -1444,13 +1438,13 @@ PodDisruptionBudgetList pdbList = client.policy().podDisruptionBudget().inNamesp
 ```
 - Delete `PodDisruptionBudget`:
 ```
-client.policy().podDisruptionBudget().inNamespace("default").withName("poddisruptionbudget1").delete();
+Boolean deleted = client.policy().podDisruptionBudget().inNamespace("default").withName("poddisruptionbudget1").delete();
 ```
 
 ### SelfSubjectAccessReview
 - Create `SelfSubjectAccessReview`(equivalent of `kubectl auth can-i create deployments --namespace dev`):
 ```
-try (KubernetesClient client = new KubernetesClientBuilder().build()) {
+try (KubernetesClient client = new DefaultKubernetesClient()) {
     SelfSubjectAccessReview ssar = new SelfSubjectAccessReviewBuilder()
             .withNewSpec()
             .withNewResourceAttributes()
@@ -1471,7 +1465,7 @@ try (KubernetesClient client = new KubernetesClientBuilder().build()) {
 ### SubjectAccessReview
 - Create `SubjectAccessReview`:
 ```
-try (KubernetesClient client = new KubernetesClientBuilder().build()) {
+try (KubernetesClient client = new DefaultKubernetesClient()) {
     SubjectAccessReview sar = new SubjectAccessReviewBuilder()
             .withNewSpec()
             .withNewResourceAttributes()
@@ -1492,7 +1486,7 @@ try (KubernetesClient client = new KubernetesClientBuilder().build()) {
 ### LocalSubjectAccessReview
 - Create `LocalSubjectAccessReview`:
 ```
-try (KubernetesClient client = new KubernetesClientBuilder().build()) {
+try (KubernetesClient client = new DefaultKubernetesClient()) {
     LocalSubjectAccessReview lsar = new LocalSubjectAccessReviewBuilder()
             .withNewMetadata().withNamespace("default").endMetadata()
             .withNewSpec()
@@ -1513,7 +1507,7 @@ try (KubernetesClient client = new KubernetesClientBuilder().build()) {
 ### SelfSubjectRulesReview
 - Create `SelfSubjectRulesReview`:
 ```
-try (KubernetesClient client = new KubernetesClientBuilder().build()) {
+try (KubernetesClient client = new DefaultKubernetesClient()) {
     SelfSubjectRulesReview selfSubjectRulesReview = new SelfSubjectRulesReviewBuilder()
             .withNewMetadata().withName("foo").endMetadata()
             .withNewSpec()
@@ -1528,169 +1522,26 @@ try (KubernetesClient client = new KubernetesClientBuilder().build()) {
 }
 ```
 
-### ClusterRole
-`ClusterRole` is available in Kubernetes Client API via `client.rbac().clusterRoles()`. Here are some of the common usages:
-- Load `ClusterRole` from yaml:
-```
-ClusterRole clusterRole = client.rbac().clusterRoles().load(new FileInputStream("clusterroles-test.yml")).get();
-```
-- Get `ClusterRole` from Kubernetes API server:
-```
-ClusterRole clusterRole = client.rbac().clusterRoles().withName("clusterrole1").get();
-```
-- List `ClusterRole` objects:
-```
-ClusterRoleList clusterRoleList = client.rbac().clusterRoles().list();
-```
-- List `ClusterRole` objects with some labels:
-```
-ClusterRoleList clusterRoleList = client.rbac().clusterRoles().withLabel("key1", "value1").list();
-```
-- Delete `ClusterRole` objects:
-```
-client.rbac().clusterRoles().withName("clusterrole1").delete();
-```
-
-### ClusterRoleBinding
-`ClusterRoleBinding` is available in Kubernetes Client API via `client.rbac().clusterRoleBindings()`. Here are some of the common usages:
-- Load `ClusterRoleBinding` from yaml:
-```
-ClusterRoleBinding clusterRoleBinding = client.rbac().clusterRoleBindings().load(new FileInputStream("clusterrolebinding-test.yml")).get();
-```
-- Create `ClusterRoleBinding` from Kubernetes API server:
-```
-List<Subject> subjects = new ArrayList<>();
-    Subject subject = new Subject();
-    subject.setKind("ServiceAccount");
-    subject.setName("serviceaccountname");
-    subject.setNamespace("default");
-    subjects.add(subject);
-    RoleRef roleRef = new RoleRef();
-    roleRef.setApiGroup("rbac.authorization.k8s.io");
-    roleRef.setKind("ClusterRole");
-    roleRef.setName("clusterrolename");
-    ClusterRoleBinding clusterRoleBindingCreated = new ClusterRoleBindingBuilder()
-            .withNewMetadata().withName("clusterrolebindingname").withNamespace("default").endMetadata()
-            .withRoleRef(roleRef)
-            .addAllToSubjects(subjects)
-            .build();
-ClusterRoleBinding clusterRoleBinding = client.rbac().clusterRoleBindings().createOrReplace(clusterRoleBindingCreated);
-```
-- Get `ClusterRoleBinding` from Kubernetes API server:
-```
-ClusterRoleBinding clusterRoleBinding = client.rbac().clusterRoleBindings().withName("clusterrolebindingname").get();
-```
-- List `ClusterRoleBinding` objects:
-```
-ClusterRoleBindingList clusterRoleBindingList = client.rbac().clusterRoleBindings().list();
-```
-- List `ClusterRoleBinding` objects with some labels:
-```
-ClusterRoleBindingList clusterRoleBindingList = client.rbac().clusterRoleBindings().withLabel("key1", "value1").list();
-```
-- Delete `ClusterRoleBinding` objects:
-```
-```
-
-### Role
-`Role` is available in Kubernetes Client API via `client.rbac().roles()`. Here are some of the common usages:
-- Load `Role` from yaml:
-```
-Role role = client.rbac().roles().load(new FileInputStream("role-test.yml")).get();
-```
-- Create `Role` from Kubernetes API server:
-```
-List<PolicyRule> policyRuleList = new ArrayList<>();
-    PolicyRule endpoints = new PolicyRule();
-    endpoints.setApiGroups(Arrays.asList(""));
-    endpoints.setResources(Arrays.asList("endpoints"));
-    endpoints.setVerbs(Arrays.asList("get", "list", "watch", "create", "update", "patch"));
-    policyRuleList.add(endpoints);
-    Role roleCreated = new RoleBuilder()
-            .withNewMetadata().withName("rolename").withNamespace("default").endMetadata()
-            .addAllToRules(policyRuleList)
-            .build();
-Role role = client.rbac().roles().createOrReplace(roleCreated);
-```
-- Get `Role` from Kubernetes API server:
-```
-Role role = client.rbac().roles().inNamespace("default").withName("rolename").get();
-```
-- List `Role` objects:
-```
-RoleList roleList = client.rbac().roles().inNamespace("default").list();
-```
-- List `Role` objects with some labels:
-```
-RoleList roleList = client.rbac().roles().inNamespace("default").withLabel("key1", "value1").list();
-```
-- Delete `Role` objects:
-```
-client.rbac().roles().withName("rolename").delete();
-```
-
-### RoleBinding
-`RoleBinding` is available in Kubernetes Client API via `client.rbac().roleBindings()`. Here are some of the common usages:
-- Load `RoleBinding` from yaml:
-```
-RoleBinding roleBinding = client.rbac().roleBindings().load(new FileInputStream("rolebinding-test.yml")).get();
-```
-- Create `RoleBinding` from Kubernetes API server:
-```
-List<Subject> subjects = new ArrayList<>();
-    Subject subject = new Subject();
-    subject.setNamespace("default");
-    subject.setKind("ServiceAccount");
-    subject.setName("servicecccountname");
-    subjects.add(subject);
-    RoleRef roleRef = new RoleRef();
-    roleRef.setName("rolename");
-    roleRef.setKind("Role");
-    roleRef.setApiGroup("rbac.authorization.k8s.io");
-    RoleBinding roleBindingCreated = new RoleBindingBuilder()
-            .withNewMetadata().withName("rolename").withNamespace("default").endMetadata()
-            .addAllToSubjects(subjects)
-            .withRoleRef(roleRef)
-            .build();
-RoleBinding roleBinding = client.rbac().roleBindings().createOrReplace(roleBindingCreated);
-```
-- Get `RoleBinding` from Kubernetes API server:
-```
-RoleBinding roleBinding = client.rbac().roleBindings().inNamespace("default").withName("rolename").get();
-```
-- List `RoleBinding` objects:
-```
-RoleBindingList roleBindingList = client.rbac().roleBindings().inNamespace("default").list();
-```
-- List `RoleBinding` objects with some labels:
-```
-RoleBindingList roleBindingList = client.rbac().roleBindings().inNamespace("default").withLabel("key1", "value1").list();
-```
-- Delete `RoleBinding` objects:
-```
-client.rbac().roleBindings().inNamespace("default").withName("rolename").delete();
-```
-
 ### Fetching Metrics
 Kubernetes Client also supports fetching metrics from API server if metrics are enabled on it. You can access metrics via `client.top()`. Here are some examples of its usage:
 - Get `NodeMetrics` for all nodes:
-```java
+```
 NodeMetricsList nodeMetricList = client.top().nodes().metrics();
 ```
 - Get `NodeMetrics` for some specific nodes:
-```java
-NodeMetrics nodeMetric = client.top().nodes().withName("minikube").metric();
+```
+NodeMetrics nodeMetric = client.top().nodes().metrics("minikube");
 ```
 - Get `PodMetrics` for all pods in all namespaces:
-```java
+```
 PodMetricsList podMetricsList = client.top().pods().metrics();
 ```
 - Get `PodMetrics` for all pods in some specific namespace:
-```java
-PodMetricsList podMetricsList = client.top().pods().inNamespace("default").metrics();
+```
+PodMetricsList podMetricsList = client.top().pods().metrics("default");
 ```
 - Get `PodMetrics` for a particular pod:
-```java
+```
 PodMetrics podMetrics = client.top().pods().metrics("default", "nginx-pod");
 ```
 
@@ -1717,7 +1568,7 @@ Pod p = client.resource(pod1).createOrReplaceAnd().waitUntilReady(10, TimeUnit.S
 ```
 - Delete a Kubernetes Resource:
 ```
-client.resource(pod1).inNamespace("default").delete();
+Boolean isDeleted = client.resource(pod1).inNamespace("default").delete();
 ```
 
 ### ResourceList API
@@ -1750,21 +1601,22 @@ client.resourceList(list).inNamespace("default").deletingExisting().createOrRepl
 ```
 - Delete a list of items:
 ```
-client.resourceList(new PodListBuilder().withItems(pod1, pod2, pod3).build()).inNamespace("default").delete();
+Boolean deleted = client.resourceList(new PodListBuilder().withItems(pod1, pod2, pod3).build()).inNamespace("default").delete();
 ```
 
 ### CustomResourceDefinition
-`CustomResourceDefinition` which are like templates for `CustomResource` objects in Kubernetes API are available in Kubernetes Client API via `client.apiextensions().v1beta1().customResourceDefinitions()` or `client.apiextensions().v1().customResourceDefinitions()`. Here are some examples of it's common usage:
+`CustomResourceDefinition` which are like templates for `CustomResource` objects in Kubernetes API are available in Kubernetes Client API via `client.customResourceDefinitions()`. Here are some examples of it's common usage:
 - Load a `CustomResourceDefinition` from yaml:
-```java
-CustomResourceDefinition customResourceDefinition = client.apiextensions().v1beta1().customResourceDefinitions().load(new FileInputStream("/sparkapplication-crd.yml")).get();
+```
+CustomResourceDefinition customResourceDefinition = client.customResourceDefinitions().load(new FileInputStream("/sparkapplication-crd.yml")).get();
 ```
 - Get a `CustomResourceDefinition` from Kubernetes APIServer
-```java
-CustomResourceDefinition crd = client.apiextensions().v1beta1().customResourceDefinitions().withName("sparkclusters.radanalytics.io").get();
+```
+CustomResourceDefinition crd = client.customResourceDefinitions().withName("sparkclusters.radanalytics.io").get();
 ```
 - Create `CustomResourceDefinition`:
-```java
+```
+
 CustomResourceDefinition customResourceDefinition = new CustomResourceDefinitionBuilder()
       .withApiVersion("apiextensions.k8s.io/v1beta1")
       .withNewMetadata().withName("sparkclusters.radanalytics.io")
@@ -1784,24 +1636,23 @@ CustomResourceDefinition customResourceDefinition = new CustomResourceDefinition
       .endSpec()
       .build();
 
-CustomResourceDefinition crd = client.apiextensions().v1beta1().customResourceDefinitions().createOrReplace(customResourceDefinition);
+CustomResourceDefinition crd = client.customResourceDefinitions().createOrReplace(customResourceDefinition);
 ```
 - Create or Replace some `CustomResourceDefinition`:
-```java
-CustomResourceDefinition crd = client.apiextensions().v1beta1().customResourceDefinitions().createOrReplace(customResourceDefinition);
+```
+CustomResourceDefinition crd = client.customResourceDefinitions().createOrReplace(customResourceDefinition);
 ```
 - List `CustomResourceDefinition`:
-```java
-CustomResourceDefinitionList crdList = client.apiextensions().v1beta1().customResourceDefinitions().list();
+```
+CustomResourceDefinitionList crdList = client.customResourceDefinitions().list();
 ```
 - Delete `CustomResourceDefinition`:
-```java
-client.apiextensions().v1beta1().customResourceDefinitions().withName("sparkclusters.radanalytics.io").delete();
+```
+Boolean deleted = client.customResourceDefinitions().withName("sparkclusters.radanalytics.io").delete();
 ```
 
-### Resource Typed API
-Any resource, custom or built-in, is available in Kubernetes API via the `client.resources(Class)` method. In order to use typed API, you need to provide POJOs for your custom resource which client can use for serialization/deserialization. The base class `CustomResource` class, it's list class, etc. provide a good starting point for your custom resource.  The resources method returns an instance of a client which you can use for your operations. In order to get some idea of how POJOs should look like. Here's an example of POJO for `CronTab` CustomResource specified in [Kubernetes CustomResource docs](https://kubernetes.io/docs/tasks/access-kubernetes-api/custom-resources/custom-resource-definitions/)
-
+### CustomResource Typed API
+CustomResources are available in Kubernetes API via the `client.customResources(...)`. In order to use typed API, you need to provide POJOs for your Custom Resource which client can use for serialization/deserialization. `client.customResources(...)` take things like `CustomResourceDefinitionContext` for locating the CustomResources, `CustomResource` class, it's list class etc. It returns an instance of a client which you can use for your `CustomResource` related operations. In order to get some idea of how POJOs should look like. Here's an example of POJO for `CronTab` CustomResource specified in [Kubernetes CustomResource docs](https://kubernetes.io/docs/tasks/access-kubernetes-api/custom-resources/custom-resource-definitions/)
 *my-crontab.yml*
 ```
 apiVersion: "stable.example.com/v1"
@@ -1832,7 +1683,7 @@ You can find other helper classes related to `CronTab` in our [tests](https://gi
 
 - Get Instance of client for our `CustomResource`:
 ```java
-MixedOperation<CronTab, KubernetesResourceList<CronTab>, Resource<CronTab>> cronTabClient = client.resources(CronTab.class);
+MixedOperation<CronTab, KubernetesResourceList<CronTab>, Resource<CronTab>> cronTabClient = client.customResources(CronTab.class);
 ```
 - Get `CustomResource` from Kubernetes APIServer:
 ```java
@@ -1848,23 +1699,13 @@ CronTabList cronTabList = cronTabClient.inNamespace("default").list();
 ```
 - Delete `CustomResource`:
 ```java
-cronTabClient.inNamespace("default").withName("my-third-cron-object").delete();
+Boolean isDeleted = cronTabClient.inNamespace("default").withName("my-third-cron-object").delete();
 ```
-- Replace Status of `CustomResource`:
+- Update Status of `CustomResource`:
 ```java
-cronTabClient.inNamespace("default").replaceStatus(updatedCronTab);
-```
-- Patch Status of `CustomResource`:
-```java
-// does not require a full instance of the updatedCronTab, will produce a json merge patch based upon what is set in updatedCronTab
-cronTabClient.inNamespace("default").pachStatus(updatedCronTab);
-```
-- Edit Status of `CustomResource`:
-```java
-// generates a json patch between the passed in cronTab and the updated result.  Typically you will use a builder to construct a copy from the current and make modifications
-cronTabClient.inNamespace("default").editStatus(cronTab->updatedCronTab);
+cronTabClient.inNamespace("default").updateStatus(updatedCronTab);
 ``` 
-- Watch `CustomResource`:
+- Watch `CustomResource`, (*note:* You need to register your `CustomResource` to `KubernetesDeserializer` otherwise you won't be able to use watch):
 ```java
 cronTabClient.inNamespace("default").watch(new Watcher<CronTab>() {
    @Override
@@ -1879,78 +1720,68 @@ cronTabClient.inNamespace("default").watch(new Watcher<CronTab>() {
 });
 ```
 
-### Resource Typeless API
-If you don't need or want to use a strongly typed client, the Kubernetes Client also provides a typeless/raw API to handle your resources in form of GenericKubernetesResource.  GenericKubernetesResource implements HasMetadata and provides the rest of its fields via a map. In most circumstances the client can infer the necessary details about your type from the api server, this includes:
-
-* client.genericKuberetesResources(apiVersion, kind) - to perform operations generically
-* client.resource(resource) - if you already constructed an instance of your GenericKubernetesResource
-* any of the load and related methods - if you have the yaml/json of a resource, but there is no class defined for deserializing it.
-
-In some circumstances, such as an error with the logic automatically inferring the type details or when trying to use built-in mock support for the implicit generic scenario, you will need to use you will need to provide a `ResourceDefinitionContext`, which carries necessary information about the resource.  Here is an example on how to create one:
-- Create `ResourceDefinitionContext`:
+### CustomResource Typeless API
+Although, you should be using Typed API since it's type-safe. But it can get a bit complicated to maintain your `CustomResource` POJOs and sometimes people don't even have them. Kubernetes Client also provides a typeless/raw API to handle your `CustomResource` objects in form of HashMaps. In order to use it, you need to provide it with a `CustomResourceDefinitionContext`, which carries necessary information about `CustomResource`. Here is an example on how to create one:
+- Create `CustomResourceDefinitionContext`:
 ```java
-ResourceDefinitionContext resourceDefinitionContext = new ResourceDefinitionContext.Builder()
+CustomResourceDefinitionContext customResourceDefinitionContext = new CustomResourceDefinitionContext.Builder()
       .withName("animals.jungle.example.com")
       .withGroup("jungle.example.com")
       .withVersion("v1")
       .withPlural("animals")
-      .withNamespaced(true)
+      .withScope("Namespaced")
       .build();
 ```
-Once you have built it, you instead use `client.genericKubernetesResources(resourceDefinitionContext)` as your api entry point.
-
-Explicit usage examples:
-
-- Load a resource from yaml:
+Once you have built it, you can pass it to typeless DSL as argument `client.customResource(customResourceDefinitionContext)`. With this in place, you can do your standard `CustomResource` operations, but you would have to deal with Serialization/Deserialization part yourself. You can convert HashMap to some `JSON` object using JSON parsing libraries available on internet.
+- Load a `CustomResource` from yaml:
 ```java
-GenericKubernetesResource customResource = client.genericKubernetesResources(context).load(new FileInputStream("cr.yaml"));
+Map<String, Object> customResource = client.customResource(crdContext).load(new FileInputStream("cr.yaml"));
 ```
-- Get a resource from Kubernetes API server:
+- Get a `CustomResource` from Kubernetes API server:
 ```java
-GenericKubernetesResource customResourceObject = client.genericKubernetesResources(resourceDefinitionContext).inNamespace(currentNamespace).withName("otter").get();
+Map<String, Object> customResourceObject = client.customResource(customResourceDefinitionContext).inNamespace(currentNamespace).withName("otter").get();
 ```
-- Create a resource:
+- Create a `CustomResource`:
 ```java
 // Create via file
-GenericKubernetesResource object = client.genericKubernetesResources(resourceDefinitionContext).inNamespace(currentNamespace).load(new FileInputStream("test-rawcustomresource.yml")).create();
+Map<String, Object> object = client.customResource(customResourceDefinitionContext).inNamespace(currentNamespace).create(new FileInputStream("test-rawcustomresource.yml"));
 
 // Create via raw JSON string
 
 String rawJsonCustomResourceObj = "{\"apiVersion\":\"jungle.example.com/v1\"," +
   "\"kind\":\"Animal\",\"metadata\": {\"name\": \"walrus\"}," +
   "\"spec\": {\"image\": \"my-awesome-walrus-image\"}}";
-GenericKubernetesResource object = client.genericKubernetesResources(resourceDefinitionContext).inNamespace(currentNamespace).load(rawJsonCustomResourceObj).create();
+Map<String, Object> object = client.customResource(customResourceDefinitionContext).inNamespace(currentNamespace).create(rawJsonCustomResourceObj);
 ```
 - List `CustomResource`:
 ```java
-GenericKubernetesResourceList list = client.genericKubernetesResources(resourceDefinitionContext).inNamespace(currentNamespace).list();
+Map<String, Object> list = client.customResource(customResourceDefinitionContext).inNamespace(currentNamespace).list();
 ```
 - List `CustomResource` with labels:
 ```java
-Map<String, Object> list = client.genericKubernetesResources(resourceDefinitionContext).inNamespace(currentNamespace).withLabels(Collections.singletonMap("foo", "bar")).list();
+Map<String, Object> list = client.customResource(customResourceDefinitionContext).list(currentNamespace, Collections.singletonMap("foo", "bar"));
 ```
 - Update `CustomResource`:
 ```java
-GenericKubernetesResource object = client.genericKubernetesResources(resourceDefinitionContext).inNamespace(currentNamespace).withName("walrus").edit(object -> {
-   ((Map<String, Object>)object.getAdditionalProperties("spec")).put("image", "my-updated-awesome-walrus-image");
-   return object;
-});
+Map<String, Object> object = client.customResource(customResourceDefinitionContext).get(currentNamespace, "walrus");
+((HashMap<String, Object>)object.get("spec")).put("image", "my-updated-awesome-walrus-image");
+object = client.customResource(customResourceDefinitionContext).edit(currentNamespace, "walrus", new ObjectMapper().writeValueAsString(object));
 ```
 - Delete `CustomResource`:
 ```java
-client.genericKubernetesResources(resourceDefinitionContext).inNamespace(currentNamespace).withName("otter").delete();
+client.customResource(customResourceDefinitionContext).inNamespace(currentNamespace).withName("otter").delete();
 ```
-- Replace Status of `CustomResource`:
+- Update Status of `CustomResource`:
 ```java
-GenericKubernetesResource result = client.genericKubernetesResources(resourceDefinitionContext).inNamespace("ns1").withName("example-hello").replaceStatus(objectAsGenericKubernetesResource);
+Map<String, Object> result = client.customResource(customResourceDefinitionContext).inNamespace("ns1").withName("example-hello").updateStatus(objectAsJsonString);
 ```
 - Watch `CustomResource`:
 ```java
 
 final CountDownLatch closeLatch = new CountDownLatch(1);
-client.genericKubernetesResources(crdContext).inNamespace(namespace).watch(new Watcher<GenericKubernetesResource>() {
+client.customResource(crdContext).inNamespace(namespace).watch(new Watcher<String>() {
     @Override
-    public void eventReceived(Action action, GenericKubernetesResource resource) {
+    public void eventReceived(Action action, String resource) {
         logger.info("{}: {}", action, resource);
     }
 
@@ -1968,9 +1799,8 @@ closeLatch.await(10, TimeUnit.MINUTES);
 
 ### CertificateSigningRequest
 Kubernetes Client provides using `CertificateSigningRequest` via the `client.certificates().v1().certificateSigningRequests()` DSL interface. Here is an example of creating `CertificateSigningRequest` using Fabric8 Kubernetes Client:
-- Create `CertificateSigningRequest`:
 ```
-try (KubernetesClient client = new KubernetesClientBuilder().build()) {
+try (KubernetesClient client = new DefaultKubernetesClient()) {
     CertificateSigningRequest csr = new CertificateSigningRequestBuilder()
             .withNewMetadata().withName("test-k8s-csr").endMetadata()
             .withNewSpec()
@@ -1983,26 +1813,7 @@ try (KubernetesClient client = new KubernetesClientBuilder().build()) {
     client.certificates().v1().certificateSigningRequests().create(csr);
 }
 ```
-- Approve a `CertificateSigningRequest`:
-```java
-    CertificateSigningRequestCondition csrCondition = new CertificateSigningRequestConditionBuilder()
-            .withType("Approved")
-            .withStatus("True")
-            .withReason("Approved ViaRESTApi")
-            .withMessage("Approved by REST API /approval endpoint.")
-            .build();
-    client.certificates().v1().certificateSigningRequests().withName("test-k8s-csr").approve(csrCondition);
-```
-- Deny a `CertificateSigningRequest`:
-```java
-    CertificateSigningRequestCondition csrCondition = new CertificateSigningRequestConditionBuilder()
-            .withType("Denied")
-            .withStatus("True")
-            .withReason("Denied ViaRESTApi")
-            .withMessage("Denied by REST API /approval endpoint.")
-            .build();
-  client.certificates().v1().certificateSigningRequests().withName("test-k8s-csr").deny(csrCondition);
-```
+
 
 ### SharedInformers
 Kubernetes Client also provides `SharedInformer` support in order to stay updated to events happening to your resource inside Kubernetes. Its implementation is simply list and watch operations after a certain interval of time. Here are some of the common usages:
@@ -2010,7 +1821,7 @@ Kubernetes Client also provides `SharedInformer` support in order to stay update
 ```java
 SharedInformerFactory sharedInformerFactory = client.informers();
 ```
-- Create `SharedIndexInformer` for some Kubernetes Resource(requires resource's class and resync period (emits a dummy update event on that interval so that the handler can act again).  By default it watches in all namespaces.:
+- Create `SharedIndexInformer` for some Kubernetes Resource(requires resource's class and resync period(when to check with server again while watching something).  By default it watches in all namespaces.:
 ```java
 SharedIndexInformer<Pod> podInformer = sharedInformerFactory.sharedIndexInformerFor(Pod.class, 30 * 1000L);
 podInformer.addEventHandler(new ResourceEventHandler<Pod>() {
@@ -2032,7 +1843,7 @@ podInformer.addEventHandler(new ResourceEventHandler<Pod>() {
 ```
 - Create `SharedIndexInformer` for some Custom Resource(in our case, `Dummy` resource provided in our [examples](https://github.com/fabric8io/kubernetes-client/tree/master/kubernetes-examples/src/main/java/io/fabric8/kubernetes/examples/crds). By default it watches in all namespaces.
 ```java
-SharedIndexInformer<Dummy> dummyInformer = sharedInformerFactory.sharedIndexInformerFor(Dummy.class, 60 * 1000L);
+SharedIndexInformer<Dummy> dummyInformer = sharedInformerFactory.sharedIndexInformerForCustomResource(Dummy.class, 60 * 1000L);
 dummyInformer.addEventHandler(new ResourceEventHandler<Dummy>() {
   @Override
   public void onAdd(Dummy dummy) {
@@ -2050,20 +1861,15 @@ dummyInformer.addEventHandler(new ResourceEventHandler<Dummy>() {
   }
 });
 ```
-- Start all registered informers:
-```java
-sharedInformerFactory.startAllRegisteredInformers();
-```
-- Stop all registered informers:
-```java
-sharedInformerFactory.stopAllRegisteredInformers();
-```
-
-You are not limited to just creating cluster wide informers, if you want to be informed about a particular context then use the Informable interface and inform methods.
-
 - Create namespaced `SharedIndexInformer` (informers specific to a particular `Namespace`):
 ```java
-SharedIndexInformer<Pod> podInformer = client.pods().inNamespace("default").inform(new ResourceEventHandler<Pod>() {
+SharedInformerFactory sharedInformerFactory = client.informers();
+SharedIndexInformer<Pod> podInformer = sharedInformerFactory.inNamespace("default").sharedIndexInformerFor(
+        Pod.class,
+        30 * 1000L);
+logger.info("Informer factory initialized.");
+
+podInformer.addEventHandler(new ResourceEventHandler<Pod>() {
     @Override
     public void onAdd(Pod pod) {
         logger.info("Pod " + pod.getMetadata().getName() + " got added");
@@ -2078,9 +1884,8 @@ SharedIndexInformer<Pod> podInformer = client.pods().inNamespace("default").info
     public void onDelete(Pod pod, boolean deletedFinalStateUnknown) {
         logger.info("Pod " + pod.getMetadata().getName() + " got deleted");
     }
-},  30 * 1000L);
-
-logger.info("Informer initialized.");
+});
+}
 ```
 - Create Namespaced Informer for a Custom Resource(**Note:** Your CustomResource POJO must implement `Namespaced` interface like the one used in this example: [Dummy.java](https://github.com/fabric8io/kubernetes-client/blob/master/kubernetes-examples/src/main/java/io/fabric8/kubernetes/examples/crds/Dummy.java))
 You should have your CustomResource type POJO annotated with group, version fields with respect to your CRD:
@@ -2098,24 +1903,33 @@ public class Dummy extends CustomResource<DummySpec, KubernetesResource> impleme
 ```
 Then you should be able to use it like this:
 ```java
-SharedIndexInformer<Dummy> dummyInformer = client.resources(Dummy.class).inNamespace("default").inform(new ResourceEventHandler<Dummy>() {
-    @Override
-    public void onAdd(Dummy dummy) {
-        System.out.printf("%s dummy added\n", dummy.getMetadata().getName());
-    }
+SharedIndexInformer<Dummy> dummyInformer = sharedInformerFactory.inNamespace("default").sharedIndexInformerForCustomResource(Dummy.class, 60 * 1000L);
+dummyInformer.addEventHandler(new ResourceEventHandler<Dummy>() {
+  @Override
+  public void onAdd(Dummy dummy) {
+    System.out.printf("%s dummy added\n", dummy.getMetadata().getName());
+  }
 
-    @Override
-    public void onUpdate(Dummy oldDummy, Dummy newDummy) {
-        System.out.printf("%s dummy updated\n", oldDummy.getMetadata().getName());
-    }
+  @Override
+  public void onUpdate(Dummy oldDummy, Dummy newDummy) {
+    System.out.printf("%s dummy updated\n", oldDummy.getMetadata().getName());
+  }
 
-    @Override
-    public void onDelete(Dummy dummy, boolean deletedFinalStateUnknown) {
-        System.out.printf("%s dummy deleted \n", dummy.getMetadata().getName());
-    }
-},  60 * 1000L);
+  @Override
+  public void onDelete(Dummy dummy, boolean deletedFinalStateUnknown) {
+    System.out.printf("%s dummy deleted \n", dummy.getMetadata().getName());
+  }
+});
 ```
-When using the inform methods the informers will already be started/running.
+
+- Start all registered informers:
+```java
+sharedInformerFactory.startAllRegisteredInformers();
+```
+- Stop all registered informers:
+```java
+sharedInformerFactory.stopAllRegisteredInformers();
+```
 
 ### List Options
 There are various options provided by Kubernetes Client API when it comes to listing resources. Here are some of the common examples provided:
@@ -2177,15 +1991,15 @@ PodList podList = client.pods().inNamespace("default").list(new ListOptionsBuild
 Kubernetes Client also provides way to delete dependents of some Kubernetes resource. Here are some examples:
 - Providing `cascading()` in order to either delete dependent resources or leave them orphan. By default it is `true` meaning it would delete dependent resources too.
 ```
-client.apps().deployments().inNamespace("default").withName("nginx-deploy").cascading(true).delete();
+Boolean isDeleted = client.apps().deployments().inNamespace("default").withName("nginx-deploy").cascading(true).delete();
 ```
 - Providing `propagationPolicy(..)` to specify how deletion should be performed:
 ```
-client.apps().deployments().inNamespace("default").withName("nginx-deploy").withPropagationPolicy("Foreground").delete();
+Boolean isDeleted = client.apps().deployments().inNamespace("default").withName("nginx-deploy").withPropagationPolicy("Foreground").delete();
 ```
 - Specifying grace period for deletion:
 ```
-client.apps().deployments().inNamespace("ns1").withName("mydeployment").withPropagationPolicy(DeletionPropagation.FOREGROUND).withGracePeriod(10).delete();
+Boolean isDeleted = client.apps().deployments().inNamespace("ns1").withName("mydeployment").withPropagationPolicy(DeletionPropagation.FOREGROUND).withGracePeriod(10).delete();
 ```
 
 ### Watch Options
@@ -2252,6 +2066,10 @@ client.pods().inNamespace(namespace).watch(resourceVersion, new Watcher<Pod>() {
 
 // Wait till watch gets closed
 isWatchClosed.await();
+} catch (InterruptedException interruptedException) {
+logger.log(Level.INFO, "Thread Interrupted!");
+Thread.currentThread().interrupt();
+}
 ```
 - Watching with `ListOptions` object:
 ```
@@ -2312,7 +2130,7 @@ String myPodAsYamlWithoutRuntimeState = SerializationUtils.dumpWithoutRuntimeSta
 Kubernetes Client also provides mechanism similar to `kubectl run` in which you can spin a `Pod` just by specifying it's image and name:
 - Running a `Pod` by just providing image and name:
 ```
-try (KubernetesClient client = new KubernetesClientBuilder().build()) {
+try (KubernetesClient client = new DefaultKubernetesClient()) {
     client.run().inNamespace("default")
             .withName("hazelcast")
             .withImage("hazelcast/hazelcast:3.12.9")
@@ -2321,7 +2139,7 @@ try (KubernetesClient client = new KubernetesClientBuilder().build()) {
 ```
 - You can also provide slighly complex configuration with `withGeneratorConfig` method in which you can specify labels, environment variables, ports etc:
 ```
-try (KubernetesClient client = new KubernetesClientBuilder().build()) {
+try (KubernetesClient client = new DefaultKubernetesClient()) {
     client.run().inNamespace("default")
             .withRunConfig(new RunConfigBuilder()
                     .withName("nginx")
@@ -2333,44 +2151,31 @@ try (KubernetesClient client = new KubernetesClientBuilder().build()) {
 }
 ```
 
-#### Server Side Apply
-
-Basic usage of server side apply is available via Patchable.  At it's simplest you just need to call:
-
-```
-client.services().withName("name").patch(PatchContext.of(PatchType.SERVER_SIDE_APPLY), service);
-```
-
-For any create or update.  This can be a good alternative to using createOrReplace as it is always a single api call and does not issue a replace/PUT which can be problematic.
-
-If the resources may be created or modified by something other than a fabric8 patch, you will need to force your modifications:
-
-```
-client.services().withName("name").patch(new PatchContext.Builder().withPatchType(PatchType.SERVER_SIDE_APPLY).withForce(true).build(), service);
-```
-
-Please consult the Kubernetes server side apply documentation if you want to do more detailed field management or want to understand the full semantics of how the patches are merged.
-
 ### OpenShift Client DSL Usage
 
 Fabric8 Kubernetes Client also has an extension for OpenShift. It is pretty much the same as Kubernetes Client but has support for some additional OpenShift resources.
 
 #### Initializing OpenShift Client:
-Initializing OpenShift client is the same as Kubernetes Client. You use
+Initializing OpenShift client is the same as Kubernetes Client. Yo
 ```
-try (final OpenShiftClient client = new KubernetesClientBuilder().build().adapt(OpenShiftClient.class)) {
+try (final OpenShiftClient client = new DefaultOpenShiftClient()) {
   // Do stuff with client
 }
 ```
-This would pick up default settings, reading your `kubeconfig` file from `~/.kube/config` directory or whatever is defined inside `KUBECONFIG` environment variable. But if you want to customize creation of client, you can also pass a `Config` object inside the builder like this:
+This would pick up default settings, reading your `kubeconfig` file from `~/.kube/config` directory or whatever is defined inside `KUBECONFIG` environment variable. But if you want to customize creation of client, you can also pass a `Config` object inside `DefaultKubernetesClient` like this:
 ```
 Config kubeConfig = new ConfigBuilder()
             .withMasterUrl("https://api.ci-ln-3sbdl1b-d5d6b.origin-ci-int-aws.dev.examplecloud.com:6443")
             .withOauthToken("xxxxxxxx-41oafKI6iU637-xxxxxxxxxxxxx")
             .build())) {
-try (final OpenShiftClient client = new KubernetesClientBuilder().withConfig(kubeConfig).build().adapt(OpenShiftClient.class)) {
+try (final OpenShiftClient client = new DefaultOpenShiftClient(config)) {
   // Do stuff with client
 }
+```
+You can also create `OpenShiftClient` from an existing instance of `KubernetesClient`. There is a method called `adapt(..)` for this. Here is an example:
+```
+KubernetesClient client = new DefaultKubernetesClient();
+OpenShiftClient openShiftClient = client.adapt(OpenShiftClient.class);
 ```
 
 #### DeploymentConfig
@@ -2430,7 +2235,7 @@ DeploymentConfig deploymentConfig1 = client.deploymentConfigs().inNamespace(curr
 ```
 - Delete `DeploymentConfig`:
 ```
-client.deploymentConfigs().inNamespace("default").withName("deploymentconfig1").delete();
+Boolean bDeleted = client.deploymentConfigs().inNamespace("default").withName("deploymentconfig1").delete();
 ```
 - Watch `DeploymentConfig`:
 ```
@@ -2526,7 +2331,7 @@ BuildConfigList bcList = client.buildConfigs().inNamespace("default").withLabel(
 ```
 - Delete `BuildConfig`:
 ```
-client.buildConfigs().inNamespace("default").withName("bc1").delete();
+Boolean bDeleted = client.buildConfigs().inNamespace("default").withName("bc1").delete();
 ```
 - Watch `BuildConfig`:
 ```
@@ -2580,7 +2385,7 @@ RouteList routeList = client.routes().inNamespace("default").withLabel("foo", "b
 ```
 - Delete `Route`:
 ```
-client.routes().inNamespace("default").withName("route1").delete();
+boolean bDeleted = client.routes().inNamespace("default").withName("route1").delete();
 ```
 
 #### Project
@@ -2602,7 +2407,7 @@ ProjectList projectList = client.projects().list();
 ```
 - Delete `Project`:
 ```
-client.projects().withName("default").delete();
+Boolean isDeleted = client.projects().withName("default").delete();
 ```
 
 #### ImageStream
@@ -2651,7 +2456,7 @@ ImageStreamList isList = client.imageStreams().inNamespace("default").withLabel(
 ```
 - Delete `ImageStream`:
 ```
-client.imageStreams().inNamespace("default").withName("example-camel-cdi").delete();
+Boolean bDeleted = client.imageStreams().inNamespace("default").withName("example-camel-cdi").delete();
 ```
 #### CatalogSource
 `CatalogSource` is available for usage in OpenShift Client via `client.operatorHub().catalogSources()`. Here are some common examples of it's usage:
@@ -2778,7 +2583,7 @@ client.operatorHub().monitoring().inNamespace("default").withName("foo").delete(
 #### ClusterResourceQuota
 - Create `ClusterResourceQuota`:
 ```
-try (OpenShiftClient client = new KubernetesClientBuilder().build().adapt(OpenShiftClient.class)) {
+try (OpenShiftClient client = new DefaultOpenShiftClient()) {
     Map<String, Quantity> hard = new HashMap<>();
     hard.put("pods", new Quantity("10"));
     hard.put("secrets", new Quantity("20"));
@@ -2809,7 +2614,7 @@ client.quotas().clusterResourceQuotas().withName("foo").delete();
 #### ClusterVersion
 - Fetch Cluster Version:
 ```
-try (OpenShiftClient client = new KubernetesClientBuilder().build().adapt(OpenShiftClient.class)) {
+try (OpenShiftClient client = new DefaultOpenShiftClient()) {
     ClusterVersion clusterVersion = client.config().clusterVersions().withName("version").get();
     System.out.println("Cluster Version: " + clusterVersion.getStatus().getDesired().getVersion());
 }
@@ -2824,7 +2629,7 @@ EgressNetworkPolicy egressNetworkPolicy = client.egressNetworkPolicies()
 ```
 - Create `EgressNetworkPolicy`:
 ```
-try (OpenShiftClient client = new KubernetesClientBuilder().build().adapt(OpenShiftClient.class)) {
+try (OpenShiftClient client = new DefaultOpenShiftClient()) {
     EgressNetworkPolicy enp = new EgressNetworkPolicyBuilder()
             .withNewMetadata()
             .withName("foo")
@@ -2872,12 +2677,19 @@ It is pretty much the same as Kubernetes Client but has support for some additio
 #### Initializing Tekton Client
 Initializing Tekton client is the same as Kubernetes Client. You
 ```
-try (final TektonClient client = new KubernetesClientBuilder().build().adapt(TektonClient.class)) {
+try (final TektonClient client = new DefaultTektonClient()) {
   // Do stuff with client
 }
 ```
 This would pick up default settings, reading your `kubeconfig` file from `~/.kube/config` directory or whatever is defined inside `KUBECONFIG` environment variable.
-But if you want to customize creation of client, you can also pass a `Config` object inside the builder.
+But if you want to customize creation of client, you can also pass a `Config` object inside `DefaultTektonClient`.
+You can also create `TektonClient` from an existing instance of `KubernetesClient`. 
+There is a method called `adapt(..)` for this.
+Here is an example:
+```
+KubernetesClient client = new DefaultKubernetesClient();
+TektonClient tektonClient = client.adapt(TektonClient.class);
+```
 
 #### Tekton Client DSL Usage
 The Tekton client supports CRD API version `tekton.dev/v1alpha1` as well as `tekton.dev/v1beta1`.
@@ -2915,12 +2727,19 @@ It is pretty much the same as Kubernetes Client but has support for some additio
 #### Initializing Knative Client
 Initializing Knative client is the same as Kubernetes Client. 
 ```
-try (final KnativeClient client = new KubernetesClientBuilder().build().adapt(KnativeClient.class)) {
+try (final KnativeClient client = new DefaultKnativeClient()) {
   // Do stuff with client
 }
 ```
 This would pick up default settings, reading your `kubeconfig` file from `~/.kube/config` directory or whatever is defined inside `KUBECONFIG` environment variable.
-But if you want to customize creation of client, you can also pass a `Config` object inside the builder.
+But if you want to customize creation of client, you can also pass a `Config` object inside `DefaultKnativeClient`.
+You can also create `KnativeClient` from an existing instance of `KubernetesClient`. 
+There is a method called `adapt(..)` for this.
+Here is an example:
+```
+KubernetesClient client = new DefaultKubernetesClient();
+KnativeClient knativeClient = client.adapt(KnativeClient.class);
+```
 
 #### Knative Client DSL Usage
 The usage of the resources follows the same pattern as for K8s resources like Pods or Deployments.
@@ -2952,13 +2771,3 @@ try (KnativeClient kn = new DefaultKnativeClient()) {
     kn.services().inNamespace("default").createOrReplace(service);
 }
 ```
-
-#### Logging
-Using logging-interceptor:
-
-- Configure OkHTTP logging:
-- Set logging level to trace in my simplelogger.properties file:
-```
- org.slf4j.simpleLogger.defaultLogLevel=trace
-```
-

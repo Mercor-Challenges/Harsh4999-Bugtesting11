@@ -15,32 +15,32 @@
  */
 package io.fabric8.tekton.triggers.v1alpha1;
 
-import io.fabric8.kubernetes.client.server.mock.EnableKubernetesMockClient;
-import io.fabric8.kubernetes.client.server.mock.KubernetesMockServer;
 import io.fabric8.tekton.client.TektonClient;
+import io.fabric8.tekton.mock.TektonServer;
+import org.junit.Rule;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.migrationsupport.rules.EnableRuleMigrationSupport;
 
 import java.net.HttpURLConnection;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-@EnableKubernetesMockClient
+@EnableRuleMigrationSupport
 class TriggerTemplateTest {
-
-  TektonClient client;
-  KubernetesMockServer server;
+  @Rule
+  public TektonServer server = new TektonServer();
 
   @Test
   @DisplayName("Should get a triggertemplate")
   void testGet() {
     server.expect().get().withPath("/apis/triggers.tekton.dev/v1alpha1/namespaces/ns1/triggertemplates/tt")
-        .andReturn(HttpURLConnection.HTTP_OK, new io.fabric8.tekton.triggers.v1alpha1.TriggerTemplateBuilder()
-            .withNewMetadata()
-            .withName("tt")
-            .endMetadata()
-            .build())
-        .once();
+      .andReturn(HttpURLConnection.HTTP_OK, new io.fabric8.tekton.triggers.v1alpha1.TriggerTemplateBuilder()
+        .withNewMetadata()
+        .withName("tt")
+        .endMetadata()
+        .build()).once();
+    TektonClient client = server.getTektonClient();
 
     TriggerTemplate tt = client.v1alpha1().triggerTemplates().inNamespace("ns1").withName("tt").get();
     assertNotNull(tt);

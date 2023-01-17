@@ -15,37 +15,35 @@
  */
 package io.fabric8.crd.generator.visitor;
 
-import io.fabric8.crd.example.webserver.WebServerWithSpec;
-import io.fabric8.crd.example.webserver.WebServerWithStatusProperty;
-import io.sundr.adapter.api.AdapterContext;
-import io.sundr.adapter.api.Adapters;
-import io.sundr.model.TypeDef;
-import io.sundr.model.TypeDefBuilder;
-import io.sundr.model.repo.DefinitionRepository;
-import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class SpecReplicasPathDetectorTest {
+import io.fabric8.crd.example.webserver.WebServerWithSpec;
+import io.fabric8.crd.example.webserver.WebServerWithStatusProperty;
+import io.sundr.codegen.functions.ClassTo;
+import io.sundr.codegen.model.TypeDef;
+import io.sundr.codegen.model.TypeDefBuilder;
+import org.junit.jupiter.api.Test;
 
-  public static final AdapterContext CONTEXT = AdapterContext.create(DefinitionRepository.getRepository());
+class SpecReplicasPathDetectorTest {
 
   @Test
   public void shoudDetectSpecReplicasPath() throws Exception {
-    TypeDef def = Adapters.adaptType(WebServerWithStatusProperty.class, CONTEXT);
+    TypeDef def = ClassTo.TYPEDEF.apply(WebServerWithStatusProperty.class);
     SpecReplicasPathDetector detector = new SpecReplicasPathDetector();
     def = new TypeDefBuilder(def).accept(detector).build();
     assertTrue(detector.getPath().isPresent());
     assertEquals(".replicas", detector.getPath().get());
   }
 
+
   @Test
   public void shoudDetectNestedSpecReplicasPath() throws Exception {
-    TypeDef def = Adapters.adaptType(WebServerWithSpec.class, CONTEXT);
+    TypeDef def = ClassTo.TYPEDEF.apply(WebServerWithSpec.class);
     SpecReplicasPathDetector detector = new SpecReplicasPathDetector();
     def = new TypeDefBuilder(def).accept(detector).build();
     assertTrue(detector.getPath().isPresent());
     assertEquals(".spec.replicas", detector.getPath().get());
   }
 }
+

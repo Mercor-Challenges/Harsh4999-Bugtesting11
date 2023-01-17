@@ -21,7 +21,7 @@
   <parent>
     <artifactId>kubernetes-client-project</artifactId>
     <groupId>io.fabric8</groupId>
-    <version>6.4-SNAPSHOT</version>
+    <version>5.4-SNAPSHOT</version>
   </parent>
 
   <artifactId>kubernetes-test</artifactId>
@@ -45,14 +45,13 @@
     </dependency>
 
     <dependency>
-      <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-engine</artifactId>
+      <groupId>javax.validation</groupId>
+      <artifactId>validation-api</artifactId>
       <scope>test</scope>
     </dependency>
-    
     <dependency>
       <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-params</artifactId>
+      <artifactId>junit-jupiter-engine</artifactId>
       <scope>test</scope>
     </dependency>
 
@@ -65,18 +64,33 @@
     <dependency>
       <groupId>io.fabric8</groupId>
       <artifactId>openshift-server-mock</artifactId>
+      <version>${project.version}</version>
       <scope>test</scope>
     </dependency>
 
     <dependency>
       <groupId>io.fabric8</groupId>
       <artifactId>mockwebserver</artifactId>
+      <version>${mockwebserver.version}</version>
       <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>com.sun</groupId>
+          <artifactId>tools</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <dependency>
       <groupId>io.fabric8</groupId>
       <artifactId>servicecatalog-client</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.fabric8</groupId>
+      <artifactId>servicecatalog-server-mock</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
     </dependency>
 
     <dependency>
@@ -97,11 +111,13 @@
 
     <dependency>
       <groupId>org.bouncycastle</groupId>
-      <artifactId>bcprov-jdk15on</artifactId>
+      <artifactId>bcprov-ext-jdk15on</artifactId>
+      <version>${bouncycastle.version}</version>
     </dependency>
     <dependency>
       <groupId>org.bouncycastle</groupId>
       <artifactId>bcpkix-jdk15on</artifactId>
+      <version>${bouncycastle.version}</version>
     </dependency>
   </dependencies>
 
@@ -111,6 +127,8 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <configuration>
+          <forkCount>1</forkCount>
+          <reuseForks>false</reuseForks>
           <!-- We cleanup system properties an env vars, so that we can test in a predictable env -->
           <environmentVariables>
             <KUBERNETES_MASTER />
@@ -140,7 +158,7 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
-        <version>3.1.0</version>
+        <version>3.0.0</version>
         <executions>
           <execution>
             <goals>

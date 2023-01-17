@@ -16,18 +16,31 @@
 package io.fabric8.chaosmesh.client;
 
 import io.fabric8.kubernetes.client.Client;
-import io.fabric8.kubernetes.client.extension.ExtensionAdapter;
+import io.fabric8.kubernetes.client.ExtensionAdapter;
+import io.fabric8.kubernetes.client.ExtensionAdapterSupport;
+import okhttp3.OkHttpClient;
 
-public class ChaosMeshExtensionAdapter implements ExtensionAdapter<ChaosMeshClient> {
+import java.net.URL;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
-  @Override
-  public Class<ChaosMeshClient> getExtensionType() {
-    return ChaosMeshClient.class;
-  }
+public class ChaosMeshExtensionAdapter extends ExtensionAdapterSupport implements ExtensionAdapter<ChaosMeshClient> {
 
-  @Override
-  public ChaosMeshClient adapt(Client client) {
-    return new DefaultChaosMeshClient(client);
-  }
+   static final ConcurrentMap<URL, Boolean> IS_CHAOS_MESH = new ConcurrentHashMap<>();
+   static final ConcurrentMap<URL, Boolean> USES_CHAOS_MESH_APIGROUPS = new ConcurrentHashMap<>();
+    
+	@Override
+	public Class<ChaosMeshClient> getExtensionType() {
+		return ChaosMeshClient.class;
+	}
 
+	@Override
+	public Boolean isAdaptable(Client client) {
+		return isAdaptable(client, IS_CHAOS_MESH, USES_CHAOS_MESH_APIGROUPS, "chaos-mesh.org");
+	}
+
+	@Override
+	public ChaosMeshClient adapt(Client client) {
+            return new DefaultChaosMeshClient(client.adapt(OkHttpClient.class), client.getConfiguration());
+	}
 }

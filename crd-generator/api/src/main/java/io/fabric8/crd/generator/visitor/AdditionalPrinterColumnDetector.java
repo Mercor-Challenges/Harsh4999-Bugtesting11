@@ -16,7 +16,6 @@
 package io.fabric8.crd.generator.visitor;
 
 import io.fabric8.kubernetes.model.annotation.PrinterColumn;
-
 import java.util.ArrayList;
 
 public class AdditionalPrinterColumnDetector extends AnnotatedMultiPropertyPathDetector {
@@ -29,3 +28,4 @@ public class AdditionalPrinterColumnDetector extends AnnotatedMultiPropertyPathD
     super(prefix, PrinterColumn.class.getSimpleName(), new ArrayList<>());
   }
 }
+

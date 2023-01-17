@@ -15,6 +15,31 @@
  */
 package io.fabric8.knative.client;
 
+import io.fabric8.knative.client.eventing.v1.internal.BrokerOperationsImpl;
+import io.fabric8.knative.client.eventing.v1.internal.TriggerOperationsImpl;
+import io.fabric8.knative.client.eventing.v1alpha1.internal.AwsSqsSourceOperationsImpl;
+import io.fabric8.knative.client.eventing.v1alpha1.internal.CouchDbSourceOperationsImpl;
+import io.fabric8.knative.client.eventing.v1alpha1.internal.GitHubBindingOperationsImpl;
+import io.fabric8.knative.client.eventing.v1alpha1.internal.GitHubSourceOperationsImpl;
+import io.fabric8.knative.client.eventing.v1alpha1.internal.GitLabBindingOperationsImpl;
+import io.fabric8.knative.client.eventing.v1alpha1.internal.GitLabSourceOperationsImpl;
+import io.fabric8.knative.client.eventing.v1alpha1.internal.PrometheusSourceOperationsImpl;
+import io.fabric8.knative.client.eventing.v1beta1.internal.EventTypeOperationsImpl;
+import io.fabric8.knative.client.eventing.v1beta1.internal.KafkaBindingOperationsImpl;
+import io.fabric8.knative.client.eventing.v1beta1.internal.KafkaChannelOperationsImpl;
+import io.fabric8.knative.client.eventing.v1beta1.internal.KafkaSourceOperationsImpl;
+import io.fabric8.knative.client.flows.v1.internal.SequenceOperationsImpl;
+import io.fabric8.knative.client.messaging.v1.internal.ChannelOperationsImpl;
+import io.fabric8.knative.client.messaging.v1.internal.InMemoryChannelOperationsImpl;
+import io.fabric8.knative.client.messaging.v1.internal.SubscriptionOperationsImpl;
+import io.fabric8.knative.client.serving.v1.internal.ConfigurationOperationsImpl;
+import io.fabric8.knative.client.serving.v1.internal.RevisionOperationsImpl;
+import io.fabric8.knative.client.serving.v1.internal.RouteOperationsImpl;
+import io.fabric8.knative.client.serving.v1.internal.ServiceOperationsImpl;
+import io.fabric8.knative.client.sources.v1beta1.internal.ApiServerSourceOperationsImpl;
+import io.fabric8.knative.client.sources.v1beta1.internal.ContainerSourceOperationsImpl;
+import io.fabric8.knative.client.sources.v1beta1.internal.PingSourceOperationsImpl;
+import io.fabric8.knative.client.sources.v1beta1.internal.SinkBindingOperationsImpl;
 import io.fabric8.knative.eventing.contrib.awssqs.v1alpha1.AwsSqsSource;
 import io.fabric8.knative.eventing.contrib.awssqs.v1alpha1.AwsSqsSourceList;
 import io.fabric8.knative.eventing.contrib.couchdb.v1alpha1.CouchDbSource;
@@ -41,8 +66,6 @@ import io.fabric8.knative.eventing.v1.Trigger;
 import io.fabric8.knative.eventing.v1.TriggerList;
 import io.fabric8.knative.eventing.v1beta1.EventType;
 import io.fabric8.knative.eventing.v1beta1.EventTypeList;
-import io.fabric8.knative.flows.v1.Parallel;
-import io.fabric8.knative.flows.v1.ParallelList;
 import io.fabric8.knative.flows.v1.Sequence;
 import io.fabric8.knative.flows.v1.SequenceList;
 import io.fabric8.knative.messaging.v1.Channel;
@@ -59,188 +82,177 @@ import io.fabric8.knative.serving.v1.Route;
 import io.fabric8.knative.serving.v1.RouteList;
 import io.fabric8.knative.serving.v1.Service;
 import io.fabric8.knative.serving.v1.ServiceList;
-import io.fabric8.knative.serving.v1beta1.DomainMapping;
-import io.fabric8.knative.serving.v1beta1.DomainMappingList;
-import io.fabric8.knative.sources.v1.ApiServerSource;
-import io.fabric8.knative.sources.v1.ApiServerSourceList;
-import io.fabric8.knative.sources.v1.ContainerSource;
-import io.fabric8.knative.sources.v1.ContainerSourceList;
-import io.fabric8.knative.sources.v1.PingSource;
-import io.fabric8.knative.sources.v1.PingSourceList;
-import io.fabric8.knative.sources.v1.SinkBinding;
-import io.fabric8.knative.sources.v1.SinkBindingList;
-import io.fabric8.kubernetes.client.Client;
+import io.fabric8.knative.sources.v1beta1.ApiServerSource;
+import io.fabric8.knative.sources.v1beta1.ApiServerSourceList;
+import io.fabric8.knative.sources.v1beta1.ContainerSource;
+import io.fabric8.knative.sources.v1beta1.ContainerSourceList;
+import io.fabric8.knative.sources.v1beta1.PingSource;
+import io.fabric8.knative.sources.v1beta1.PingSourceList;
+import io.fabric8.knative.sources.v1beta1.SinkBinding;
+import io.fabric8.knative.sources.v1beta1.SinkBindingList;
+import io.fabric8.kubernetes.client.BaseClient;
 import io.fabric8.kubernetes.client.Config;
+import io.fabric8.kubernetes.client.ConfigBuilder;
 import io.fabric8.kubernetes.client.RequestConfig;
 import io.fabric8.kubernetes.client.WithRequestCallable;
 import io.fabric8.kubernetes.client.dsl.FunctionCallable;
 import io.fabric8.kubernetes.client.dsl.MixedOperation;
 import io.fabric8.kubernetes.client.dsl.Resource;
-import io.fabric8.kubernetes.client.extension.ExtensionRootClientAdapter;
-import io.fabric8.kubernetes.client.extension.SupportTestingClient;
+import okhttp3.OkHttpClient;
 
-public class DefaultKnativeClient extends ExtensionRootClientAdapter<DefaultKnativeClient>
-    implements NamespacedKnativeClient, SupportTestingClient {
+public class DefaultKnativeClient extends BaseClient implements NamespacedKnativeClient {
 
-  public DefaultKnativeClient() {
-    super();
-  }
+    public DefaultKnativeClient() {
+        super();
+    }
 
-  public DefaultKnativeClient(Config config) {
-    super(config);
-  }
+    public DefaultKnativeClient(Config configuration) {
+        super(configuration);
+    }
 
-  public DefaultKnativeClient(Client client) {
-    super(client);
-  }
+    public DefaultKnativeClient(OkHttpClient httpClient, Config configuration) {
+        super(httpClient, configuration);
+    }
 
-  @Override
-  protected DefaultKnativeClient newInstance(Client client) {
-    return new DefaultKnativeClient(client);
-  }
+    @Override
+    public NamespacedKnativeClient inAnyNamespace() {
+        return inNamespace(null);
+    }
 
-  @Override
-  public FunctionCallable<NamespacedKnativeClient> withRequestConfig(RequestConfig requestConfig) {
-    return new WithRequestCallable<>(this, requestConfig);
-  }
+    @Override
+    public NamespacedKnativeClient inNamespace(String namespace) {
+        Config updated = new ConfigBuilder(getConfiguration()).withNamespace(namespace).build();
 
-  @Override
-  public MixedOperation<Service, ServiceList, Resource<Service>> services() {
-    return resources(Service.class, ServiceList.class);
-  }
+        return new DefaultKnativeClient(getHttpClient(), updated);
+    }
 
-  @Override
-  public MixedOperation<Route, RouteList, Resource<Route>> routes() {
-    return resources(Route.class, RouteList.class);
-  }
+    @Override
+    public FunctionCallable<NamespacedKnativeClient> withRequestConfig(RequestConfig requestConfig) {
+        return new WithRequestCallable<NamespacedKnativeClient>(this, requestConfig);
+    }
 
-  @Override
-  public MixedOperation<Revision, RevisionList, Resource<Revision>> revisions() {
-    return resources(Revision.class, RevisionList.class);
-  }
+    @Override
+    public MixedOperation<Service, ServiceList, Resource<Service>> services() {
+        return new ServiceOperationsImpl(this.getHttpClient(), this.getConfiguration());
+    }
 
-  @Override
-  public MixedOperation<Configuration, ConfigurationList, Resource<Configuration>> configurations() {
-    return resources(Configuration.class, ConfigurationList.class);
-  }
+    @Override
+    public MixedOperation<Route, RouteList, Resource<Route>> routes() {
+        return new RouteOperationsImpl(this.getHttpClient(), this.getConfiguration());
+    }
 
-  @Override
-  public MixedOperation<DomainMapping, DomainMappingList, Resource<DomainMapping>> domainMappings() {
-    return resources(DomainMapping.class, DomainMappingList.class);
-  }
+    @Override
+    public MixedOperation<Revision, RevisionList, Resource<Revision>> revisions() {
+        return new RevisionOperationsImpl(this.getHttpClient(), this.getConfiguration());
+    }
 
-  @Override
-  public MixedOperation<Broker, BrokerList, Resource<Broker>> brokers() {
-    return resources(Broker.class, BrokerList.class);
-  }
+    @Override
+    public MixedOperation<Configuration, ConfigurationList, Resource<Configuration>> configurations() {
+        return new ConfigurationOperationsImpl(this.getHttpClient(), this.getConfiguration());
+    }
 
-  @Override
-  public MixedOperation<Trigger, TriggerList, Resource<Trigger>> triggers() {
-    return resources(Trigger.class, TriggerList.class);
-  }
+    @Override
+    public MixedOperation<Broker, BrokerList, Resource<Broker>> brokers() {
+        return new BrokerOperationsImpl(this.getHttpClient(), this.getConfiguration());
+    }
 
-  @Override
-  public MixedOperation<Channel, ChannelList, Resource<Channel>> channels() {
-    return resources(Channel.class, ChannelList.class);
-  }
+    @Override
+    public MixedOperation<Trigger, TriggerList, Resource<Trigger>> triggers() {
+        return new TriggerOperationsImpl(this.getHttpClient(), this.getConfiguration());
+    }
 
-  @Override
-  public MixedOperation<Subscription, SubscriptionList, Resource<Subscription>> subscriptions() {
-    return resources(Subscription.class, SubscriptionList.class);
-  }
+    @Override
+    public MixedOperation<Channel, ChannelList, Resource<Channel>> channels() {
+        return new ChannelOperationsImpl(this.getHttpClient(), this.getConfiguration());
+    }
 
-  @Override
-  public MixedOperation<EventType, EventTypeList, Resource<EventType>> eventTypes() {
-    return resources(EventType.class, EventTypeList.class);
-  }
+    @Override
+    public MixedOperation<Subscription, SubscriptionList, Resource<Subscription>> subscriptions() {
+        return new SubscriptionOperationsImpl(this.getHttpClient(), this.getConfiguration());
+    }
 
-  @Override
-  public MixedOperation<Sequence, SequenceList, Resource<Sequence>> sequences() {
-    return resources(Sequence.class, SequenceList.class);
-  }
+    @Override
+    public MixedOperation<EventType, EventTypeList, Resource<EventType>> eventTypes() {
+        return new EventTypeOperationsImpl(this.getHttpClient(), this.getConfiguration());
+    }
 
-  @Override
-  public MixedOperation<Parallel, ParallelList, Resource<Parallel>> parallels() {
-    return resources(Parallel.class, ParallelList.class);
-  }
+    @Override
+    public MixedOperation<Sequence, SequenceList, Resource<Sequence>> sequences() {
+        return new SequenceOperationsImpl(this.getHttpClient(), this.getConfiguration());
+    }
 
-  @Override
-  public MixedOperation<InMemoryChannel, InMemoryChannelList, Resource<InMemoryChannel>> inMemoryChannels() {
-    return resources(InMemoryChannel.class, InMemoryChannelList.class);
-  }
+    @Override
+    public MixedOperation<InMemoryChannel, InMemoryChannelList, Resource<InMemoryChannel>> inMemoryChannels() {
+        return new InMemoryChannelOperationsImpl(this.getHttpClient(), this.getConfiguration());
+    }
 
   @Override
   public MixedOperation<PingSource, PingSourceList, Resource<PingSource>> pingSources() {
-    return resources(PingSource.class, PingSourceList.class);
+    return new PingSourceOperationsImpl(this.getHttpClient(), this.getConfiguration());
   }
 
   @Override
   public MixedOperation<SinkBinding, SinkBindingList, Resource<SinkBinding>> sinkBindings() {
-    return resources(SinkBinding.class, SinkBindingList.class);
+    return new SinkBindingOperationsImpl(this.getHttpClient(), this.getConfiguration());
   }
 
   @Override
   public MixedOperation<ContainerSource, ContainerSourceList, Resource<ContainerSource>> containerSources() {
-    return resources(ContainerSource.class, ContainerSourceList.class);
+    return new ContainerSourceOperationsImpl(this.getHttpClient(), this.getConfiguration());
   }
 
   @Override
   public MixedOperation<ApiServerSource, ApiServerSourceList, Resource<ApiServerSource>> apiServerSources() {
-    return resources(ApiServerSource.class, ApiServerSourceList.class);
+    return new ApiServerSourceOperationsImpl(this.getHttpClient(), this.getConfiguration());
   }
 
   @Override
   public MixedOperation<AwsSqsSource, AwsSqsSourceList, Resource<AwsSqsSource>> awsSqsSources() {
-    return resources(AwsSqsSource.class, AwsSqsSourceList.class);
+    return new AwsSqsSourceOperationsImpl(this.getHttpClient(), this.getConfiguration());
   }
 
   @Override
   public MixedOperation<CouchDbSource, CouchDbSourceList, Resource<CouchDbSource>> couchDbSources() {
-    return resources(CouchDbSource.class, CouchDbSourceList.class);
+    return new CouchDbSourceOperationsImpl(this.getHttpClient(), this.getConfiguration());
   }
 
   @Override
   public MixedOperation<GitHubSource, GitHubSourceList, Resource<GitHubSource>> gitHubSources() {
-    return resources(GitHubSource.class, GitHubSourceList.class);
+    return new GitHubSourceOperationsImpl(this.getHttpClient(), this.getConfiguration());
   }
 
   @Override
   public MixedOperation<GitHubBinding, GitHubBindingList, Resource<GitHubBinding>> gitHubBindings() {
-    return resources(GitHubBinding.class, GitHubBindingList.class);
+    return new GitHubBindingOperationsImpl(this.getHttpClient(), this.getConfiguration());
   }
 
   @Override
   public MixedOperation<GitLabSource, GitLabSourceList, Resource<GitLabSource>> gitLabSources() {
-    return resources(GitLabSource.class, GitLabSourceList.class);
+    return new GitLabSourceOperationsImpl(this.getHttpClient(), this.getConfiguration());
   }
 
   @Override
   public MixedOperation<GitLabBinding, GitLabBindingList, Resource<GitLabBinding>> gitLabBindings() {
-    return resources(GitLabBinding.class, GitLabBindingList.class);
+    return new GitLabBindingOperationsImpl(this.getHttpClient(), this.getConfiguration());
   }
 
   @Override
   public MixedOperation<PrometheusSource, PrometheusSourceList, Resource<PrometheusSource>> prometheusSources() {
-    return resources(PrometheusSource.class, PrometheusSourceList.class);
+    return new PrometheusSourceOperationsImpl(this.getHttpClient(), this.getConfiguration());
   }
 
   @Override
   public MixedOperation<KafkaChannel, KafkaChannelList, Resource<KafkaChannel>> kafkaChannels() {
-    return resources(KafkaChannel.class, KafkaChannelList.class);
+    return new KafkaChannelOperationsImpl(this.getHttpClient(), this.getConfiguration());
   }
 
   @Override
   public MixedOperation<KafkaSource, KafkaSourceList, Resource<KafkaSource>> kafkasSources() {
-    return resources(KafkaSource.class, KafkaSourceList.class);
+    return new KafkaSourceOperationsImpl(this.getHttpClient(), this.getConfiguration());
   }
 
   @Override
   public MixedOperation<KafkaBinding, KafkaBindingList, Resource<KafkaBinding>> kafkaBindings() {
-    return resources(KafkaBinding.class, KafkaBindingList.class);
-  }
-
-  @Override
-  public boolean isSupported() {
-    return hasApiGroup("knative.dev", false);
+    return new KafkaBindingOperationsImpl(this.getHttpClient(), this.getConfiguration());
   }
 }

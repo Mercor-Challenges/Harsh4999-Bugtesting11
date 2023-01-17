@@ -22,7 +22,9 @@ public class RemoveVolumeSnapshot {
   @SuppressWarnings("java:S106")
   public static void main(String[] args) {
     try (VolumeSnapshotClient client = ClientFactory.newClient(args)) {
-      client.volumeSnapshots().inNamespace("default").withName("my-snapshot").delete();
+      if (client.volumeSnapshots().inNamespace("default").withName("my-snapshot").delete()) {
+        System.out.println("Volume Snapshot successfully deleted!");
+      }
     }
   }
 }

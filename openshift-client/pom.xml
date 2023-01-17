@@ -21,7 +21,7 @@
   <parent>
     <groupId>io.fabric8</groupId>
     <artifactId>kubernetes-client-project</artifactId>
-    <version>6.4-SNAPSHOT</version>
+    <version>5.4-SNAPSHOT</version>
   </parent>
 
   <artifactId>openshift-client</artifactId>
@@ -35,8 +35,7 @@
     </osgi.require-capability>
     <osgi.provide-capability>
       osgi.serviceloader;
-      osgi.serviceloader=io.fabric8.kubernetes.client.extension.ExtensionAdapter,
-      io.fabric8.kubernetes.client.ServiceToURLProvider
+      osgi.serviceloader=io.fabric8.kubernetes.client.ResourceHandler
     </osgi.provide-capability>
     <osgi.import>
       !org.junit*,
@@ -57,17 +56,27 @@
       <groupId>io.fabric8</groupId>
       <artifactId>kubernetes-client</artifactId>
     </dependency>
+   <dependency>
+     <groupId>io.fabric8</groupId>
+     <artifactId>openshift-model</artifactId>
+   </dependency>
+   <dependency>
+      <groupId>io.fabric8</groupId>
+      <artifactId>openshift-model-operator</artifactId>
+    </dependency>
     <dependency>
       <groupId>io.fabric8</groupId>
-      <artifactId>openshift-client-api</artifactId>
+      <artifactId>openshift-model-operatorhub</artifactId>
     </dependency>
-   
     <dependency>
-      <groupId>com.github.mifmif</groupId>
-      <artifactId>generex</artifactId>
-      <version>${generex.version}</version>
+      <groupId>io.fabric8</groupId>
+      <artifactId>openshift-model-monitoring</artifactId>
     </dependency>
-    
+    <dependency>
+      <groupId>io.fabric8</groupId>
+      <artifactId>openshift-model-console</artifactId>
+    </dependency>
+
     <!-- Compile Only Dependencies -->
     <dependency>
       <groupId>io.sundr</groupId>
@@ -77,11 +86,6 @@
     <dependency>
       <groupId>io.sundr</groupId>
       <artifactId>transform-annotations</artifactId>
-    </dependency>
-    
-    <dependency>
-      <groupId>org.projectlombok</groupId>
-      <artifactId>lombok</artifactId>
     </dependency>
 
     <dependency>
@@ -104,6 +108,7 @@
     <dependency>
       <groupId>io.fabric8</groupId>
       <artifactId>mockwebserver</artifactId>
+      <version>${mockwebserver.version}</version>
       <scope>test</scope>
     </dependency>
 
@@ -139,6 +144,8 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <configuration>
+          <forkCount>1</forkCount>
+          <reuseForks>false</reuseForks>
           <!-- We cleanup system properties an env vars, so that we can test in a predictable env -->
           <environmentVariables>
             <KUBERNETES_MASTER />
@@ -221,8 +228,9 @@
                 <Bundle-Activator>${osgi.activator}</Bundle-Activator>
                 <Export-Service>${osgi.export.service}</Export-Service>
                 <Include-Resource>
+                  /META-INF/services/io.fabric8.kubernetes.client.ResourceHandler=target/classes/META-INF/services/io.fabric8.kubernetes.client.ResourceHandler,
                   /META-INF/services/io.fabric8.kubernetes.client.ServiceToURLProvider=target/classes/META-INF/services/io.fabric8.kubernetes.client.ServiceToURLProvider,
-                  /META-INF/services/io.fabric8.kubernetes.client.extension.ExtensionAdapter=target/classes/META-INF/services/io.fabric8.kubernetes.client.extension.ExtensionAdapter
+                  /META-INF/services/io.fabric8.kubernetes.client.ExtensionAdapter=target/classes/META-INF/services/io.fabric8.kubernetes.client.ExtensionAdapter
                 </Include-Resource>
               </instructions>
               <classifier>bundle</classifier>

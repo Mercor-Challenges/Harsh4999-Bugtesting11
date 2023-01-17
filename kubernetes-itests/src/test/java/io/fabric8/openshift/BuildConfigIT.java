@@ -16,75 +16,92 @@
 
 package io.fabric8.openshift;
 
-import io.fabric8.junit.jupiter.api.LoadKubernetesManifests;
-import io.fabric8.junit.jupiter.api.RequireK8sSupport;
+import io.fabric8.commons.ClusterEntity;
+import io.fabric8.commons.ReadyEntity;
 import io.fabric8.openshift.api.model.BuildConfig;
 import io.fabric8.openshift.api.model.BuildConfigBuilder;
 import io.fabric8.openshift.api.model.BuildConfigList;
 import io.fabric8.openshift.api.model.BuildSourceBuilder;
 import io.fabric8.openshift.client.OpenShiftClient;
-import org.junit.jupiter.api.Test;
+import org.arquillian.cube.kubernetes.api.Session;
+import org.arquillian.cube.openshift.impl.requirement.RequiresOpenshift;
+import org.arquillian.cube.requirement.ArquillianConditionalRunner;
+import org.jboss.arquillian.test.api.ArquillianResource;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 
-import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
+import static junit.framework.TestCase.assertNotNull;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.awaitility.Awaitility.await;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
-@RequireK8sSupport(BuildConfig.class)
-@LoadKubernetesManifests("/buildconfig-it.yml")
-class BuildConfigIT {
-
+@RunWith(ArquillianConditionalRunner.class)
+@RequiresOpenshift
+public class BuildConfigIT {
+  @ArquillianResource
   OpenShiftClient client;
 
+  @ArquillianResource
+  Session session;
+
+  @BeforeClass
+  public static void init() {
+    ClusterEntity.apply(BuildConfigIT.class.getResourceAsStream("/buildconfig-it.yml"));
+  }
+
   @Test
-  void load() {
-    BuildConfig aBuildConfig = client.buildConfigs()
-        .load(getClass().getResourceAsStream("/test-buildconfig.yml")).item();
+  public void load() {
+    BuildConfig aBuildConfig = client.buildConfigs().inNamespace(session.getNamespace())
+      .load(getClass().getResourceAsStream("/test-buildconfig.yml")).get();
     assertThat(aBuildConfig).isNotNull();
     assertEquals("ruby-sample-build", aBuildConfig.getMetadata().getName());
   }
 
   @Test
-  void get() {
-    assertNotNull(client.buildConfigs().withName("bc-get").get());
+  public void get() {
+    assertNotNull(client.buildConfigs().inNamespace(session.getNamespace()).withName("bc-get").get());
   }
 
   @Test
-  void list() {
-    BuildConfigList bcList = client.buildConfigs().list();
+  public void list() {
+    BuildConfigList bcList = client.buildConfigs().inNamespace(session.getNamespace()).list();
     assertThat(bcList).isNotNull();
     assertTrue(bcList.getItems().size() >= 1);
   }
 
   @Test
-  void update() {
-    BuildConfig buildConfig1 = client.buildConfigs().withName("bc-update").edit(b -> new BuildConfigBuilder(b)
-        .editSpec().withFailedBuildsHistoryLimit(5).endSpec().build());
+  public void update() {
+    ReadyEntity<BuildConfig> buildConfigReady = new ReadyEntity<>(BuildConfig.class, client, "bc-update", session.getNamespace());
+    BuildConfig buildConfig1 = client.buildConfigs().inNamespace(session.getNamespace()).withName("bc-update").edit(b -> new BuildConfigBuilder(b)
+                                     .editSpec().withFailedBuildsHistoryLimit(5).endSpec().build());
+    await().atMost(30, TimeUnit.SECONDS).until(buildConfigReady);
     assertEquals(5, buildConfig1.getSpec().getFailedBuildsHistoryLimit().intValue());
   }
 
   @Test
-  void delete() {
-    client.buildConfigs().withName("bc-delete").waitUntilCondition(Objects::nonNull, 30, TimeUnit.SECONDS);
-    boolean bDeleted = client.buildConfigs().withName("bc-delete").delete().size() == 1;
+  public void delete() {
+    ReadyEntity<BuildConfig> buildConfigReady = new ReadyEntity<>(BuildConfig.class, client, "bc-delete", session.getNamespace());
+    await().atMost(30, TimeUnit.SECONDS).until(buildConfigReady);
+    boolean bDeleted = client.buildConfigs().inNamespace(session.getNamespace()).withName("bc-delete").delete();
     assertTrue(bDeleted);
   }
 
   @Test
-  void createOrReplace() {
+  public void createOrReplace() {
     // Given
-    BuildConfig buildConfig = client.buildConfigs().withName("bc-createorreplace").get();
+    BuildConfig buildConfig = client.buildConfigs().inNamespace(session.getNamespace()).withName("bc-createorreplace").get();
 
     // When
     buildConfig.getSpec().setSource(new BuildSourceBuilder()
-        .withNewGit()
-        .withUri("https://github.com/openshift/test2")
-        .endGit()
-        .build());
-    buildConfig = client.buildConfigs().createOrReplace(buildConfig);
+      .withNewGit()
+      .withUri("https://github.com/openshift/test2")
+      .endGit()
+      .build());
+    buildConfig = client.buildConfigs().inNamespace(session.getNamespace()).createOrReplace(buildConfig);
 
     // Then
     assertNotNull(buildConfig);

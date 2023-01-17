@@ -17,8 +17,8 @@ package io.fabric8.kubernetes.examples;
 
 import io.fabric8.kubernetes.api.model.networking.v1.NetworkPolicy;
 import io.fabric8.kubernetes.api.model.networking.v1.NetworkPolicyBuilder;
+import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClient;
-import io.fabric8.kubernetes.client.KubernetesClientBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,33 +35,34 @@ public class NetworkPolicyExample {
     if (args.length > 0) {
       namespace = args[0];
     }
-    try (KubernetesClient client = new KubernetesClientBuilder().build()) {
+    try (KubernetesClient client = new DefaultKubernetesClient()) {
       NetworkPolicy networkPolicy = new NetworkPolicyBuilder()
-          .withNewMetadata()
-          .withName("test-network-policy")
-          .endMetadata()
-          .withNewSpec()
-          .withNewPodSelector()
-          .withMatchLabels(Collections.singletonMap("role", "db"))
-          .endPodSelector()
-          .endSpec()
-          .build();
+        .withNewMetadata()
+        .withName("test-network-policy")
+        .endMetadata()
+        .withNewSpec()
+        .withNewPodSelector()
+        .withMatchLabels(Collections.singletonMap("role","db"))
+        .endPodSelector()
+        .endSpec()
+        .build();
+
 
       // create policy using NetworkPolicyBuilder object
       networkPolicy = client.network()
-          .v1()
-          .networkPolicies()
-          .inNamespace(namespace)
-          .createOrReplace(networkPolicy);
+        .v1()
+        .networkPolicies()
+        .inNamespace(namespace)
+        .createOrReplace(networkPolicy);
       logger.info("NetworkPolicy {}/{} created via builders", namespace, networkPolicy.getMetadata().getName());
 
       // crate policy using YAML resource
       networkPolicy = client.network()
-          .v1()
-          .networkPolicies()
-          .inNamespace(namespace)
-          .load(NetworkPolicyExample.class.getResourceAsStream("/network-policy.yml"))
-          .createOrReplace();
+        .v1()
+        .networkPolicies()
+        .inNamespace(namespace)
+        .load(NetworkPolicyExample.class.getResourceAsStream("/network-policy.yml"))
+        .createOrReplace();
       logger.info("NetworkPolicy {}/{} created via YAML manifest", namespace, networkPolicy.getMetadata().getName());
 
     }

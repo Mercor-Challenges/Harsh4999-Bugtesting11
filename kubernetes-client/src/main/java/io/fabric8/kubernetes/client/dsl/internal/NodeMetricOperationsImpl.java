@@ -15,41 +15,56 @@
  */
 package io.fabric8.kubernetes.client.dsl.internal;
 
-import io.fabric8.kubernetes.api.model.metrics.v1beta1.NodeMetrics;
-import io.fabric8.kubernetes.api.model.metrics.v1beta1.NodeMetricsList;
-import io.fabric8.kubernetes.client.Client;
-import io.fabric8.kubernetes.client.dsl.NodeMetricOperation;
-
 import java.util.Map;
 
-public class NodeMetricOperationsImpl extends MetricOperationsImpl<NodeMetrics, NodeMetricsList>
-    implements NodeMetricOperation {
+import io.fabric8.kubernetes.api.model.metrics.v1beta1.NodeMetrics;
+import io.fabric8.kubernetes.api.model.metrics.v1beta1.NodeMetricsList;
+import io.fabric8.kubernetes.client.Config;
+import io.fabric8.kubernetes.client.KubernetesClientException;
+import io.fabric8.kubernetes.client.dsl.base.OperationContext;
+import io.fabric8.kubernetes.client.dsl.base.OperationSupport;
+import io.fabric8.kubernetes.client.utils.URLUtils;
+import okhttp3.HttpUrl;
+import okhttp3.OkHttpClient;
 
-  public NodeMetricOperationsImpl(Client client) {
-    this(HasMetadataOperationsImpl.defaultContext(client));
-  }
+public class NodeMetricOperationsImpl extends OperationSupport {
+	private static String METRIC_ENDPOINT_URL = "apis/metrics.k8s.io/v1beta1/nodes";
 
-  public NodeMetricOperationsImpl(OperationContext context) {
-    super(context.withPlural("nodes"), NodeMetrics.class, NodeMetricsList.class);
-  }
+	public NodeMetricOperationsImpl(OkHttpClient client, Config config) {
+		super(new OperationContext().withOkhttpClient(client).withConfig(config));
+	}
 
-  @Override
-  public NodeMetrics metrics(String nodeName) {
-    return withName(nodeName).metric();
-  }
+	public NodeMetricsList metrics() {
+		try {
+			String resourceUrl = URLUtils.join(config.getMasterUrl(), METRIC_ENDPOINT_URL);
+			return handleMetric(resourceUrl, NodeMetricsList.class);
+		} catch(Exception e) {
+			throw KubernetesClientException.launderThrowable(e);
+		}
+	}
 
-  @Override
-  public NodeMetricOperation withLabels(Map<String, String> labels) {
-    return new NodeMetricOperationsImpl(context.withLabels(labels));
-  }
+	public NodeMetrics metrics(String nodeName) {
+		try {
+			String resourceUrl = URLUtils.join(config.getMasterUrl(), METRIC_ENDPOINT_URL, nodeName);
+			return handleMetric(resourceUrl, NodeMetrics.class);
+		} catch(Exception e) {
+			throw KubernetesClientException.launderThrowable(e);
+		}
+	}
 
-  @Override
-  public NodeMetricOperation withName(String name) {
-    return new NodeMetricOperationsImpl(context.withName(name));
-  }
+	public NodeMetricsList metrics(Map<String, Object> labelsMap) {
+		try {
+      HttpUrl.Builder httpUrlBuilder = HttpUrl.get(URLUtils.join(config.getMasterUrl(), METRIC_ENDPOINT_URL)).newBuilder();
 
-  @Override
-  public boolean isResourceNamespaced() {
-    return false; // workaround until the class metadata is fixed
-  }
+      StringBuilder sb = new StringBuilder();
+			for(Map.Entry<String, Object> entry : labelsMap.entrySet()) {
+				sb.append(entry.getKey()).append("=").append(entry.getValue().toString()).append(",");
+			}
+      httpUrlBuilder.addQueryParameter("labelSelector", sb.toString().substring(0, sb.toString().length() - 1));
+			return handleMetric(httpUrlBuilder.build().toString(), NodeMetricsList.class);
+		} catch(Exception e) {
+			throw KubernetesClientException.launderThrowable(e);
+		}
+	}
+
 }

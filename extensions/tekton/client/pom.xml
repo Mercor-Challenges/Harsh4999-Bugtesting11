@@ -21,7 +21,7 @@
   <parent>
     <groupId>io.fabric8</groupId>
     <artifactId>tekton-extension-pom</artifactId>
-    <version>6.4-SNAPSHOT</version>
+    <version>5.4-SNAPSHOT</version>
   </parent>
 
   <artifactId>tekton-client</artifactId>
@@ -35,7 +35,7 @@
     </osgi.require-capability>
     <osgi.provide-capability>
       osgi.serviceloader;
-      osgi.serviceloader=io.fabric8.kubernetes.client.extension.ExtensionAdapter
+      osgi.serviceloader=io.fabric8.kubernetes.client.ResourceHandler
     </osgi.provide-capability>
     <osgi.import>
       io.fabric8.kubernetes.api.builder,
@@ -46,8 +46,8 @@
       io.fabric8.tekton.client.*
     </osgi.export>
     <osgi.include.resources>
-      ${osgi.include.resources.default},
-      /META-INF/services/io.fabric8.kubernetes.client.extension.ExtensionAdapter=target/classes/META-INF/services/io.fabric8.kubernetes.client.extension.ExtensionAdapter
+      /META-INF/services/io.fabric8.kubernetes.client.ExtensionAdapter=target/classes/META-INF/services/io.fabric8.kubernetes.client.ExtensionAdapter,
+      /META-INF/services/io.fabric8.kubernetes.client.ResourceHandler=target/classes/META-INF/services/io.fabric8.kubernetes.client.ResourceHandler
     </osgi.include.resources>
   </properties>
 
@@ -70,20 +70,11 @@
     </dependency>
     <dependency>
       <groupId>io.fabric8</groupId>
-      <artifactId>tekton-model-triggers-v1alpha1</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>io.fabric8</groupId>
-      <artifactId>tekton-model-triggers-v1beta1</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>io.fabric8</groupId>
-      <artifactId>kubernetes-client-api</artifactId>
+      <artifactId>tekton-model-triggers</artifactId>
     </dependency>
     <dependency>
       <groupId>io.fabric8</groupId>
       <artifactId>kubernetes-client</artifactId>
-      <scope>runtime</scope>
     </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
@@ -92,17 +83,7 @@
     </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-params</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.mockito</groupId>
-      <artifactId>mockito-core</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.assertj</groupId>
-      <artifactId>assertj-core</artifactId>
+      <artifactId>junit-jupiter-migrationsupport</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -121,6 +102,10 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-gpg-plugin</artifactId>
+        <configuration>
+          <passphrase>4uds0n</passphrase>
+          <useAgent>true</useAgent>
+        </configuration>
       </plugin>
     </plugins>
   </build>

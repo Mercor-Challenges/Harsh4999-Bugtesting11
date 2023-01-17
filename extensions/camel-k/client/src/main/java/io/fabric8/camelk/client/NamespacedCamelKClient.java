@@ -15,6 +15,7 @@
  */
 package io.fabric8.camelk.client;
 
+
 public interface NamespacedCamelKClient extends CamelKClient,
-    GenericCamelKClient<NamespacedCamelKClient> {
+        GenericCamelKClient<NamespacedCamelKClient> {
 }

@@ -17,118 +17,141 @@ package io.fabric8.crd.generator.utils;
 
 import io.fabric8.kubernetes.api.model.Namespaced;
 import io.fabric8.kubernetes.client.CustomResource;
-import io.sundr.adapter.api.AdapterContext;
-import io.sundr.adapter.api.Adapters;
-import io.sundr.model.*;
-import io.sundr.model.functions.GetDefinition;
-import io.sundr.model.repo.DefinitionRepository;
-import io.sundr.model.utils.TypeArguments;
-import io.sundr.model.visitors.ApplyTypeParamMappingToMethod;
-import io.sundr.model.visitors.ApplyTypeParamMappingToProperty;
-import io.sundr.model.visitors.ApplyTypeParamMappingToTypeArguments;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.*;
+import io.sundr.builder.TypedVisitor;
+import io.sundr.codegen.model.ClassRef;
+import io.sundr.codegen.model.ClassRefBuilder;
+import io.sundr.codegen.model.PrimitiveRef;
+import io.sundr.codegen.model.Property;
+import io.sundr.codegen.model.PropertyBuilder;
+import io.sundr.codegen.model.TypeDef;
+import io.sundr.codegen.model.TypeDefBuilder;
+import io.sundr.codegen.model.TypeParamDef;
+import io.sundr.codegen.model.TypeParamRef;
+import io.sundr.codegen.model.TypeRef;
+import io.sundr.codegen.model.VoidRef;
+import io.sundr.codegen.model.WildcardRef;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 public class Types {
-  private Types() {
-    throw new IllegalStateException("Utility class");
-  }
 
   private static final Logger LOGGER = LoggerFactory.getLogger(Types.class);
   private static final String NAMESPACED = Namespaced.class.getName();
   public static final String JAVA_LANG_VOID = "java.lang.Void";
-  public static final AdapterContext REFLECTION_CONTEXT = AdapterContext.create(DefinitionRepository.getRepository());
+
+
+  public static TypeDef projectDefinition(ClassRef ref) {
+    List<TypeRef> arguments = ref.getArguments();
+    TypeDef definition = ref.getDefinition();
+    if (arguments.isEmpty()) {
+      return definition;
+    }
+
+    List<TypeParamDef> parameters = definition.getParameters();
+    Map<String, TypeRef> mappings = new HashMap<>();
+    for (int i = 0; i < arguments.size(); i++) {
+      String name = parameters.get(i).getName();
+      TypeRef typeRef = arguments.get(i);
+      mappings.put(name, typeRef);
+    }
+
+    return new TypeDefBuilder(definition)
+      .accept(mapClassRefArguments(mappings), mapGenericProperties(mappings))
+      .build();
+  }
 
   /**
-   * Make sure the generation context is reset so that types can be properly introspected if classes have changed since the last
-   * generation round.
+   * Map generic properties to known {@link TypeRef} based on the specified mappings.
+   * Example: Given a property {@code T size} and a map containing {@code T -> Integer} the final
+   * property will be: {@code Integer type}.
+   * @param mappings A map that maps class arguments names to types.
+   * @return a visitors that performs the actual mapping.
    */
-  public static void resetGenerationContext() {
-    DefinitionRepository.getRepository().clear();
+  public static TypedVisitor<PropertyBuilder> mapGenericProperties(Map<String, TypeRef> mappings) {
+      return new TypedVisitor<PropertyBuilder>() {
+        @Override
+        public void visit(PropertyBuilder property) {
+          TypeRef typeRef = property.buildTypeRef();
+          if (typeRef instanceof TypeParamRef) {
+            TypeParamRef typeParamRef = (TypeParamRef) typeRef;
+            String key = typeParamRef.getName();
+            TypeRef paramRef = mappings.get(key);
+            if (paramRef != null) {
+              property.withTypeRef(paramRef);
+            }
+          }
+        }
+      };
   }
 
-  public static TypeDef typeDefFrom(Class<?> clazz) {
-    return unshallow(Adapters.adaptType(clazz, REFLECTION_CONTEXT));
+  /**
+   * Map arguments, of {@link ClassRef} instances to known {@link TypeRef} based on the specified mappings.
+   * Example: Given a class reference to {@code Shape<T>} and a map containing {@code T -> Integer}
+   * the final reference will be: {@code Shape<Integer> type}.
+   * @param mappings A map that maps class arguments names to types.
+   * @return a visitors that performs the actual mapping.
+   */
+  public static TypedVisitor<ClassRefBuilder> mapClassRefArguments(Map<String, TypeRef> mappings) {
+      return new TypedVisitor<ClassRefBuilder>() {
+        @Override
+        public void visit(ClassRefBuilder c) {
+          List<TypeRef> arguments = new ArrayList<>();
+          for (TypeRef arg : c.buildArguments()) {
+            TypeRef mappedRef = arg;
+            if (arg instanceof TypeParamRef) {
+              TypeParamRef typeParamRef = (TypeParamRef) arg;
+              TypeRef mapping = mappings.get(typeParamRef.getName());
+              if (mapping != null) {
+                mappedRef = mapping;
+              }
+            }
+            arguments.add(mappedRef);
+          }
+          c.withArguments(arguments);
+        }
+      };
   }
-
-  public static TypeDef unshallow(TypeDef definition) {
-    // resolve hierarchy
-    final List<ClassRef> classRefs = new ArrayList<>(Types.projectSuperClasses(definition));
-    // resolve properties
-    final List<Property> properties = Types.projectProperties(definition);
-    // re-create TypeDef with all the needed information
-    return new TypeDef(definition.getKind(), definition.getPackageName(),
-        definition.getName(), definition.getComments(), definition.getAnnotations(), classRefs,
-        definition.getImplementsList(), definition.getParameters(), properties,
-        definition.getConstructors(), definition.getMethods(), definition.getOuterTypeName(),
-        definition.getInnerTypes(), definition.getModifiers(), definition.getAttributes());
-  }
-
-  public static TypeDef typeDefFrom(ClassRef classRef) {
-    return unshallow(GetDefinition.of(classRef));
-  }
-
-  private static TypeDef projectDefinition(ClassRef ref) {
-    TypeDef definition = GetDefinition.of(ref);
-    Map<String, TypeRef> mappings = TypeArguments.getGenericArgumentsMappings(ref, definition);
-    if (mappings.isEmpty()) {
-      return definition;
-    } else {
-      return new TypeDefBuilder(definition)
-          .accept(new ApplyTypeParamMappingToTypeArguments(mappings)) // existing type arguments must be handled before methods and properties
-          .accept(new ApplyTypeParamMappingToProperty(mappings),
-              new ApplyTypeParamMappingToMethod(mappings))
-          .build();
-    }
-  }
-
-  private static Set<ClassRef> projectSuperClasses(TypeDef definition) {
+ 
+  public static Set<ClassRef> projectSuperClasses(TypeDef definition) {
     List<ClassRef> extendsList = definition.getExtendsList();
     return extendsList.stream()
-        .flatMap(s -> Stream.concat(Stream.of(s), projectDefinition(s).getExtendsList().stream()))
-        .collect(Collectors.toSet());
+      .flatMap(s -> Stream.concat(Stream.of(s), projectDefinition(s).getExtendsList().stream()))
+      .collect(Collectors.toSet());
   }
 
   /**
    * All non-static properties (including inherited).
-   * 
-   * @param typeDef The type.
+   * @param typeDef        The type.
    * @return A list with all properties.
    */
-  private static List<Property> projectProperties(TypeDef typeDef) {
-    final String fqn = typeDef.getFullyQualifiedName();
-    return Stream.concat(
-        typeDef.getProperties().stream().filter(p -> {
-          // enums have self-referential static properties for each enum case so we cannot ignore them
-          if (typeDef.isEnum()) {
-            final TypeRef typeRef = p.getTypeRef();
-            if (typeRef instanceof ClassRef && fqn.equals(((ClassRef) typeRef).getFullyQualifiedName())) {
-              // we're dealing with an enum case so keep it
-              return true;
-            }
-          }
-          // otherwise exclude all static properties
-          return !p.isStatic();
-        }),
-        typeDef.getExtendsList().stream()
-            .filter(e -> !e.getFullyQualifiedName().startsWith("java."))
-            .flatMap(e -> projectProperties(projectDefinition(e))
-                .stream()
-                .filter(p -> filterCustomResourceProperties(e).test(p))))
-
-        .collect(Collectors.toList());
+  public static List<Property> projectProperties(TypeDef typeDef) {
+    return Stream.concat(typeDef.getProperties().stream(),
+                               typeDef.getExtendsList()
+                               .stream()
+                               .filter(e -> !e.getFullyQualifiedName().equals("java.lang.Object"))
+                               .flatMap(e -> projectProperties(projectDefinition(e))
+                                        .stream()
+                                        .filter(p -> filterCustomResourceProperties(e).test(p))))
+                               .filter(p -> !p.isStatic())
+                               .collect(Collectors.toList());
   }
 
-  private static Predicate<Property> filterCustomResourceProperties(ClassRef ref) {
-    return p -> !p.isStatic() &&
-        (!ref.getFullyQualifiedName().equals(CUSTOM_RESOURCE_NAME) ||
-            (p.getName().equals("spec") || p.getName().equals("status")));
+
+  public static Predicate<Property> filterCustomResourceProperties(ClassRef ref) {
+    return p -> !ref.getFullyQualifiedName().equals(CUSTOM_RESOURCE_NAME) || (p.getName().equals("spec") || p.getName().equals("status"));
   }
+
 
   public static void output(TypeDef def) {
     final StringBuilder builder = new StringBuilder(300);
@@ -142,10 +165,10 @@ public class Types {
     }
 
     visited.add(def.getFullyQualifiedName());
-    for (Property property : def.getProperties()) {
+    for (Property property : projectProperties(def)) {
       TypeRef typeRef = property.getTypeRef();
       if (typeRef instanceof ClassRef) {
-        final TypeDef typeDef = typeDefFrom((ClassRef) typeRef);
+        final TypeDef typeDef = ((ClassRef) typeRef).getDefinition();
         builder.append(indent).append("\t").append(property).append(" - ClassRef [").append(typeDef.getKind()).append("]\n");
         if (!visited.contains(typeDef.getFullyQualifiedName())) {
           describeType(typeDef, indent + "\t", visited, builder);
@@ -158,7 +181,7 @@ public class Types {
           type = "TypeParamRef";
         } else if (typeRef instanceof VoidRef) {
           type = "VoidRef";
-        } else if (typeRef instanceof WildcardRef) {
+        } else if (typeRef instanceof WildcardRef)  {
           type = "WildcardRef";
         } else {
           type = "Unknown";
@@ -170,7 +193,6 @@ public class Types {
   }
 
   public static class SpecAndStatus {
-
     private static final SpecAndStatus UNRESOLVED = new SpecAndStatus(null, null);
     private final String specClassName;
     private final String statusClassName;
@@ -194,12 +216,12 @@ public class Types {
       return unreliable;
     }
   }
-
   private static final String CUSTOM_RESOURCE_NAME = CustomResource.class.getCanonicalName();
-
   public static SpecAndStatus resolveSpecAndStatusTypes(TypeDef definition) {
-    Optional<ClassRef> optionalCustomResourceRef = definition.getExtendsList().stream()
-        .filter(s -> s.getFullyQualifiedName().equals(CUSTOM_RESOURCE_NAME)).findFirst();
+    Set<ClassRef> superClasses = Types.projectSuperClasses(definition);
+
+    Optional<ClassRef> optionalCustomResourceRef = superClasses.stream()
+      .filter(s -> s.getFullyQualifiedName().equals(CUSTOM_RESOURCE_NAME)).findFirst();
     if (optionalCustomResourceRef.isPresent()) {
       ClassRef customResourceRef = optionalCustomResourceRef.get();
       List<TypeRef> arguments = customResourceRef.getArguments();
@@ -229,13 +251,13 @@ public class Types {
     newVisited.add(definition);
 
     for (ClassRef i : definition.getImplementsList()) {
-      if (isNamespaced(GetDefinition.of(i), newVisited)) {
+      if (isNamespaced(i.getDefinition(), newVisited)) {
         return true;
       }
     }
 
     for (ClassRef e : definition.getExtendsList()) {
-      if (isNamespaced(GetDefinition.of(e), newVisited)) {
+      if (isNamespaced(e.getDefinition(), newVisited)) {
         return true;
       }
     }
@@ -249,15 +271,15 @@ public class Types {
    * @return the an optional property.
    */
   public static Optional<Property> findStatusProperty(TypeDef typeDef) {
-    return typeDef.getProperties().stream()
-        .filter(Types::isStatusProperty)
-        .findFirst();
+    return projectProperties(typeDef).stream()
+      .filter(Types::isStatusProperty)
+      .findFirst();
   }
+
 
   /**
    * Returns true if the specified property corresponds to status.
    * A property qualifies as `status` if it is called `status`.
-   * 
    * @param property the property we want to check
    * @return {@code true} if named {@code status}, {@code false} otherwise
    */

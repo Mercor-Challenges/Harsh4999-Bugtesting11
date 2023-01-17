@@ -16,12 +16,13 @@
 package io.fabric8.tekton.pipeline.v1beta1;
 
 import io.fabric8.kubernetes.api.model.DeletionPropagation;
-import io.fabric8.kubernetes.client.server.mock.EnableKubernetesMockClient;
-import io.fabric8.kubernetes.client.server.mock.KubernetesMockServer;
 import io.fabric8.tekton.client.TektonClient;
+import io.fabric8.tekton.mock.TektonServer;
 import okhttp3.mockwebserver.RecordedRequest;
+import org.junit.Rule;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.migrationsupport.rules.EnableRuleMigrationSupport;
 
 import java.net.HttpURLConnection;
 
@@ -29,22 +30,21 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@EnableKubernetesMockClient
+@EnableRuleMigrationSupport
 class PipelineTest {
-
-  KubernetesMockServer server;
-  TektonClient client;
+  @Rule
+  public TektonServer server = new TektonServer();
 
   @Test
   @DisplayName("Should get a pipeline")
   void testGet() {
     server.expect().get().withPath("/apis/tekton.dev/v1beta1/namespaces/ns1/pipelines/pipeline")
-        .andReturn(HttpURLConnection.HTTP_OK, new io.fabric8.tekton.pipeline.v1beta1.PipelineBuilder()
-            .withNewMetadata()
-            .withName("pipeline")
-            .endMetadata()
-            .build())
-        .once();
+      .andReturn(HttpURLConnection.HTTP_OK, new io.fabric8.tekton.pipeline.v1beta1.PipelineBuilder()
+        .withNewMetadata()
+        .withName("pipeline")
+        .endMetadata()
+        .build()).once();
+    TektonClient client = server.getTektonClient();
 
     Pipeline pipeline = client.v1beta1().pipelines().inNamespace("ns1").withName("pipeline").get();
     assertNotNull(pipeline);
@@ -53,10 +53,10 @@ class PipelineTest {
   @Test
   @DisplayName("Should create a pipeline")
   void testCreate() {
-    Pipeline pipeline = new io.fabric8.tekton.pipeline.v1beta1.PipelineBuilder().withNewMetadata().withName("pipeline")
-        .endMetadata().build();
+    Pipeline pipeline = new io.fabric8.tekton.pipeline.v1beta1.PipelineBuilder().withNewMetadata().withName("pipeline").endMetadata().build();
     server.expect().post().withPath("/apis/tekton.dev/v1beta1/namespaces/ns1/pipelines")
-        .andReturn(HttpURLConnection.HTTP_OK, pipeline).once();
+      .andReturn(HttpURLConnection.HTTP_OK, pipeline).once();
+    TektonClient client = server.getTektonClient();
 
     pipeline = client.v1beta1().pipelines().inNamespace("ns1").create(pipeline);
     assertNotNull(pipeline);
@@ -66,30 +66,29 @@ class PipelineTest {
   @DisplayName("Should delete a pipeline")
   void testDelete() throws InterruptedException {
     server.expect().delete().withPath("/apis/tekton.dev/v1beta1/namespaces/ns1/pipelines/pipeline")
-        .andReturn(HttpURLConnection.HTTP_OK, new io.fabric8.tekton.pipeline.v1beta1.PipelineBuilder().build())
-        .once();
+      .andReturn(HttpURLConnection.HTTP_OK, new io.fabric8.tekton.pipeline.v1beta1.PipelineBuilder().build())
+      .once();
+    TektonClient client = server.getTektonClient();
 
-    boolean isDeleted = client.v1beta1().pipelines().inNamespace("ns1").withName("pipeline").delete().size() == 1;
+    Boolean isDeleted = client.v1beta1().pipelines().inNamespace("ns1").withName("pipeline").delete();
     assertTrue(isDeleted);
 
-    RecordedRequest recordedRequest = server.takeRequest();
-    assertEquals("{\"apiVersion\":\"v1\",\"kind\":\"DeleteOptions\",\"propagationPolicy\":\"Background\"}",
-        recordedRequest.getBody().readUtf8());
+    RecordedRequest recordedRequest = server.getMockServer().takeRequest();
+    assertEquals("{\"apiVersion\":\"v1\",\"kind\":\"DeleteOptions\",\"propagationPolicy\":\"Background\"}", recordedRequest.getBody().readUtf8());
   }
 
   @Test
   @DisplayName("Should delete pipeline with some explicit propagationpolicy")
   void testDeleteOrphan() throws InterruptedException {
     server.expect().delete().withPath("/apis/tekton.dev/v1beta1/namespaces/ns1/pipelines/pipeline")
-        .andReturn(HttpURLConnection.HTTP_OK, new io.fabric8.tekton.pipeline.v1beta1.PipelineBuilder().build())
-        .once();
+      .andReturn(HttpURLConnection.HTTP_OK, new io.fabric8.tekton.pipeline.v1beta1.PipelineBuilder().build())
+      .once();
+    TektonClient client = server.getTektonClient();
 
-    Boolean isDeleted = client.v1beta1().pipelines().inNamespace("ns1").withName("pipeline")
-        .withPropagationPolicy(DeletionPropagation.ORPHAN).delete().size() == 1;
+    Boolean isDeleted = client.v1beta1().pipelines().inNamespace("ns1").withName("pipeline").withPropagationPolicy(DeletionPropagation.ORPHAN).delete();
     assertTrue(isDeleted);
 
-    RecordedRequest recordedRequest = server.takeRequest();
-    assertEquals("{\"apiVersion\":\"v1\",\"kind\":\"DeleteOptions\",\"propagationPolicy\":\"Orphan\"}",
-        recordedRequest.getBody().readUtf8());
+    RecordedRequest recordedRequest = server.getMockServer().takeRequest();
+    assertEquals("{\"apiVersion\":\"v1\",\"kind\":\"DeleteOptions\",\"propagationPolicy\":\"Orphan\"}", recordedRequest.getBody().readUtf8());
   }
 }

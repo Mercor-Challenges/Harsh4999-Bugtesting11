@@ -15,68 +15,68 @@
  */
 package io.fabric8.kubernetes.client.dsl.internal.core.v1;
 
-import io.fabric8.kubernetes.api.model.Pod;
+import io.fabric8.kubernetes.client.dsl.internal.apps.v1.RollingUpdater;
+import okhttp3.OkHttpClient;
 import io.fabric8.kubernetes.api.model.PodList;
 import io.fabric8.kubernetes.api.model.ReplicationController;
 import io.fabric8.kubernetes.api.model.ReplicationControllerBuilder;
 import io.fabric8.kubernetes.api.model.ReplicationControllerList;
-import io.fabric8.kubernetes.client.Client;
-import io.fabric8.kubernetes.client.dsl.FilterWatchListDeletable;
-import io.fabric8.kubernetes.client.dsl.MixedOperation;
-import io.fabric8.kubernetes.client.dsl.PodResource;
+import io.fabric8.kubernetes.client.Config;
+import io.fabric8.kubernetes.client.dsl.Operation;
 import io.fabric8.kubernetes.client.dsl.RollableScalableResource;
-import io.fabric8.kubernetes.client.dsl.internal.apps.v1.RollingUpdater;
 
 class ReplicationControllerRollingUpdater extends RollingUpdater<ReplicationController, ReplicationControllerList> {
 
-  ReplicationControllerRollingUpdater(Client client, String namespace) {
-    super(client, namespace);
+  ReplicationControllerRollingUpdater(OkHttpClient client, Config config, String namespace) {
+    super(client, config, namespace);
   }
 
-  ReplicationControllerRollingUpdater(Client client, String namespace, long rollingTimeoutMillis, long loggingIntervalMillis) {
-    super(client, namespace, rollingTimeoutMillis, loggingIntervalMillis);
+  ReplicationControllerRollingUpdater(OkHttpClient client, Config config, String namespace, long rollingTimeoutMillis, long loggingIntervalMillis) {
+    super(client, config, namespace, rollingTimeoutMillis, loggingIntervalMillis);
   }
 
   @Override
   protected ReplicationController createClone(ReplicationController obj, String newName, String newDeploymentHash) {
     return new ReplicationControllerBuilder(obj)
-        .editMetadata()
-        .withResourceVersion(null)
-        .withName(newName)
-        .endMetadata()
-        .editSpec()
-        .withReplicas(0).addToSelector(DEPLOYMENT_KEY, newDeploymentHash)
-        .editTemplate().editMetadata().addToLabels(DEPLOYMENT_KEY, newDeploymentHash).endMetadata().endTemplate()
-        .endSpec()
-        .build();
+      .editMetadata()
+      .withResourceVersion(null)
+      .withName(newName)
+      .endMetadata()
+      .editSpec()
+      .withReplicas(0).addToSelector(DEPLOYMENT_KEY, newDeploymentHash)
+      .editTemplate().editMetadata().addToLabels(DEPLOYMENT_KEY, newDeploymentHash).endMetadata().endTemplate()
+      .endSpec()
+      .build();
   }
 
   @Override
-  protected FilterWatchListDeletable<Pod, PodList, PodResource> selectedPodLister(ReplicationController obj) {
-    return pods().inNamespace(namespace).withLabels(obj.getSpec().getSelector());
+  protected PodList listSelectedPods(ReplicationController obj) {
+    return pods().inNamespace(namespace).withLabels(obj.getSpec().getSelector()).list();
   }
+
 
   @Override
   protected ReplicationController updateDeploymentKey(String name, String hash) {
-    ReplicationController old = resources().inNamespace(namespace).withName(name).get();
-    ReplicationController updated = new ReplicationControllerBuilder(old).editSpec()
-        .addToSelector(DEPLOYMENT_KEY, hash)
-        .editTemplate().editMetadata().addToLabels(DEPLOYMENT_KEY, hash).endMetadata().endTemplate()
-        .endSpec()
-        .build();
-    return resources().inNamespace(namespace).withName(name).replace(updated);
+     ReplicationController old = resources().inNamespace(namespace).withName(name).get();
+     ReplicationController updated = new ReplicationControllerBuilder(old).editSpec()
+       .addToSelector(DEPLOYMENT_KEY, hash)
+       .editTemplate().editMetadata().addToLabels(DEPLOYMENT_KEY, hash).endMetadata().endTemplate()
+       .endSpec()
+       .build();
+     return resources().inNamespace(namespace).withName(name).replace(updated);
   }
 
   @Override
   protected ReplicationController removeDeploymentKey(String name) {
-    ReplicationController old = resources().inNamespace(namespace).withName(name).get();
-    ReplicationController updated = new ReplicationControllerBuilder(old).editSpec()
-        .removeFromSelector(DEPLOYMENT_KEY)
-        .editTemplate().editMetadata().removeFromLabels(DEPLOYMENT_KEY).endMetadata().endTemplate()
-        .endSpec()
-        .build();
-    return resources().inNamespace(namespace).withName(name).replace(updated);
+     ReplicationController old = resources().inNamespace(namespace).withName(name).get();
+     ReplicationController updated = new ReplicationControllerBuilder(old).editSpec()
+       .removeFromSelector(DEPLOYMENT_KEY)
+       .editTemplate().editMetadata().removeFromLabels(DEPLOYMENT_KEY).endMetadata().endTemplate()
+       .endSpec()
+       .build();
+     return resources().inNamespace(namespace).withName(name).replace(updated);
   }
+
 
   @Override
   protected int getReplicas(ReplicationController obj) {
@@ -89,7 +89,7 @@ class ReplicationControllerRollingUpdater extends RollingUpdater<ReplicationCont
   }
 
   @Override
-  protected MixedOperation<ReplicationController, ReplicationControllerList, RollableScalableResource<ReplicationController>> resources() {
-    return new ReplicationControllerOperationsImpl(this.client);
+  protected Operation<ReplicationController, ReplicationControllerList, RollableScalableResource<ReplicationController>> resources() {
+    return new ReplicationControllerOperationsImpl(client, config);
   }
 }

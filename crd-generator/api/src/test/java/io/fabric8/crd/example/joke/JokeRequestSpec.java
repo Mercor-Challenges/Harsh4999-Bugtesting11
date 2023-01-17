@@ -15,59 +15,51 @@
  */
 package io.fabric8.crd.example.joke;
 
-import com.fasterxml.jackson.annotation.JsonPropertyDescription;
-import io.fabric8.kubernetes.model.annotation.PrinterColumn;
-
 public class JokeRequestSpec {
+    public enum Category {
+        Any,
+        Misc,
+        Programming,
+        Dark,
+        Pun,
+        Spooky,
+        Christmas
+    }
 
-  public enum Category {
-    Any,
-    Misc,
-    Programming,
-    Dark,
-    Pun,
-    Spooky,
-    Christmas
-  }
+    public enum ExcludedTopic {
+        nsfw,
+        religious,
+        political,
+        racist,
+        sexist,
+        explicit
+    }
 
-  public enum ExcludedTopic {
-    nsfw,
-    religious,
-    political,
-    racist,
-    sexist,
-    explicit
-  }
+    private Category category = Category.Any;
+    private ExcludedTopic[] excluded = new ExcludedTopic[] { ExcludedTopic.nsfw, ExcludedTopic.racist, ExcludedTopic.sexist };
+    private boolean safe;
 
-  @PrinterColumn(name = "jokeCategory")
-  @JsonPropertyDescription("category-description")
-  private Category category = Category.Any;
-  @PrinterColumn(name = "excludedTopics")
-  private ExcludedTopic[] excluded = new ExcludedTopic[] { ExcludedTopic.nsfw, ExcludedTopic.racist,
-      ExcludedTopic.sexist };
-  private boolean safe;
+    public Category getCategory() {
+        return category;
+    }
 
-  public Category getCategory() {
-    return category;
-  }
+    public void setCategory(Category category) {
+        this.category = category;
+    }
 
-  public void setCategory(Category category) {
-    this.category = category;
-  }
+    public ExcludedTopic[] getExcluded() {
+        return excluded;
+    }
 
-  public ExcludedTopic[] getExcluded() {
-    return excluded;
-  }
+    public void setExcluded(ExcludedTopic[] excluded) {
+        this.excluded = excluded;
+    }
 
-  public void setExcluded(ExcludedTopic[] excluded) {
-    this.excluded = excluded;
-  }
+    public boolean isSafe() {
+        return safe;
+    }
 
-  public boolean isSafe() {
-    return safe;
-  }
-
-  public void setSafe(boolean safe) {
-    this.safe = safe;
-  }
+    public void setSafe(boolean safe) {
+        this.safe = safe;
+    }
 }

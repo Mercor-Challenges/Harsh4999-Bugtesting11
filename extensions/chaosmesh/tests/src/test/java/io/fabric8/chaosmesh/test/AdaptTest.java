@@ -16,19 +16,35 @@
 package io.fabric8.chaosmesh.test;
 
 import io.fabric8.chaosmesh.client.ChaosMeshClient;
+import io.fabric8.chaosmesh.server.mock.ChaosMeshMockServer;
+import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClient;
-import io.fabric8.kubernetes.client.server.mock.EnableKubernetesMockClient;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.migrationsupport.rules.EnableRuleMigrationSupport;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-@EnableKubernetesMockClient
+@EnableRuleMigrationSupport
 class AdaptTest {
 
-  KubernetesClient client;
+  private final ChaosMeshMockServer mock = new ChaosMeshMockServer();
+
+  @BeforeEach
+  public void setUp() {
+    mock.init();
+  }
+
+  @AfterEach
+  public void tearDown() {
+    mock.destroy();
+  }
 
   @Test
   void testAdapt() {
-    assertNotNull(client.adapt(ChaosMeshClient.class));
+    ChaosMeshClient sc = mock.createChaosMesh();
+    KubernetesClient kc = new DefaultKubernetesClient(sc.getConfiguration());
+    assertNotNull(kc.adapt(ChaosMeshClient.class));
   }
 }

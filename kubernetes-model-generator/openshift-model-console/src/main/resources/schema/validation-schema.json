@@ -156,7 +156,7 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/kubernetes_apimachinery_pkg_runtime_RawExtension",
-            "existingJavaType": "io.fabric8.kubernetes.api.model.KubernetesResource"
+            "existingJavaType": "io.fabric8.kubernetes.api.model.HasMetadata"
           }
         },
         "kind": {
@@ -170,10 +170,10 @@
         }
       },
       "additionalProperties": true,
-      "existingJavaType": "io.fabric8.kubernetes.api.model.KubernetesList",
+      "existingJavaType": "io.fabric8.kubernetes.api.model.BaseKubernetesList",
       "javaInterfaces": [
         "io.fabric8.kubernetes.api.model.KubernetesResource",
-        "io.fabric8.kubernetes.api.model.KubernetesResourceList\u003cio.fabric8.kubernetes.api.model.KubernetesResource\u003e"
+        "io.fabric8.kubernetes.api.model.KubernetesResourceList\u003cio.fabric8.kubernetes.api.model.HasMetadata\u003e"
       ]
     },
     "kubernetes_apimachinery_ListMeta": {
@@ -218,9 +218,6 @@
         "operation": {
           "type": "string"
         },
-        "subresource": {
-          "type": "string"
-        },
         "time": {
           "$ref": "#/definitions/kubernetes_apimachinery_Time",
           "existingJavaType": "String"
@@ -241,6 +238,9 @@
             "type": "string"
           },
           "existingJavaType": "java.util.Map\u003cString, String\u003e"
+        },
+        "clusterName": {
+          "type": "string"
         },
         "creationTimestamp": {
           "$ref": "#/definitions/kubernetes_apimachinery_Time",
@@ -488,10 +488,18 @@
         "io.fabric8.kubernetes.api.model.KubernetesResource"
       ]
     },
+    "kubernetes_apimachinery_pkg_runtime_ImageRawExtension": {
+      "type": "object",
+      "additionalProperties": true,
+      "javaType": "io.fabric8.kubernetes.api.model.runtime.RawExtension",
+      "javaInterfaces": [
+        "io.fabric8.kubernetes.api.model.KubernetesResource"
+      ]
+    },
     "kubernetes_apimachinery_pkg_runtime_RawExtension": {
       "type": "object",
       "additionalProperties": true,
-      "existingJavaType": "io.fabric8.kubernetes.api.model.KubernetesResource",
+      "existingJavaType": "io.fabric8.kubernetes.api.model.HasMetadata",
       "javaInterfaces": [
         "io.fabric8.kubernetes.api.model.KubernetesResource"
       ]
@@ -529,37 +537,6 @@
       },
       "additionalProperties": true,
       "existingJavaType": "io.fabric8.kubernetes.api.model.version.Info",
-      "javaInterfaces": [
-        "io.fabric8.kubernetes.api.model.KubernetesResource"
-      ]
-    },
-    "kubernetes_authorization_v1_ResourceAttributes": {
-      "type": "object",
-      "properties": {
-        "group": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "namespace": {
-          "type": "string"
-        },
-        "resource": {
-          "type": "string"
-        },
-        "subresource": {
-          "type": "string"
-        },
-        "verb": {
-          "type": "string"
-        },
-        "version": {
-          "type": "string"
-        }
-      },
-      "additionalProperties": true,
-      "existingJavaType": "io.fabric8.kubernetes.api.model.authorization.v1.ResourceAttributes",
       "javaInterfaces": [
         "io.fabric8.kubernetes.api.model.KubernetesResource"
       ]
@@ -931,186 +908,6 @@
         "io.fabric8.kubernetes.api.model.KubernetesResource"
       ]
     },
-    "os_console_v1_ConsoleQuickStart": {
-      "type": "object",
-      "properties": {
-        "apiVersion": {
-          "type": "string",
-          "default": "console.openshift.io/v1",
-          "required": true
-        },
-        "kind": {
-          "type": "string",
-          "default": "ConsoleQuickStart",
-          "required": true
-        },
-        "metadata": {
-          "$ref": "#/definitions/kubernetes_apimachinery_ObjectMeta",
-          "existingJavaType": "io.fabric8.kubernetes.api.model.ObjectMeta"
-        },
-        "spec": {
-          "$ref": "#/definitions/os_console_v1_ConsoleQuickStartSpec",
-          "existingJavaType": "io.fabric8.openshift.api.model.console.v1.ConsoleQuickStartSpec"
-        }
-      },
-      "additionalProperties": true,
-      "javaType": "io.fabric8.openshift.api.model.console.v1.ConsoleQuickStart",
-      "javaInterfaces": [
-        "io.fabric8.kubernetes.api.model.HasMetadata"
-      ]
-    },
-    "os_console_v1_ConsoleQuickStartList": {
-      "type": "object",
-      "properties": {
-        "apiVersion": {
-          "type": "string",
-          "default": "console.openshift.io/v1",
-          "required": true
-        },
-        "items": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/os_console_v1_ConsoleQuickStart",
-            "existingJavaType": "io.fabric8.openshift.api.model.console.v1.ConsoleQuickStart"
-          }
-        },
-        "kind": {
-          "type": "string",
-          "default": "ConsoleQuickStartList",
-          "required": true
-        },
-        "metadata": {
-          "$ref": "#/definitions/kubernetes_apimachinery_ListMeta",
-          "existingJavaType": "io.fabric8.kubernetes.api.model.ListMeta"
-        }
-      },
-      "additionalProperties": true,
-      "javaType": "io.fabric8.openshift.api.model.console.v1.ConsoleQuickStartList",
-      "javaInterfaces": [
-        "io.fabric8.kubernetes.api.model.KubernetesResource",
-        "io.fabric8.kubernetes.api.model.KubernetesResourceList\u003cio.fabric8.openshift.api.model.console.v1.ConsoleQuickStart\u003e"
-      ]
-    },
-    "os_console_v1_ConsoleQuickStartSpec": {
-      "type": "object",
-      "properties": {
-        "accessReviewResources": {
-          "type": "array",
-          "javaOmitEmpty": true,
-          "items": {
-            "$ref": "#/definitions/kubernetes_authorization_v1_ResourceAttributes",
-            "existingJavaType": "io.fabric8.kubernetes.api.model.authorization.v1.ResourceAttributes"
-          }
-        },
-        "conclusion": {
-          "type": "string"
-        },
-        "description": {
-          "type": "string"
-        },
-        "displayName": {
-          "type": "string"
-        },
-        "durationMinutes": {
-          "type": "integer"
-        },
-        "icon": {
-          "type": "string"
-        },
-        "introduction": {
-          "type": "string"
-        },
-        "nextQuickStart": {
-          "type": "array",
-          "javaOmitEmpty": true,
-          "items": {
-            "type": "string"
-          }
-        },
-        "prerequisites": {
-          "type": "array",
-          "javaOmitEmpty": true,
-          "items": {
-            "type": "string"
-          }
-        },
-        "tags": {
-          "type": "array",
-          "javaOmitEmpty": true,
-          "items": {
-            "type": "string"
-          }
-        },
-        "tasks": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/os_console_v1_ConsoleQuickStartTask",
-            "existingJavaType": "io.fabric8.openshift.api.model.console.v1.ConsoleQuickStartTask"
-          }
-        }
-      },
-      "additionalProperties": true,
-      "javaType": "io.fabric8.openshift.api.model.console.v1.ConsoleQuickStartSpec",
-      "javaInterfaces": [
-        "io.fabric8.kubernetes.api.model.KubernetesResource"
-      ]
-    },
-    "os_console_v1_ConsoleQuickStartTask": {
-      "type": "object",
-      "properties": {
-        "description": {
-          "type": "string"
-        },
-        "review": {
-          "$ref": "#/definitions/os_console_v1_ConsoleQuickStartTaskReview",
-          "existingJavaType": "io.fabric8.openshift.api.model.console.v1.ConsoleQuickStartTaskReview"
-        },
-        "summary": {
-          "$ref": "#/definitions/os_console_v1_ConsoleQuickStartTaskSummary",
-          "existingJavaType": "io.fabric8.openshift.api.model.console.v1.ConsoleQuickStartTaskSummary"
-        },
-        "title": {
-          "type": "string"
-        }
-      },
-      "additionalProperties": true,
-      "javaType": "io.fabric8.openshift.api.model.console.v1.ConsoleQuickStartTask",
-      "javaInterfaces": [
-        "io.fabric8.kubernetes.api.model.KubernetesResource"
-      ]
-    },
-    "os_console_v1_ConsoleQuickStartTaskReview": {
-      "type": "object",
-      "properties": {
-        "failedTaskHelp": {
-          "type": "string"
-        },
-        "instructions": {
-          "type": "string"
-        }
-      },
-      "additionalProperties": true,
-      "javaType": "io.fabric8.openshift.api.model.console.v1.ConsoleQuickStartTaskReview",
-      "javaInterfaces": [
-        "io.fabric8.kubernetes.api.model.KubernetesResource"
-      ]
-    },
-    "os_console_v1_ConsoleQuickStartTaskSummary": {
-      "type": "object",
-      "properties": {
-        "failed": {
-          "type": "string"
-        },
-        "success": {
-          "type": "string"
-        }
-      },
-      "additionalProperties": true,
-      "javaType": "io.fabric8.openshift.api.model.console.v1.ConsoleQuickStartTaskSummary",
-      "javaInterfaces": [
-        "io.fabric8.kubernetes.api.model.KubernetesResource"
-      ]
-    },
     "os_console_v1_ConsoleYAMLSample": {
       "type": "object",
       "properties": {
@@ -1233,151 +1030,6 @@
       "javaInterfaces": [
         "io.fabric8.kubernetes.api.model.KubernetesResource"
       ]
-    },
-    "os_console_v1alpha1_ConsolePlugin": {
-      "type": "object",
-      "properties": {
-        "apiVersion": {
-          "type": "string",
-          "default": "console.openshift.io/v1alpha1",
-          "required": true
-        },
-        "kind": {
-          "type": "string",
-          "default": "ConsolePlugin",
-          "required": true
-        },
-        "metadata": {
-          "$ref": "#/definitions/kubernetes_apimachinery_ObjectMeta",
-          "existingJavaType": "io.fabric8.kubernetes.api.model.ObjectMeta"
-        },
-        "spec": {
-          "$ref": "#/definitions/os_console_v1alpha1_ConsolePluginSpec",
-          "existingJavaType": "io.fabric8.openshift.api.model.console.v1alpha1.ConsolePluginSpec"
-        }
-      },
-      "additionalProperties": true,
-      "javaType": "io.fabric8.openshift.api.model.console.v1alpha1.ConsolePlugin",
-      "javaInterfaces": [
-        "io.fabric8.kubernetes.api.model.HasMetadata"
-      ]
-    },
-    "os_console_v1alpha1_ConsolePluginList": {
-      "type": "object",
-      "properties": {
-        "apiVersion": {
-          "type": "string",
-          "default": "console.openshift.io/v1alpha1",
-          "required": true
-        },
-        "items": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/os_console_v1alpha1_ConsolePlugin",
-            "existingJavaType": "io.fabric8.openshift.api.model.console.v1alpha1.ConsolePlugin"
-          }
-        },
-        "kind": {
-          "type": "string",
-          "default": "ConsolePluginList",
-          "required": true
-        },
-        "metadata": {
-          "$ref": "#/definitions/kubernetes_apimachinery_ListMeta",
-          "existingJavaType": "io.fabric8.kubernetes.api.model.ListMeta"
-        }
-      },
-      "additionalProperties": true,
-      "javaType": "io.fabric8.openshift.api.model.console.v1alpha1.ConsolePluginList",
-      "javaInterfaces": [
-        "io.fabric8.kubernetes.api.model.KubernetesResource",
-        "io.fabric8.kubernetes.api.model.KubernetesResourceList\u003cio.fabric8.openshift.api.model.console.v1alpha1.ConsolePlugin\u003e"
-      ]
-    },
-    "os_console_v1alpha1_ConsolePluginProxy": {
-      "type": "object",
-      "properties": {
-        "services": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/os_console_v1alpha1_ConsolePluginProxyService",
-            "existingJavaType": "io.fabric8.openshift.api.model.console.v1alpha1.ConsolePluginProxyService"
-          }
-        }
-      },
-      "additionalProperties": true,
-      "javaType": "io.fabric8.openshift.api.model.console.v1alpha1.ConsolePluginProxy",
-      "javaInterfaces": [
-        "io.fabric8.kubernetes.api.model.KubernetesResource"
-      ]
-    },
-    "os_console_v1alpha1_ConsolePluginProxyService": {
-      "type": "object",
-      "properties": {
-        "authorize": {
-          "type": "boolean"
-        },
-        "caCertificate": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "namespace": {
-          "type": "string"
-        },
-        "port": {
-          "type": "integer"
-        }
-      },
-      "additionalProperties": true,
-      "javaType": "io.fabric8.openshift.api.model.console.v1alpha1.ConsolePluginProxyService",
-      "javaInterfaces": [
-        "io.fabric8.kubernetes.api.model.KubernetesResource"
-      ]
-    },
-    "os_console_v1alpha1_ConsolePluginService": {
-      "type": "object",
-      "properties": {
-        "basePath": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "namespace": {
-          "type": "string"
-        },
-        "port": {
-          "type": "integer"
-        }
-      },
-      "additionalProperties": true,
-      "javaType": "io.fabric8.openshift.api.model.console.v1alpha1.ConsolePluginService",
-      "javaInterfaces": [
-        "io.fabric8.kubernetes.api.model.KubernetesResource"
-      ]
-    },
-    "os_console_v1alpha1_ConsolePluginSpec": {
-      "type": "object",
-      "properties": {
-        "displayName": {
-          "type": "string"
-        },
-        "proxy": {
-          "$ref": "#/definitions/os_console_v1alpha1_ConsolePluginProxy",
-          "existingJavaType": "io.fabric8.openshift.api.model.console.v1alpha1.ConsolePluginProxy"
-        },
-        "service": {
-          "$ref": "#/definitions/os_console_v1alpha1_ConsolePluginService",
-          "existingJavaType": "io.fabric8.openshift.api.model.console.v1alpha1.ConsolePluginService"
-        }
-      },
-      "additionalProperties": true,
-      "javaType": "io.fabric8.openshift.api.model.console.v1alpha1.ConsolePluginSpec",
-      "javaInterfaces": [
-        "io.fabric8.kubernetes.api.model.KubernetesResource"
-      ]
     }
   },
   "type": "object",
@@ -1392,7 +1044,7 @@
     },
     "BaseKubernetesList": {
       "$ref": "#/definitions/kubernetes_apimachinery_List",
-      "existingJavaType": "io.fabric8.kubernetes.api.model.KubernetesList"
+      "existingJavaType": "io.fabric8.kubernetes.api.model.BaseKubernetesList"
     },
     "ConsoleCLIDownload": {
       "$ref": "#/definitions/os_console_v1_ConsoleCLIDownload",
@@ -1426,22 +1078,6 @@
       "$ref": "#/definitions/os_console_v1_ConsoleNotificationList",
       "existingJavaType": "io.fabric8.openshift.api.model.console.v1.ConsoleNotificationList"
     },
-    "ConsolePlugin": {
-      "$ref": "#/definitions/os_console_v1alpha1_ConsolePluginList",
-      "existingJavaType": "io.fabric8.openshift.api.model.console.v1alpha1.ConsolePluginList"
-    },
-    "ConsolePluginList": {
-      "$ref": "#/definitions/os_console_v1alpha1_ConsolePluginList",
-      "existingJavaType": "io.fabric8.openshift.api.model.console.v1alpha1.ConsolePluginList"
-    },
-    "ConsoleQuickStart": {
-      "$ref": "#/definitions/os_console_v1_ConsoleQuickStart",
-      "existingJavaType": "io.fabric8.openshift.api.model.console.v1.ConsoleQuickStart"
-    },
-    "ConsoleQuickStartList": {
-      "$ref": "#/definitions/os_console_v1_ConsoleQuickStartList",
-      "existingJavaType": "io.fabric8.openshift.api.model.console.v1.ConsoleQuickStartList"
-    },
     "ConsoleYAMLSample": {
       "$ref": "#/definitions/os_console_v1_ConsoleYAMLSample",
       "existingJavaType": "io.fabric8.openshift.api.model.console.v1.ConsoleYAMLSample"
@@ -1461,10 +1097,6 @@
     "Patch": {
       "$ref": "#/definitions/kubernetes_apimachinery_Patch",
       "existingJavaType": "io.fabric8.kubernetes.api.model.Patch"
-    },
-    "ResourceAttributes": {
-      "$ref": "#/definitions/kubernetes_authorization_v1_ResourceAttributes",
-      "existingJavaType": "io.fabric8.kubernetes.api.model.authorization.v1.ResourceAttributes"
     },
     "Status": {
       "$ref": "#/definitions/kubernetes_apimachinery_Status",
@@ -1833,269 +1465,6 @@
       },
       "additionalProperties": true
     },
-    "consoleplugin": {
-      "properties": {
-        "apiVersion": {
-          "type": "string",
-          "default": "console.openshift.io/v1alpha1",
-          "required": true
-        },
-        "kind": {
-          "type": "string",
-          "default": "ConsolePlugin",
-          "required": true
-        },
-        "metadata": {
-          "$ref": "#/definitions/kubernetes_apimachinery_ObjectMeta",
-          "existingJavaType": "io.fabric8.kubernetes.api.model.ObjectMeta"
-        },
-        "spec": {
-          "$ref": "#/definitions/os_console_v1alpha1_ConsolePluginSpec",
-          "existingJavaType": "io.fabric8.openshift.api.model.console.v1alpha1.ConsolePluginSpec"
-        }
-      },
-      "additionalProperties": true
-    },
-    "consolepluginlist": {
-      "properties": {
-        "apiVersion": {
-          "type": "string",
-          "default": "console.openshift.io/v1alpha1",
-          "required": true
-        },
-        "items": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/os_console_v1alpha1_ConsolePlugin",
-            "existingJavaType": "io.fabric8.openshift.api.model.console.v1alpha1.ConsolePlugin"
-          }
-        },
-        "kind": {
-          "type": "string",
-          "default": "ConsolePluginList",
-          "required": true
-        },
-        "metadata": {
-          "$ref": "#/definitions/kubernetes_apimachinery_ListMeta",
-          "existingJavaType": "io.fabric8.kubernetes.api.model.ListMeta"
-        }
-      },
-      "additionalProperties": true
-    },
-    "consolepluginproxy": {
-      "properties": {
-        "services": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/os_console_v1alpha1_ConsolePluginProxyService",
-            "existingJavaType": "io.fabric8.openshift.api.model.console.v1alpha1.ConsolePluginProxyService"
-          }
-        }
-      },
-      "additionalProperties": true
-    },
-    "consolepluginproxyservice": {
-      "properties": {
-        "authorize": {
-          "type": "boolean"
-        },
-        "caCertificate": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "namespace": {
-          "type": "string"
-        },
-        "port": {
-          "type": "integer"
-        }
-      },
-      "additionalProperties": true
-    },
-    "consolepluginservice": {
-      "properties": {
-        "basePath": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "namespace": {
-          "type": "string"
-        },
-        "port": {
-          "type": "integer"
-        }
-      },
-      "additionalProperties": true
-    },
-    "consolepluginspec": {
-      "properties": {
-        "displayName": {
-          "type": "string"
-        },
-        "proxy": {
-          "$ref": "#/definitions/os_console_v1alpha1_ConsolePluginProxy",
-          "existingJavaType": "io.fabric8.openshift.api.model.console.v1alpha1.ConsolePluginProxy"
-        },
-        "service": {
-          "$ref": "#/definitions/os_console_v1alpha1_ConsolePluginService",
-          "existingJavaType": "io.fabric8.openshift.api.model.console.v1alpha1.ConsolePluginService"
-        }
-      },
-      "additionalProperties": true
-    },
-    "consolequickstart": {
-      "properties": {
-        "apiVersion": {
-          "type": "string",
-          "default": "console.openshift.io/v1",
-          "required": true
-        },
-        "kind": {
-          "type": "string",
-          "default": "ConsoleQuickStart",
-          "required": true
-        },
-        "metadata": {
-          "$ref": "#/definitions/kubernetes_apimachinery_ObjectMeta",
-          "existingJavaType": "io.fabric8.kubernetes.api.model.ObjectMeta"
-        },
-        "spec": {
-          "$ref": "#/definitions/os_console_v1_ConsoleQuickStartSpec",
-          "existingJavaType": "io.fabric8.openshift.api.model.console.v1.ConsoleQuickStartSpec"
-        }
-      },
-      "additionalProperties": true
-    },
-    "consolequickstartlist": {
-      "properties": {
-        "apiVersion": {
-          "type": "string",
-          "default": "console.openshift.io/v1",
-          "required": true
-        },
-        "items": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/os_console_v1_ConsoleQuickStart",
-            "existingJavaType": "io.fabric8.openshift.api.model.console.v1.ConsoleQuickStart"
-          }
-        },
-        "kind": {
-          "type": "string",
-          "default": "ConsoleQuickStartList",
-          "required": true
-        },
-        "metadata": {
-          "$ref": "#/definitions/kubernetes_apimachinery_ListMeta",
-          "existingJavaType": "io.fabric8.kubernetes.api.model.ListMeta"
-        }
-      },
-      "additionalProperties": true
-    },
-    "consolequickstartspec": {
-      "properties": {
-        "accessReviewResources": {
-          "type": "array",
-          "javaOmitEmpty": true,
-          "items": {
-            "$ref": "#/definitions/kubernetes_authorization_v1_ResourceAttributes",
-            "existingJavaType": "io.fabric8.kubernetes.api.model.authorization.v1.ResourceAttributes"
-          }
-        },
-        "conclusion": {
-          "type": "string"
-        },
-        "description": {
-          "type": "string"
-        },
-        "displayName": {
-          "type": "string"
-        },
-        "durationMinutes": {
-          "type": "integer"
-        },
-        "icon": {
-          "type": "string"
-        },
-        "introduction": {
-          "type": "string"
-        },
-        "nextQuickStart": {
-          "type": "array",
-          "javaOmitEmpty": true,
-          "items": {
-            "type": "string"
-          }
-        },
-        "prerequisites": {
-          "type": "array",
-          "javaOmitEmpty": true,
-          "items": {
-            "type": "string"
-          }
-        },
-        "tags": {
-          "type": "array",
-          "javaOmitEmpty": true,
-          "items": {
-            "type": "string"
-          }
-        },
-        "tasks": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/os_console_v1_ConsoleQuickStartTask",
-            "existingJavaType": "io.fabric8.openshift.api.model.console.v1.ConsoleQuickStartTask"
-          }
-        }
-      },
-      "additionalProperties": true
-    },
-    "consolequickstarttask": {
-      "properties": {
-        "description": {
-          "type": "string"
-        },
-        "review": {
-          "$ref": "#/definitions/os_console_v1_ConsoleQuickStartTaskReview",
-          "existingJavaType": "io.fabric8.openshift.api.model.console.v1.ConsoleQuickStartTaskReview"
-        },
-        "summary": {
-          "$ref": "#/definitions/os_console_v1_ConsoleQuickStartTaskSummary",
-          "existingJavaType": "io.fabric8.openshift.api.model.console.v1.ConsoleQuickStartTaskSummary"
-        },
-        "title": {
-          "type": "string"
-        }
-      },
-      "additionalProperties": true
-    },
-    "consolequickstarttaskreview": {
-      "properties": {
-        "failedTaskHelp": {
-          "type": "string"
-        },
-        "instructions": {
-          "type": "string"
-        }
-      },
-      "additionalProperties": true
-    },
-    "consolequickstarttasksummary": {
-      "properties": {
-        "failed": {
-          "type": "string"
-        },
-        "success": {
-          "type": "string"
-        }
-      },
-      "additionalProperties": true
-    },
     "consoleyamlsample": {
       "properties": {
         "apiVersion": {
@@ -2178,6 +1547,9 @@
           "type": "string"
         }
       },
+      "additionalProperties": true
+    },
+    "imagerawextension": {
       "additionalProperties": true
     },
     "info": {
@@ -2272,7 +1644,7 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/kubernetes_apimachinery_pkg_runtime_RawExtension",
-            "existingJavaType": "io.fabric8.kubernetes.api.model.KubernetesResource"
+            "existingJavaType": "io.fabric8.kubernetes.api.model.HasMetadata"
           }
         },
         "kind": {
@@ -2323,9 +1695,6 @@
         "operation": {
           "type": "string"
         },
-        "subresource": {
-          "type": "string"
-        },
         "time": {
           "$ref": "#/definitions/kubernetes_apimachinery_Time",
           "existingJavaType": "String"
@@ -2357,6 +1726,9 @@
             "type": "string"
           },
           "existingJavaType": "java.util.Map\u003cString, String\u003e"
+        },
+        "clusterName": {
+          "type": "string"
         },
         "creationTimestamp": {
           "$ref": "#/definitions/kubernetes_apimachinery_Time",
@@ -2454,32 +1826,6 @@
       "additionalProperties": true
     },
     "rawextension": {
-      "additionalProperties": true
-    },
-    "resourceattributes": {
-      "properties": {
-        "group": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "namespace": {
-          "type": "string"
-        },
-        "resource": {
-          "type": "string"
-        },
-        "subresource": {
-          "type": "string"
-        },
-        "verb": {
-          "type": "string"
-        },
-        "version": {
-          "type": "string"
-        }
-      },
       "additionalProperties": true
     },
     "serveraddressbyclientcidr": {

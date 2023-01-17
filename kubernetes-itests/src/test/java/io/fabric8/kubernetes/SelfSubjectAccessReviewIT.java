@@ -15,33 +15,40 @@
  */
 package io.fabric8.kubernetes;
 
-import io.fabric8.kubernetes.api.model.Namespace;
 import io.fabric8.kubernetes.api.model.authorization.v1.SelfSubjectAccessReview;
 import io.fabric8.kubernetes.api.model.authorization.v1.SelfSubjectAccessReviewBuilder;
 import io.fabric8.kubernetes.client.KubernetesClient;
-import org.junit.jupiter.api.Test;
+import org.arquillian.cube.kubernetes.api.Session;
+import org.arquillian.cube.kubernetes.impl.requirement.RequiresKubernetes;
+import org.arquillian.cube.requirement.ArquillianConditionalRunner;
+import org.jboss.arquillian.test.api.ArquillianResource;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
-class SelfSubjectAccessReviewIT {
-
+@RunWith(ArquillianConditionalRunner.class)
+@RequiresKubernetes
+public class SelfSubjectAccessReviewIT {
+  @ArquillianResource
   KubernetesClient client;
 
-  Namespace namespace;
+  @ArquillianResource
+  Session session;
 
   @Test
-  void testCreate() {
+  public void testCreate() {
     // Given
     SelfSubjectAccessReview selfSubjectAccessReview = new SelfSubjectAccessReviewBuilder()
-        .withNewSpec()
-        .withNewResourceAttributes()
-        .withNamespace(namespace.getMetadata().getName())
-        .withVerb("get")
-        .withResource("pods")
-        .endResourceAttributes()
-        .endSpec()
-        .build();
+      .withNewSpec()
+      .withNewResourceAttributes()
+      .withNamespace(session.getNamespace())
+      .withVerb("get")
+      .withResource("pods")
+      .endResourceAttributes()
+      .endSpec()
+      .build();
 
     // When
     selfSubjectAccessReview = client.authorization().v1().selfSubjectAccessReview().create(selfSubjectAccessReview);

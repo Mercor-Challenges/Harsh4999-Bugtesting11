@@ -36,11 +36,6 @@ public class AddSchemaToCustomResourceDefinitionVersionDecorator
 
   @Override
   public Class<? extends Decorator>[] after() {
-    return new Class[] { AddCustomResourceDefinitionVersionDecorator.class };
-  }
-
-  @Override
-  public String toString() {
-    return getClass().getName() + " [name:" + getName() + ", version:" + getVersion() + "]";
+    return new Class[]{AddCustomResourceDefinitionVersionDecorator.class};
   }
 }

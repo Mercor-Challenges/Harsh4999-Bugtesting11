@@ -15,46 +15,65 @@
  */
 package io.fabric8.kubernetes.client.dsl.internal;
 
-import io.fabric8.kubernetes.api.model.KubernetesResource;
-import io.fabric8.kubernetes.client.Client;
-import io.fabric8.kubernetes.client.dsl.NamespacedInOutCreateable;
-import io.fabric8.kubernetes.client.dsl.base.ResourceDefinitionContext;
+import io.fabric8.kubernetes.client.Config;
+import io.fabric8.kubernetes.client.KubernetesClientException;
+import io.fabric8.kubernetes.client.dsl.base.OperationContext;
+import io.fabric8.kubernetes.client.dsl.base.OperationSupport;
+import okhttp3.OkHttpClient;
 
-public class CreateOnlyResourceOperationsImpl<I extends KubernetesResource, O extends KubernetesResource>
-    extends CreateOnlyResourceOperation<I, O> implements NamespacedInOutCreateable<I, O> {
+import java.io.IOException;
+import java.util.concurrent.ExecutionException;
 
-  private final ResourceDefinitionContext rdc;
-  private Class<I> inputType;
+public class CreateOnlyResourceOperationsImpl<T> extends OperationSupport implements io.fabric8.kubernetes.client.dsl.Createable<T> {
+  private final Class<T> subjectAccessRequestClass;
 
-  public CreateOnlyResourceOperationsImpl(Client client, ResourceDefinitionContext rdc, Class<I> inputType,
-      Class<O> outputType) {
-    this(HasMetadataOperationsImpl.defaultContext(client), rdc, inputType, outputType);
+  public CreateOnlyResourceOperationsImpl(OkHttpClient client, Config config, String apiGroupName, String apiGroupVersion, String plural, Class<T> subjectAccessRequestClass) {
+    this(new OperationContext().withOkhttpClient(client).withConfig(config), apiGroupName, apiGroupVersion, plural, subjectAccessRequestClass);
   }
 
-  public CreateOnlyResourceOperationsImpl(OperationContext context, ResourceDefinitionContext rdc, Class<I> inputType,
-      Class<O> outputType) {
-    super(context.withApiGroupName(rdc.getGroup())
-        .withApiGroupVersion(rdc.getVersion())
-        .withPlural(rdc.getPlural()));
-    this.inputType = inputType;
-    this.type = outputType;
-
-    this.rdc = rdc;
-
-    // use the group / version from the context, not from the item
-    // the item is allowed to differ as long as it can be parsed as the current type
-    this.apiGroupName = rdc.getGroup();
-    this.apiGroupVersion = rdc.getVersion();
+  public CreateOnlyResourceOperationsImpl(OperationContext context, String apiGroupName, String apiGroupVersion, String plural, Class<T> subjectAccessRequestClass) {
+    super(context.withApiGroupName(apiGroupName)
+      .withApiGroupVersion(apiGroupVersion)
+      .withPlural(plural));
+    this.subjectAccessRequestClass = subjectAccessRequestClass;
   }
 
   @Override
   public boolean isResourceNamespaced() {
-    return rdc.isNamespaceScoped();
+    return false;
   }
 
   @Override
-  public CreateOnlyResourceOperationsImpl<I, O> inNamespace(String name) {
-    return new CreateOnlyResourceOperationsImpl<>(context.withNamespace(name), rdc, inputType, type);
+  public T create(T... resources) {
+    try {
+      if (resources.length > 1) {
+        throw new IllegalArgumentException("Too many items to create.");
+      } else if (resources.length == 1) {
+        return handleCreate(resources[0], subjectAccessRequestClass);
+      } else {
+        return handleCreate(getItem(), subjectAccessRequestClass);
+      }
+    } catch (ExecutionException | IOException e) {
+      throw KubernetesClientException.launderThrowable(e);
+    } catch (InterruptedException ie) {
+      Thread.currentThread().interrupt();
+      throw KubernetesClientException.launderThrowable(ie);
+    }
   }
 
+  @Override
+  public T create(T item) {
+    try {
+      return handleCreate(item, subjectAccessRequestClass);
+    } catch (ExecutionException | IOException e) {
+      throw KubernetesClientException.launderThrowable(e);
+    } catch (InterruptedException ie) {
+      Thread.currentThread().interrupt();
+      throw KubernetesClientException.launderThrowable(ie);
+    }
+  }
+
+  public T getItem() {
+    return (T) context.getItem();
+  }
 }

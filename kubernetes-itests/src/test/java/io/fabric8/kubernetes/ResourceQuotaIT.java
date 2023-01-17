@@ -15,50 +15,69 @@
  */
 package io.fabric8.kubernetes;
 
-import io.fabric8.junit.jupiter.api.LoadKubernetesManifests;
-import io.fabric8.junit.jupiter.api.RequireK8sVersionAtLeast;
+import io.fabric8.commons.ClusterEntity;
 import io.fabric8.kubernetes.api.model.ResourceQuota;
 import io.fabric8.kubernetes.api.model.ResourceQuotaBuilder;
 import io.fabric8.kubernetes.api.model.ResourceQuotaList;
 import io.fabric8.kubernetes.client.KubernetesClient;
-import org.junit.jupiter.api.Test;
+import org.arquillian.cube.kubernetes.api.Session;
+import org.arquillian.cube.kubernetes.impl.requirement.RequiresKubernetes;
+import org.arquillian.cube.requirement.ArquillianConditionalRunner;
+import org.jboss.arquillian.test.api.ArquillianResource;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 
+import static junit.framework.TestCase.assertTrue;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
-@LoadKubernetesManifests("/resourcequota-it.yml")
-@RequireK8sVersionAtLeast(majorVersion = 1, minorVersion = 17)
-class ResourceQuotaIT {
-
+@RunWith(ArquillianConditionalRunner.class)
+@RequiresKubernetes
+public class ResourceQuotaIT {
+  @ArquillianResource
   KubernetesClient client;
 
+  @ArquillianResource
+  Session session;
+
+  @BeforeClass
+  public static void init() {
+    ClusterEntity.apply(ResourceQuotaIT.class.getResourceAsStream("/resourcequota-it.yml"));
+  }
+
   @Test
-  void get() {
-    ResourceQuota resourceQuota = client.resourceQuotas().withName("resourcequota-get").get();
+  public void get() {
+    ResourceQuota resourceQuota = client.resourceQuotas().inNamespace(session.getNamespace()).withName("resourcequota-get").get();
     assertThat(resourceQuota).isNotNull();
   }
 
   @Test
-  void list() {
-    ResourceQuotaList aEndpointList = client.resourceQuotas().list();
+  public void list() {
+    ResourceQuotaList aEndpointList = client.resourceQuotas().inNamespace(session.getNamespace()).list();
     assertNotNull(aEndpointList);
     assertTrue(aEndpointList.getItems().size() >= 1);
   }
 
   @Test
-  void update() {
-    ResourceQuota resourceQuota = client.resourceQuotas().withName("resourcequota-update").edit(c -> new ResourceQuotaBuilder(c)
-        .editOrNewMetadata().addToAnnotations("foo", "bar").endMetadata().build());
+  public void update() {
+    ResourceQuota resourceQuota = client.resourceQuotas().inNamespace(session.getNamespace()).withName("resourcequota-update").edit(c -> new ResourceQuotaBuilder(c)
+      .editOrNewMetadata().addToAnnotations("foo", "bar").endMetadata().build());
 
     assertNotNull(resourceQuota);
     assertEquals("bar", resourceQuota.getMetadata().getAnnotations().get("foo"));
   }
 
   @Test
-  void delete() {
-    assertTrue(client.resourceQuotas().withName("resourcequota-delete").delete().size() == 1);
+  public void delete() {
+    assertTrue(client.resourceQuotas().inNamespace(session.getNamespace()).withName("resourcequota-delete").delete());
   }
 
+  @AfterClass
+  public static void cleanup() {
+    ClusterEntity.remove(ResourceQuotaIT.class.getResourceAsStream("/resourcequota-it.yml"));
+  }
 }
+

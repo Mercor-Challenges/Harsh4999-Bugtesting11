@@ -73,7 +73,7 @@ func main() {
 		reflect.TypeOf([]byte{}):               "java.lang.String",
 	}
 
-	json := schemagen.GenerateSchema("http://fabric8.io/knative/ServiceCatalogSchema#", crdLists, providedPackages, manualTypeMap, packageMapping, mappingSchema, providedTypes, constraints, "io.fabric8")
+	json := schemagen.GenerateSchema("http://fabric8.io/knative/ServiceCatalogSchema#", crdLists, providedPackages, manualTypeMap, packageMapping, mappingSchema, providedTypes, constraints)
 
 	fmt.Println(json)
 }

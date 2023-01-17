@@ -25,20 +25,19 @@ type JSONSchema struct {
 }
 
 type JSONDescriptor struct {
-	Type          string                   `json:"type"`
-	Description   string                   `json:"description,omitempty"`
-	Default       string                   `json:"default,omitempty"`
-	Required      bool                     `json:"required,omitempty"`
-	Minimum       float32                  `json:"minimum,omitempty"`
-	Maximum       float32                  `json:"maximum,omitempty"`
-	MinItems      int                      `json:"minItems,omitempty"`
-	MaxItems      int                      `json:"maxItems,omitempty"`
-	MinLength     int                      `json:"minLength,omitempty"`
-	MaxLength     int                      `json:"maxLength,omitempty"`
-	Pattern       string                   `json:"pattern,omitempty"`
-	JavaEnums     []JSONJavaEnumDescriptor `json:"javaEnums,omitempty"`
-	Enum          []interface{}            `json:"enum,omitempty"`
-	JavaOmitEmpty bool                     `json:"javaOmitEmpty,omitempty"`
+	Type          string        `json:"type"`
+	Description   string        `json:"description,omitempty"`
+	Default       string        `json:"default,omitempty"`
+	Required      bool          `json:"required,omitempty"`
+	Minimum       float32       `json:"minimum,omitempty"`
+	Maximum       float32       `json:"maximum,omitempty"`
+	MinItems      int           `json:"minItems,omitempty"`
+	MaxItems      int           `json:"maxItems,omitempty"`
+	MinLength     int           `json:"minLength,omitempty"`
+	MaxLength     int           `json:"maxLength,omitempty"`
+	Pattern       string        `json:"pattern,omitempty"`
+	Enum          []interface{} `json:"enum,omitempty"`
+	JavaOmitEmpty bool          `json:"javaOmitEmpty,omitempty"`
 }
 
 type JSONObjectDescriptor struct {
@@ -56,11 +55,6 @@ type JSONReferenceDescriptor struct {
 
 type JavaTypeDescriptor struct {
 	JavaType string `json:"javaType"`
-}
-
-type JavaInterfaceDescriptor struct {
-	InterfaceType   string   `json:"interfaceType"`
-	Implementations []string `json:"interfaceImpls,omitempty"`
 }
 
 type ExistingJavaTypeDescriptor struct {
@@ -85,14 +79,9 @@ type JSONPropertyDescriptor struct {
 	*JavaTypeDescriptor
 	*ExistingJavaTypeDescriptor
 	*JavaInterfacesDescriptor
-	*JavaInterfaceDescriptor
 	JavaExtends *JavaExtendsDescriptor `json:"extends,omitempty"`
 }
 
 type JSONMapDescriptor struct {
 	MapValueType JSONPropertyDescriptor `json:"additionalProperties"`
-}
-
-type JSONJavaEnumDescriptor struct {
-	Name string `json:"name"`
 }

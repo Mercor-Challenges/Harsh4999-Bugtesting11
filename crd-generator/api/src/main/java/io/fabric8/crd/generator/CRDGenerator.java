@@ -20,18 +20,28 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator.Feature;
-import io.fabric8.crd.generator.utils.Types;
 import io.fabric8.crd.generator.v1.CustomResourceHandler;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.client.CustomResource;
 import io.fabric8.kubernetes.client.utils.ApiVersionUtil;
+import java.io.Closeable;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.URI;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.*;
-import java.net.URI;
-import java.util.*;
-import java.util.stream.Stream;
 
 public class CRDGenerator {
 
@@ -39,13 +49,14 @@ public class CRDGenerator {
   private final Resources resources;
   private final Map<String, AbstractCustomResourceHandler> handlers = new HashMap<>(2);
   private CRDOutput<? extends OutputStream> output;
-  private Map<String, CustomResourceInfo> infos;
+  private Set<CustomResourceInfo> infos;
 
   private static final ObjectMapper YAML_MAPPER = new ObjectMapper(
-      new YAMLFactory()
-          .enable(Feature.MINIMIZE_QUOTES)
-          .enable(Feature.ALWAYS_QUOTE_NUMBERS_AS_STRINGS)
-          .disable(YAMLGenerator.Feature.WRITE_DOC_START_MARKER));
+    new YAMLFactory()
+      .enable(Feature.MINIMIZE_QUOTES)
+      .enable(Feature.ALWAYS_QUOTE_NUMBERS_AS_STRINGS)
+      .disable(YAMLGenerator.Feature.WRITE_DOC_START_MARKER)
+  );
 
   static {
     YAML_MAPPER.configure(SerializationFeature.INDENT_OUTPUT, true);
@@ -55,7 +66,6 @@ public class CRDGenerator {
 
   public CRDGenerator() {
     resources = new Resources();
-    Types.resetGenerationContext(); // make sure the new generator starts up with a clean slate
   }
 
   public CRDGenerator inOutputDir(File outputDir) {
@@ -70,7 +80,7 @@ public class CRDGenerator {
 
   public CRDGenerator forCRDVersions(List<String> versions) {
     return versions != null && !versions.isEmpty() ? forCRDVersions(versions.toArray(new String[0]))
-        : this;
+      : this;
   }
 
   public CRDGenerator forCRDVersions(String... versions) {
@@ -80,11 +90,11 @@ public class CRDGenerator {
           switch (version) {
             case CustomResourceHandler.VERSION:
               handlers.computeIfAbsent(CustomResourceHandler.VERSION,
-                  s -> new CustomResourceHandler(resources));
+                s -> new CustomResourceHandler(resources));
               break;
             case io.fabric8.crd.generator.v1beta1.CustomResourceHandler.VERSION:
               handlers.computeIfAbsent(io.fabric8.crd.generator.v1beta1.CustomResourceHandler.VERSION,
-                  s -> new io.fabric8.crd.generator.v1beta1.CustomResourceHandler(resources));
+                s -> new io.fabric8.crd.generator.v1beta1.CustomResourceHandler(resources));
               break;
             default:
               LOGGER.warn("Ignoring unsupported CRD version: {}", version);
@@ -104,75 +114,88 @@ public class CRDGenerator {
   }
 
   public CRDGenerator customResources(CustomResourceInfo... infos) {
-    if (infos != null && infos.length > 0) {
+    if (infos != null) {
+      List<CustomResourceInfo> infoList = Arrays.stream(infos).filter(Objects::nonNull)
+        .collect(Collectors.toList());
       if (this.infos == null) {
-        this.infos = new HashMap<>(infos.length);
+        this.infos = new HashSet<>(infoList);
+      } else {
+        this.infos.addAll(infoList);
       }
-      Arrays.stream(infos)
-          .filter(Objects::nonNull)
-          // make sure we record all versions of the CR
-          .forEach(info -> this.infos.put(getOutputName(info.crdName(), info.version()), info));
     }
     return this;
   }
 
   Set<CustomResourceInfo> getCustomResourceInfos() {
-    return this.infos == null ? Collections.emptySet() : new HashSet<>(infos.values());
+    return this.infos == null ? Collections.emptySet() : this.infos;
   }
 
   public int generate() {
-    return detailedGenerate().numberOfGeneratedCRDs();
-  }
-
-  public CRDGenerationInfo detailedGenerate() {
     if (getCustomResourceInfos().isEmpty()) {
       LOGGER.warn("No resources were registered with the 'customResources' method to be generated");
-      return CRDGenerationInfo.EMPTY;
+      return 0;
     }
 
     if (output == null) {
       LOGGER.warn(
-          "No output option was selected either using 'inOutputDir' or 'withOutput' methods. Skipping generation.");
-      return CRDGenerationInfo.EMPTY;
+        "No output option was selected either using 'inOutputDir' or 'withOutput' methods. Skipping generation.");
+      return 0 ;
     }
 
     // if no CRD version is specified, generate for all supported versions
     if (handlers.isEmpty()) {
       forCRDVersions(CustomResourceHandler.VERSION,
-          io.fabric8.crd.generator.v1beta1.CustomResourceHandler.VERSION);
+        io.fabric8.crd.generator.v1beta1.CustomResourceHandler.VERSION);
     }
 
-    for (CustomResourceInfo info : infos.values()) {
+    Map<String, String> messages = new HashMap<>(infos.size());
+    for (CustomResourceInfo info : infos) {
       if (info != null) {
-        if (LOGGER.isInfoEnabled()) {
-          LOGGER.info("Generating '{}' version '{}' with {} (spec: {} / status {})...",
-              info.crdName(), info.version(), info.crClassName(),
-              info.specClassName().orElse("undetermined"),
-              info.statusClassName().orElse("undetermined"));
-        }
-        handlers.values().forEach(h -> h.handle(info));
+        handlers.values().forEach(h -> {
+          createInfoMessage(messages, info);
+          h.handle(info);
+        });
       }
     }
 
-    final CRDGenerationInfo crdGenerationInfo = new CRDGenerationInfo();
+    String lastGenerated = null;
+    int numberOfGeneratedCRDs = 0;
+    StringBuilder builder = new StringBuilder();
     for (HasMetadata crd : resources.generate().getItems()) {
       final String version = ApiVersionUtil.trimVersion(crd.getApiVersion());
       final String crdName = crd.getMetadata().getName();
+      if (!crdName.equals(lastGenerated)) {
+        builder.append(messages.get(crdName)).append("\n");
+      }
       try {
-        final String outputName = getOutputName(crdName, version);
+        String outputName = getOutputName(crdName, version);
         try (final OutputStream outputStream = output.outputFor(outputName)) {
           outputStream.write(
-              "# Generated by Fabric8 CRDGenerator, manual edits might get overwritten!\n"
-                  .getBytes());
+            "# Generated by Fabric8 CRDGenerator, manual edits might get overwritten!\n"
+              .getBytes());
           YAML_MAPPER.writeValue(outputStream, crd);
-          final URI fileURI = output.crdURI(outputName);
-          crdGenerationInfo.add(crdName, version, fileURI);
+          builder.append("\t- ").append(version).append(" CRD -> ").append(output.crdURI(outputName));
         }
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
+      lastGenerated = crdName;
+      numberOfGeneratedCRDs++;
     }
-    return crdGenerationInfo;
+
+    LOGGER.info(builder.toString());
+
+    return numberOfGeneratedCRDs;
+  }
+
+  private void createInfoMessage(Map<String, String> messages, CustomResourceInfo info) {
+    String name = info.crdName();
+    String msg = String
+      .format("Created '%s' version '%s' with %s (spec: %s / status %s):",
+        name, info.version(), info.crClassName(),
+        info.specClassName().orElse("undetermined"),
+        info.statusClassName().orElse("undetermined"));
+    messages.put(name, msg);
   }
 
   public static String getOutputName(String crdName, String crdSpecVersion) {
@@ -181,9 +204,8 @@ public class CRDGenerator {
 
   public interface CRDOutput<T extends OutputStream> extends Closeable {
     T outputFor(String crdName) throws IOException;
-
     default URI crdURI(String crdName) {
-      return URI.create("file:///" + crdName);
+      return URI.create(crdName);
     }
   }
 
@@ -233,7 +255,7 @@ public class CRDGenerator {
 
     @Override
     public URI crdURI(String crdName) {
-      return getCRDFile(crdName).toURI();
+      return URI.create("file://" + getCRDFile(crdName));
     }
   }
 }

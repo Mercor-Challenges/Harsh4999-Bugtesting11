@@ -17,55 +17,63 @@ package io.fabric8.kubernetes;
 
 import io.fabric8.kubernetes.api.model.batch.v1.Job;
 import io.fabric8.kubernetes.api.model.batch.v1.JobBuilder;
-import io.fabric8.kubernetes.api.model.batch.v1.JobStatus;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.dsl.LogWatch;
-import org.junit.jupiter.api.Test;
+import org.arquillian.cube.kubernetes.api.Session;
+import org.arquillian.cube.kubernetes.impl.requirement.RequiresKubernetes;
+import org.arquillian.cube.requirement.ArquillianConditionalRunner;
+import org.jboss.arquillian.test.api.ArquillianResource;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.io.ByteArrayOutputStream;
-import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 import static org.awaitility.Awaitility.await;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
-class JobIT {
-
+@RunWith(ArquillianConditionalRunner.class)
+@RequiresKubernetes
+public class JobIT {
+  @ArquillianResource
   KubernetesClient client;
 
+  @ArquillianResource
+  Session session;
+
   @Test
-  void testGetLog() {
-    final String jobName = "job-get-log";
-    client.batch().v1().jobs().createOrReplace(initJob("job-get-log").build());
-    client.batch().v1().jobs().withName(jobName).waitUntilCondition(
-        j -> Optional.ofNullable(j).map(Job::getStatus).map(JobStatus::getSucceeded).orElse(0) > 0,
-        1, TimeUnit.MINUTES);
+  public void testGetLog() {
+    // Given
+    Job job = getJobBuilder().build();
+
+    // When
+    client.batch().jobs().inNamespace(session.getNamespace()).createOrReplace(job);
     ByteArrayOutputStream baos = new ByteArrayOutputStream(1024);
-    try (LogWatch ignore = client.batch().v1().jobs()
-        .withName(jobName)
-        .withLogWaitTimeout(30)
-        .watchLog(baos)) {
-      await().atMost(30, TimeUnit.SECONDS).until(() -> baos.toString().length() > 0);
-      assertNotNull(baos.toString());
-      assertEquals("This is a message!\n", baos.toString());
-    }
+    LogWatch logWatch = client.batch().jobs().inNamespace(session.getNamespace())
+      .withName(job.getMetadata().getName())
+      .withLogWaitTimeout(30)
+      .watchLog(baos);
+
+    await().atMost(5, TimeUnit.SECONDS).until(() -> baos.toString().length() > 0);
+    // Then
+    assertNotNull(baos.toString());
+    assertEquals("This is a message!\n", baos.toString());
+    logWatch.close();
   }
 
   @Test
-  void testCreateWithGenerateName() {
+  public void testCreateWithGenerateName() {
     // Given
-    Job job = initJob("job-generate-name").editMetadata()
-        .withName(null)
-        .withGenerateName("test-job-")
-        .endMetadata()
-        .editOrNewSpec().withSuspend(true).endSpec()
-        .build();
+    Job job = getJobBuilder().editMetadata()
+      .withName(null)
+      .withGenerateName("test-job-")
+      .endMetadata().build();
 
     // When
-    Job jobCreated = client.batch().v1().jobs().create(job);
+    Job jobCreated = client.batch().jobs().inNamespace(session.getNamespace()).create(job);
 
     // Then
     assertNotNull(jobCreated);
@@ -73,23 +81,23 @@ class JobIT {
     assertEquals("test-job-", jobCreated.getMetadata().getGenerateName());
     assertNotNull(jobCreated.getMetadata().getName());
     assertNotEquals("test-job-", jobCreated.getMetadata().getName());
-    assertTrue(client.batch().v1().jobs().withName(jobCreated.getMetadata().getName()).delete().size() == 1);
+    assertTrue(client.batch().jobs().inNamespace(session.getNamespace()).withName(jobCreated.getMetadata().getName()).delete());
   }
 
-  private JobBuilder initJob(String name) {
+  private JobBuilder getJobBuilder() {
     return new JobBuilder()
-        .withNewMetadata().withName(name).endMetadata()
-        .withNewSpec()
-        .withNewTemplate()
-        .withNewSpec()
-        .addNewContainer()
-        .withName("hello")
-        .withImage("registry.access.redhat.com/ubi8/ubi-minimal")
-        .withCommand("echo", "This is a message!")
-        .endContainer()
-        .withRestartPolicy("Never")
-        .endSpec()
-        .endTemplate()
-        .endSpec();
+      .withNewMetadata().withName("hello").endMetadata()
+      .withNewSpec()
+      .withNewTemplate()
+      .withNewSpec()
+      .addNewContainer()
+      .withName("hello")
+      .withImage("busybox:1.32.0")
+      .withCommand("echo", "This is a message!")
+      .endContainer()
+      .withRestartPolicy("Never")
+      .endSpec()
+      .endTemplate()
+      .endSpec();
   }
 }

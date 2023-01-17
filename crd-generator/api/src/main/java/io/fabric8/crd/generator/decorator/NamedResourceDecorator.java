@@ -15,13 +15,14 @@
  */
 package io.fabric8.crd.generator.decorator;
 
+import static io.fabric8.crd.generator.utils.Metadata.getKind;
+import static io.fabric8.crd.generator.utils.Metadata.getMetadata;
+
 import io.fabric8.crd.generator.utils.Generics;
-import io.fabric8.crd.generator.utils.Metadata;
 import io.fabric8.kubernetes.api.builder.TypedVisitor;
 import io.fabric8.kubernetes.api.builder.VisitableBuilder;
 import io.fabric8.kubernetes.api.model.ObjectMeta;
 import io.fabric8.kubernetes.client.utils.Utils;
-
 import java.util.Optional;
 
 public abstract class NamedResourceDecorator<T> extends Decorator<VisitableBuilder> {
@@ -50,18 +51,10 @@ public abstract class NamedResourceDecorator<T> extends Decorator<VisitableBuild
     this.name = name;
   }
 
-  public String getKind() {
-    return kind;
-  }
-
-  public String getName() {
-    return name;
-  }
-
   @Override
   public void visit(VisitableBuilder builder) {
-    Optional<String> resourceKind = Metadata.getKind(builder);
-    Optional<ObjectMeta> objectMeta = Metadata.getMetadata(builder);
+    Optional<String> resourceKind = getKind(builder);
+    Optional<ObjectMeta> objectMeta = getMetadata(builder);
     if (!resourceKind.isPresent() || !objectMeta.isPresent()) {
       return;
     }
@@ -124,13 +117,13 @@ public abstract class NamedResourceDecorator<T> extends Decorator<VisitableBuild
 
     public Class<T> getType() {
       return (Class) Generics
-          .getTypeArguments(NamedResourceDecorator.class, NamedResourceDecorator.this.getClass())
-          .get(0);
+        .getTypeArguments(NamedResourceDecorator.class, NamedResourceDecorator.this.getClass())
+        .get(0);
     }
   }
 
   @Override
   public Class<? extends Decorator>[] after() {
-    return new Class[] { ResourceProvidingDecorator.class };
+    return new Class[]{};
   }
 }

@@ -15,16 +15,15 @@
  */
 package io.fabric8.kubernetes.api.model;
 
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.math.BigDecimal;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-
-import java.math.BigDecimal;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class QuantityTest {
   private final ObjectMapper mapper = new ObjectMapper();
@@ -38,7 +37,7 @@ public class QuantityTest {
 
     Quantity deserializedObj = mapper.readValue("{\"amount\":256,\"format\":\"Mi\"}", Quantity.class);
     assertEquals("256", deserializedObj.getAmount());
-    assertEquals("Mi", deserializedObj.getFormat());
+    assertEquals("\"Mi\"", deserializedObj.getFormat());
   }
 
   @Test
@@ -67,7 +66,7 @@ public class QuantityTest {
     Quantity quantity = new Quantity(".5Mi");
     assertEquals(new BigDecimal("524288.0"), Quantity.getAmountInBytes(quantity));
 
-    Quantity quantity1 = new Quantity("512Ki");
+    Quantity quantity1 =  new Quantity("512Ki");
     assertEquals(Quantity.getAmountInBytes(quantity1).toBigInteger(), Quantity.getAmountInBytes(quantity).toBigInteger());
   }
 

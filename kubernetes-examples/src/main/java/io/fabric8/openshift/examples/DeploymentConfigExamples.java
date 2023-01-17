@@ -18,8 +18,8 @@ package io.fabric8.openshift.examples;
 
 import io.fabric8.kubernetes.api.model.ServiceAccount;
 import io.fabric8.kubernetes.api.model.ServiceAccountBuilder;
+import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClient;
-import io.fabric8.kubernetes.client.KubernetesClientBuilder;
 import io.fabric8.openshift.api.model.DeploymentConfigBuilder;
 import io.fabric8.openshift.api.model.ProjectRequestBuilder;
 import io.fabric8.openshift.client.OpenShiftClient;
@@ -33,8 +33,8 @@ public class DeploymentConfigExamples {
   private static final String NAMESPACE = "this-is-a-test";
   private static final String IMAGE = "busybox";
 
-  public static void main(String[] args) {
-    try (KubernetesClient kubernetesClient = new KubernetesClientBuilder().build()) {
+  public static void main(String[] args)  {
+    try (KubernetesClient kubernetesClient = new DefaultKubernetesClient()) {
       final OpenShiftClient client = kubernetesClient.adapt(OpenShiftClient.class);
 
       final String project;
@@ -43,11 +43,12 @@ public class DeploymentConfigExamples {
         logger.info("Using configured project: {}", project);
       } else {
         client.projectrequests().create(
-            new ProjectRequestBuilder()
-                .withNewMetadata()
-                .withName(NAMESPACE)
-                .endMetadata()
-                .build());
+          new ProjectRequestBuilder()
+            .withNewMetadata()
+            .withName(NAMESPACE)
+            .endMetadata()
+            .build()
+        );
         project = NAMESPACE;
         logger.info("Created project: {}", project);
       }
@@ -57,31 +58,32 @@ public class DeploymentConfigExamples {
       client.serviceAccounts().inNamespace(project).createOrReplace(fabric8);
 
       log("Created deployment", client.deploymentConfigs().inNamespace(project).createOrReplace(new DeploymentConfigBuilder()
-          .withNewMetadata()
+        .withNewMetadata()
           .withName(IMAGE)
-          .endMetadata()
-          .withNewSpec()
+        .endMetadata()
+        .withNewSpec()
           .withReplicas(1)
           .addNewTrigger()
-          .withType("ConfigChange")
+            .withType("ConfigChange")
           .endTrigger()
           .addToSelector("app", IMAGE)
           .withNewTemplate()
-          .withNewMetadata()
-          .addToLabels("app", IMAGE)
-          .endMetadata()
-          .withNewSpec()
-          .addNewContainer()
-          .withName(IMAGE)
-          .withImage(IMAGE)
-          .addNewPort()
-          .withContainerPort(80)
-          .endPort()
-          .endContainer()
-          .endSpec()
+            .withNewMetadata()
+              .addToLabels("app", IMAGE)
+            .endMetadata()
+            .withNewSpec()
+              .addNewContainer()
+                .withName(IMAGE)
+                .withImage(IMAGE)
+                .addNewPort()
+                  .withContainerPort(80)
+                .endPort()
+              .endContainer()
+            .endSpec()
           .endTemplate()
-          .endSpec()
-          .build()));
+        .endSpec()
+        .build()));
+
 
       client.deploymentConfigs().inNamespace(project).withName(IMAGE).scale(2, true);
       log("Created pods:", client.pods().inNamespace(project).list().getItems());
@@ -92,6 +94,7 @@ public class DeploymentConfigExamples {
       log("Done.");
     }
   }
+
 
   private static void log(String action, Object obj) {
     logger.info("{}: {}", action, obj);

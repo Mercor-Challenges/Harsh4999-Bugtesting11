@@ -40,22 +40,25 @@ public class RoleBindingCrudTest {
   @Test
   public void crudTest() {
 
+
     RoleBinding roleBinding = new RoleBindingBuilder()
-        .withNewMetadata()
+      .withNewMetadata()
         .withName("read-jobs")
-        .endMetadata()
-        .addToSubjects(0, new SubjectBuilder()
-            .withApiGroup("rbac.authorization.k8s.io")
-            .withKind("User")
-            .withName("jane")
-            .withNamespace("default")
-            .build())
-        .withRoleRef(new RoleRefBuilder()
-            .withApiGroup("rbac.authorization.k8s.io")
-            .withKind("Role")
-            .withName("job-reader")
-            .build())
-        .build();
+      .endMetadata()
+      .addToSubjects(0, new SubjectBuilder()
+        .withApiGroup("rbac.authorization.k8s.io")
+        .withKind("User")
+        .withName("jane")
+        .withNamespace("default")
+        .build()
+      )
+      .withRoleRef(new RoleRefBuilder()
+        .withApiGroup("rbac.authorization.k8s.io")
+        .withKind("Role")
+        .withName("job-reader")
+        .build()
+      )
+      .build();
 
     //test of creation
     roleBinding = client.rbac().roleBindings().create(roleBinding);
@@ -100,7 +103,7 @@ public class RoleBindingCrudTest {
 
     //test of updation
     roleBinding = client.rbac().roleBindings().withName("read-jobs").edit(r -> new RoleBindingBuilder(r)
-        .editSubject(0).withName("jane-new").endSubject().build());
+                        .editSubject(0).withName("jane-new").endSubject().build());
 
     assertNotNull(roleBinding);
     assertEquals("RoleBinding", roleBinding.getKind());
@@ -119,11 +122,11 @@ public class RoleBindingCrudTest {
     assertEquals("rbac.authorization.k8s.io", roleBinding.getRoleRef().getApiGroup());
 
     //test of deletion
-    boolean deleted = client.rbac().roleBindings().delete().size() == 1;
+    boolean deleted = client.rbac().roleBindings().delete();
 
     assertTrue(deleted);
     kubernetesRoleBindingList = client.rbac().roleBindings().list();
-    assertEquals(0, kubernetesRoleBindingList.getItems().size());
+    assertEquals(0,kubernetesRoleBindingList.getItems().size());
 
   }
 }

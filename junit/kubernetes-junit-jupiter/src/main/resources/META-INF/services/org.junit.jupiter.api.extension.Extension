@@ -1,2 +1,0 @@
-io.fabric8.junit.jupiter.NamespaceExtension
-io.fabric8.junit.jupiter.KubernetesExtension

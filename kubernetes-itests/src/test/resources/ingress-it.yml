@@ -15,7 +15,7 @@
 #
 
 ---
-apiVersion: networking.k8s.io/v1
+apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
   name: ingress-load
@@ -23,22 +23,16 @@ spec:
   rules:
     - http:
         paths:
-          - path: /fabric8-ingress-it/load/*
-            pathType: Prefix
+          - path: /*
             backend:
-              service:
-                name: web
-                port:
-                  number: 8080
-          - path: /fabric8-ingress-it/load/v2/*
-            pathType: Prefix
+              serviceName: web
+              servicePort: 8080
+          - path: /v2/*
             backend:
-              service:
-                name: web2
-                port:
-                  number: 8080
+              serviceName: web2
+              servicePort: 8080
 ---
-apiVersion: networking.k8s.io/v1
+apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
   name: ingress-get
@@ -46,22 +40,16 @@ spec:
   rules:
     - http:
         paths:
-          - path: /fabric8-ingress-it/get/*
-            pathType: Prefix
+          - path: /*
             backend:
-              service:
-                name: web
-                port:
-                  number: 8080
-          - path: /fabric8-ingress-it/get/v2/*
-            pathType: Prefix
+              serviceName: web
+              servicePort: 8080
+          - path: /v2/*
             backend:
-              service:
-                name: web2
-                port:
-                  number: 8080
+              serviceName: web2
+              servicePort: 8080
 ---
-apiVersion: networking.k8s.io/v1
+apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
   name: ingress-list
@@ -69,22 +57,16 @@ spec:
   rules:
     - http:
         paths:
-          - path: /fabric8-ingress-it/list/*
-            pathType: Prefix
+          - path: /*
             backend:
-              service:
-                name: web
-                port:
-                  number: 8080
-          - path: /fabric8-ingress-it/list/v2/*
-            pathType: Prefix
+              serviceName: web
+              servicePort: 8080
+          - path: /v2/*
             backend:
-              service:
-                name: web2
-                port:
-                  number: 8080
+              serviceName: web2
+              servicePort: 8080
 ---
-apiVersion: networking.k8s.io/v1
+apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
   name: ingress-update
@@ -92,22 +74,16 @@ spec:
   rules:
     - http:
         paths:
-          - path: /fabric8-ingress-it/update/*
-            pathType: Prefix
+          - path: /*
             backend:
-              service:
-                name: web
-                port:
-                  number: 8080
-          - path: /fabric8-ingress-it/update/v2/*
-            pathType: Prefix
+              serviceName: web
+              servicePort: 8080
+          - path: /v2/*
             backend:
-              service:
-                name: web2
-                port:
-                  number: 8080
+              serviceName: web2
+              servicePort: 8080
 ---
-apiVersion: networking.k8s.io/v1
+apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
   name: ingress-delete
@@ -115,17 +91,11 @@ spec:
   rules:
     - http:
         paths:
-          - path: /fabric8-ingress-it/delete/*
-            pathType: Prefix
+          - path: /*
             backend:
-              service:
-                name: web
-                port:
-                  number: 8080
-          - path: /fabric8-ingress-it/delete/v2/*
-            pathType: Prefix
+              serviceName: web
+              servicePort: 8080
+          - path: /v2/*
             backend:
-              service:
-                name: web2
-                port:
-                  number: 8080
+              serviceName: web2
+              servicePort: 8080

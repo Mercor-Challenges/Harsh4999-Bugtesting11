@@ -36,8 +36,7 @@ class V1EndpointSliceTest {
   @Test
   void load() {
     // Given + When
-    EndpointSlice es = client.discovery().v1().endpointSlices().load(getClass().getResourceAsStream("/v1-endpointslice.yml"))
-        .item();
+    EndpointSlice es = client.discovery().v1().endpointSlices().load(getClass().getResourceAsStream("/v1-endpointslice.yml")).get();
 
     // Than
     assertThat(es).isNotNull();
@@ -51,8 +50,8 @@ class V1EndpointSliceTest {
   void get() {
     // Given
     server.expect().get().withPath("/apis/discovery.k8s.io/v1/namespaces/default/endpointslices/test-es")
-        .andReturn(HttpURLConnection.HTTP_OK, getEndpointSlice("test-es"))
-        .once();
+      .andReturn(HttpURLConnection.HTTP_OK, getEndpointSlice("test-es"))
+      .once();
 
     // When
     EndpointSlice es = client.discovery().v1().endpointSlices().inNamespace("default").withName("test-es").get();
@@ -66,10 +65,10 @@ class V1EndpointSliceTest {
   void listInSingleNamespace() {
     // Given
     server.expect().get().withPath("/apis/discovery.k8s.io/v1/namespaces/default/endpointslices")
-        .andReturn(HttpURLConnection.HTTP_OK, new EndpointSliceListBuilder()
-            .addToItems(getEndpointSlice("test-es"))
-            .build())
-        .once();
+      .andReturn(HttpURLConnection.HTTP_OK, new EndpointSliceListBuilder()
+        .addToItems(getEndpointSlice("test-es"))
+        .build())
+      .once();
 
     // When
     EndpointSliceList esList = client.discovery().v1().endpointSlices().inNamespace("default").list();
@@ -83,10 +82,10 @@ class V1EndpointSliceTest {
   void listAllNamespaces() {
     // Given
     server.expect().get().withPath("/apis/discovery.k8s.io/v1/endpointslices")
-        .andReturn(HttpURLConnection.HTTP_OK, new EndpointSliceListBuilder()
-            .addToItems(getEndpointSlice("test-es"))
-            .build())
-        .once();
+      .andReturn(HttpURLConnection.HTTP_OK, new EndpointSliceListBuilder()
+        .addToItems(getEndpointSlice("test-es"))
+        .build())
+      .once();
 
     // When
     EndpointSliceList esList = client.discovery().v1().endpointSlices().inAnyNamespace().list();
@@ -100,12 +99,11 @@ class V1EndpointSliceTest {
   void delete() {
     // Given
     server.expect().delete().withPath("/apis/discovery.k8s.io/v1/namespaces/default/endpointslices/test-es")
-        .andReturn(HttpURLConnection.HTTP_OK, getEndpointSlice("test-es"))
-        .once();
+      .andReturn(HttpURLConnection.HTTP_OK, getEndpointSlice("test-es"))
+      .once();
 
     // When
-    boolean isDeleted = client.discovery().v1().endpointSlices().inNamespace("default").withName("test-es").delete()
-        .size() == 1;
+    Boolean isDeleted = client.discovery().v1().endpointSlices().inNamespace("default").withName("test-es").delete();
 
     // Then
     assertThat(isDeleted).isTrue();
@@ -116,12 +114,11 @@ class V1EndpointSliceTest {
     // Given
     EndpointSlice endpointSlice = getEndpointSlice("example-abc");
     server.expect().post().withPath("/apis/discovery.k8s.io/v1/namespaces/ns1/endpointslices")
-        .andReturn(HttpURLConnection.HTTP_OK, endpointSlice)
-        .once();
+      .andReturn(HttpURLConnection.HTTP_OK, endpointSlice)
+      .once();
 
     // When
-    EndpointSlice endpointSliceCreated = client.discovery().v1().endpointSlices().inNamespace("ns1")
-        .createOrReplace(endpointSlice);
+    EndpointSlice endpointSliceCreated = client.discovery().v1().endpointSlices().inNamespace("ns1").createOrReplace(endpointSlice);
 
     // Then
     assertThat(endpointSliceCreated).isNotNull();
@@ -136,20 +133,20 @@ class V1EndpointSliceTest {
 
   private EndpointSlice getEndpointSlice(String name) {
     return new EndpointSliceBuilder()
-        .withNewMetadata()
-        .withName(name)
-        .addToLabels("kubernetes.io/service-name", "example")
-        .endMetadata()
-        .withAddressType("IPv4")
-        .addNewPort()
-        .withName("http")
-        .withPort(80)
-        .endPort()
-        .addNewEndpoint()
-        .withAddresses("10.1.2.3")
-        .withNewConditions().withReady(true).endConditions()
-        .withHostname("pod-1")
-        .endEndpoint()
-        .build();
+      .withNewMetadata()
+      .withName(name)
+      .addToLabels("kubernetes.io/service-name", "example")
+      .endMetadata()
+      .withAddressType("IPv4")
+      .addNewPort()
+      .withName("http")
+      .withPort(80)
+      .endPort()
+      .addNewEndpoint()
+      .withAddresses("10.1.2.3")
+      .withNewConditions().withReady(true).endConditions()
+      .withHostname("pod-1")
+      .endEndpoint()
+      .build();
   }
 }

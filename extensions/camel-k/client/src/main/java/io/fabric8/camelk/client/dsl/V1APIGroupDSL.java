@@ -15,19 +15,20 @@
  */
 package io.fabric8.camelk.client.dsl;
 
+import io.fabric8.kubernetes.client.Client;
+import io.fabric8.kubernetes.client.dsl.MixedOperation;
+import io.fabric8.kubernetes.client.dsl.NonNamespaceOperation;
+import io.fabric8.kubernetes.client.dsl.Resource;
 import io.fabric8.camelk.v1.Build;
 import io.fabric8.camelk.v1.BuildList;
 import io.fabric8.camelk.v1.CamelCatalog;
 import io.fabric8.camelk.v1.CamelCatalogList;
 import io.fabric8.camelk.v1.Integration;
+import io.fabric8.camelk.v1.IntegrationList;
 import io.fabric8.camelk.v1.IntegrationKit;
 import io.fabric8.camelk.v1.IntegrationKitList;
-import io.fabric8.camelk.v1.IntegrationList;
 import io.fabric8.camelk.v1.IntegrationPlatform;
 import io.fabric8.camelk.v1.IntegrationPlatformList;
-import io.fabric8.kubernetes.client.Client;
-import io.fabric8.kubernetes.client.dsl.MixedOperation;
-import io.fabric8.kubernetes.client.dsl.Resource;
 
 public interface V1APIGroupDSL extends Client {
 
@@ -45,19 +46,19 @@ public interface V1APIGroupDSL extends Client {
    */
   MixedOperation<CamelCatalog, CamelCatalogList, Resource<CamelCatalog>> camelCatalogs();
 
-  /**
-   * API entrypoint for Integration(camel.apache.org/v1)
-   *
-   * @return MixedOperation for Integration class
-   */
-  MixedOperation<Integration, IntegrationList, Resource<Integration>> integrations();
+    /**
+     * API entrypoint for Integration(camel.apache.org/v1)
+     *
+     * @return MixedOperation for Integration class
+     */
+    MixedOperation<Integration, IntegrationList, Resource<Integration>> integrations();
 
-  /**
-   * API entrypoint for IntegrationKit(camel.apache.org/v1)
-   *
-   * @return MixedOperation for IntegrationKit class
-   */
-  MixedOperation<IntegrationKit, IntegrationKitList, Resource<IntegrationKit>> integrationKits();
+    /**
+     * API entrypoint for IntegrationKit(camel.apache.org/v1)
+     *
+     * @return MixedOperation for IntegrationKit class
+     */
+    MixedOperation<IntegrationKit, IntegrationKitList, Resource<IntegrationKit>> integrationKits();
 
   /**
    * API entrypoint for IntegrationPlatform(camel.apache.org/v1)
@@ -66,3 +67,4 @@ public interface V1APIGroupDSL extends Client {
    */
   MixedOperation<IntegrationPlatform, IntegrationPlatformList, Resource<IntegrationPlatform>> integrationPlatforms();
 }
+

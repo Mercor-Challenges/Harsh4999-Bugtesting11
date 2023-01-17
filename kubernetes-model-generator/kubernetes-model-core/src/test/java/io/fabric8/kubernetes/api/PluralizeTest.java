@@ -15,50 +15,35 @@
  */
 package io.fabric8.kubernetes.api;
 
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
-
-import java.util.stream.Stream;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.params.provider.Arguments.arguments;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
-class PluralizeTest {
+import org.junit.jupiter.api.Test;
 
-  @DisplayName("toPlural, should return argument's plural")
-  @ParameterizedTest(name = "{index}: ''{1}'' plural is ''{0}''")
-  @MethodSource("toPluralInput")
-  void toPlural(String plural, String singular) {
-    assertEquals(plural, Pluralize.toPlural(singular));
-  }
+public class PluralizeTest {
+  @Test
+  void pluralizeShouldWork() {
+    assertNull(Pluralize.toPlural(null));
+    assertEquals("", Pluralize.toPlural(""));
+    
+    assertEquals("equipment", Pluralize.toPlural("equipment"));
+    assertEquals("news", Pluralize.toPlural("news"));
 
-  static Stream<Arguments> toPluralInput() {
-    return Stream.of(
-        arguments("", ""),
-        arguments(null, null),
-        arguments("equipment", "equipment"),
-        arguments("news", "news"),
-        arguments("people", "person"),
-        arguments("children", "child"),
-        arguments("shoes", "shoe"),
-        arguments("loves", "love"),
-        arguments("movies", "movie"),
-        arguments("lives", "life"),
-        arguments("chives", "chive"),
-        arguments("diminutives", "diminutive"),
-        arguments("dice", "die"),
-        arguments("scarves", "scarf"),
-        arguments("humans", "human"),
-        arguments("definitions", "definition"),
-        arguments("statuses", "status"),
-        arguments("endpoints", "endpoints"),
-        arguments("pods", "podmetrics"),
-        arguments("nodes", "nodemetrics"),
-        arguments("women", "woman"),
-        arguments("men", "man"),
-        arguments("dnses", "dns"));
+    assertEquals("people", Pluralize.toPlural("person"));
+    assertEquals("children", Pluralize.toPlural("child"));
+    assertEquals("shoes", Pluralize.toPlural("shoe"));
+    assertEquals("loves", Pluralize.toPlural("love"));
+    assertEquals("movies", Pluralize.toPlural("movie"));
+    assertEquals("lives", Pluralize.toPlural("life"));
+    assertEquals("chives", Pluralize.toPlural("chive"));
+    assertEquals("diminutives", Pluralize.toPlural("diminutive"));
+    assertEquals("dice", Pluralize.toPlural("die"));
+    assertEquals("scarves", Pluralize.toPlural("scarf"));
+    assertEquals("humans", Pluralize.toPlural("human"));
+
+    assertEquals("definitions", Pluralize.toPlural("definition"));
+    assertEquals("statuses", Pluralize.toPlural("status"));
+    assertEquals("endpoints", Pluralize.toPlural("endpoints"));
   }
 
 }

@@ -44,19 +44,16 @@ public class PodDisruptionBudgetTest {
 
   @Test
   public void list() {
-    server.expect().withPath("/apis/policy/v1beta1/namespaces/test/poddisruptionbudgets")
-        .andReturn(200, new PodDisruptionBudgetListBuilder().build()).once();
-    server.expect().withPath("/apis/policy/v1beta1/namespaces/ns1/poddisruptionbudgets")
-        .andReturn(200, new PodDisruptionBudgetListBuilder()
-            .addNewItem().and()
-            .addNewItem().and().build())
-        .once();
+    server.expect().withPath("/apis/policy/v1beta1/namespaces/test/poddisruptionbudgets").andReturn(200, new PodDisruptionBudgetListBuilder().build()).once();
+    server.expect().withPath("/apis/policy/v1beta1/namespaces/ns1/poddisruptionbudgets").andReturn(200, new PodDisruptionBudgetListBuilder()
+      .addNewItem().and()
+      .addNewItem().and().build()).once();
 
     server.expect().withPath("/apis/policy/v1beta1/poddisruptionbudgets").andReturn(200, new PodDisruptionBudgetListBuilder()
-        .addNewItem().and()
-        .addNewItem().and()
-        .addNewItem()
-        .and().build()).once();
+      .addNewItem().and()
+      .addNewItem().and()
+      .addNewItem()
+      .and().build()).once();
 
     PodDisruptionBudgetList podDisruptionBudgetList = client.policy().podDisruptionBudget().list();
     assertNotNull(podDisruptionBudgetList);
@@ -73,33 +70,27 @@ public class PodDisruptionBudgetTest {
 
   @Test
   public void testListWithLabels() {
-    server.expect()
-        .withPath("/apis/policy/v1beta1/namespaces/test/poddisruptionbudgets?labelSelector="
-            + Utils.toUrlEncoded("key1=value1,key2=value2,key3=value3"))
-        .andReturn(200, new PodDisruptionBudgetListBuilder().build()).always();
-    server.expect()
-        .withPath("/apis/policy/v1beta1/namespaces/test/poddisruptionbudgets?labelSelector="
-            + Utils.toUrlEncoded("key1=value1,key2=value2"))
-        .andReturn(200, new PodDisruptionBudgetListBuilder()
-            .addNewItem().and()
-            .addNewItem().and()
-            .addNewItem().and()
-            .build())
-        .once();
+    server.expect().withPath("/apis/policy/v1beta1/namespaces/test/poddisruptionbudgets?labelSelector=" + Utils.toUrlEncoded("key1=value1,key2=value2,key3=value3")).andReturn(200, new PodDisruptionBudgetListBuilder().build()).always();
+    server.expect().withPath("/apis/policy/v1beta1/namespaces/test/poddisruptionbudgets?labelSelector=" + Utils.toUrlEncoded("key1=value1,key2=value2")).andReturn(200, new PodDisruptionBudgetListBuilder()
+      .addNewItem().and()
+      .addNewItem().and()
+      .addNewItem().and()
+      .build()).once();
 
     PodDisruptionBudgetList podDisruptionBudgetList = client.policy().podDisruptionBudget()
-        .withLabel("key1", "value1")
-        .withLabel("key2", "value2")
-        .withLabel("key3", "value3")
-        .list();
+      .withLabel("key1", "value1")
+      .withLabel("key2", "value2")
+      .withLabel("key3", "value3")
+      .list();
+
 
     assertNotNull(podDisruptionBudgetList);
     assertEquals(0, podDisruptionBudgetList.getItems().size());
 
     podDisruptionBudgetList = client.policy().podDisruptionBudget()
-        .withLabel("key1", "value1")
-        .withLabel("key2", "value2")
-        .list();
+      .withLabel("key1", "value1")
+      .withLabel("key2", "value2")
+      .list();
 
     assertNotNull(podDisruptionBudgetList);
     assertEquals(3, podDisruptionBudgetList.getItems().size());
@@ -107,10 +98,9 @@ public class PodDisruptionBudgetTest {
 
   @Test
   public void testGet() {
-    server.expect().withPath("/apis/policy/v1beta1/namespaces/test/poddisruptionbudgets/poddisruptionbudget1")
-        .andReturn(200, new PodDisruptionBudgetBuilder().build()).once();
-    server.expect().withPath("/apis/policy/v1beta1/namespaces/ns1/poddisruptionbudgets/poddisruptionbudget2")
-        .andReturn(200, new PodDisruptionBudgetBuilder().build()).once();
+    server.expect().withPath("/apis/policy/v1beta1/namespaces/test/poddisruptionbudgets/poddisruptionbudget1").andReturn(200, new PodDisruptionBudgetBuilder().build()).once();
+    server.expect().withPath("/apis/policy/v1beta1/namespaces/ns1/poddisruptionbudgets/poddisruptionbudget2").andReturn(200, new PodDisruptionBudgetBuilder().build()).once();
+
 
     PodDisruptionBudget podDisruptionBudget = client.policy().podDisruptionBudget().withName("poddisruptionbudget1").get();
     assertNotNull(podDisruptionBudget);
@@ -124,44 +114,44 @@ public class PodDisruptionBudgetTest {
 
   @Test
   public void testDelete() {
-    server.expect().withPath("/apis/policy/v1beta1/namespaces/test/poddisruptionbudgets/poddisruptionbudget1")
-        .andReturn(200, new PodDisruptionBudgetBuilder()
-            .withNewMetadata().withName("poddisruptionbudget1").withNamespace("test").endMetadata()
-            .withNewSpec()
-            .withMaxUnavailable(new IntOrString("1%"))
-            .withNewSelector()
-            .withMatchLabels(Collections.singletonMap("app", "zookeeper"))
-            .endSelector()
-            .endSpec()
-            .build())
-        .once();
+    server.expect().withPath("/apis/policy/v1beta1/namespaces/test/poddisruptionbudgets/poddisruptionbudget1").andReturn(200, new PodDisruptionBudgetBuilder()
+      .withNewMetadata().withName("poddisruptionbudget1").withNamespace("test").endMetadata()
+      .withNewSpec()
+      .withMaxUnavailable(new IntOrString("1%"))
+      .withNewSelector()
+      .withMatchLabels(Collections.singletonMap("app", "zookeeper"))
+      .endSelector()
+      .endSpec()
+      .build()).once();
 
-    boolean deleted = client.policy().podDisruptionBudget().withName("poddisruptionbudget1").delete().size() == 1;
+
+    Boolean deleted = client.policy().podDisruptionBudget().withName("poddisruptionbudget1").delete();
+    assertNotNull(deleted);
     assertTrue(deleted);
   }
 
   @Test
   public void testDeleteWithNamespaceMismatch() {
-    PodDisruptionBudget podDisruptionBudget1 = new PodDisruptionBudgetBuilder().withNewMetadata()
-        .withName("podDisruptionBudget1").withNamespace("test").and().build();
+    Assertions.assertThrows(KubernetesClientException.class, () -> {
+      PodDisruptionBudget podDisruptionBudget1 = new PodDisruptionBudgetBuilder().withNewMetadata().withName("podDisruptionBudget1").withNamespace("test").and().build();
 
-    Boolean deleted = client.policy().podDisruptionBudget().inNamespace("test1").delete(podDisruptionBudget1).size() == 1;
-    assertFalse(deleted);
+      Boolean deleted = client.policy().podDisruptionBudget().inNamespace("test1").delete(podDisruptionBudget1);
+      assertFalse(deleted);
+    });
+
   }
 
   @Test
   public void testCreateWithNameMismatch() {
     Assertions.assertThrows(KubernetesClientException.class, () -> {
-      PodDisruptionBudget podDisruptionBudget1 = new PodDisruptionBudgetBuilder().withNewMetadata()
-          .withName("podDisruptionBudget1").withNamespace("test").and().build();
+      PodDisruptionBudget podDisruptionBudget1 = new PodDisruptionBudgetBuilder().withNewMetadata().withName("podDisruptionBudget1").withNamespace("test").and().build();
 
-      client.policy().podDisruptionBudget().inNamespace("test1").withName("mypodDisruptionBudget1")
-          .create(podDisruptionBudget1);
+      client.policy().podDisruptionBudget().inNamespace("test1").withName("mypodDisruptionBudget1").create(podDisruptionBudget1);
     });
   }
 
   @Test
   public void testLoadFromFile() {
-    assertNotNull(client.policy().podDisruptionBudget().load(getClass().getResourceAsStream("/test-pdb.yml")).item());
+    assertNotNull(client.policy().podDisruptionBudget().load(getClass().getResourceAsStream("/test-pdb.yml")).get());
   }
 }

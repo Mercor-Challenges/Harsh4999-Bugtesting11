@@ -15,27 +15,32 @@
  */
 package io.fabric8.tekton.client;
 
+import io.fabric8.kubernetes.client.ExtensionAdapterSupport;
 import io.fabric8.kubernetes.client.Client;
-import io.fabric8.kubernetes.client.extension.ExtensionAdapter;
-import io.fabric8.tekton.client.dsl.V1alpha1APIGroupDSL;
-import io.fabric8.tekton.client.dsl.V1beta1APIGroupDSL;
+import io.fabric8.kubernetes.client.ExtensionAdapter;
+import okhttp3.OkHttpClient;
 
-public class TektonExtensionAdapter implements ExtensionAdapter<TektonClient> {
+import java.net.URL;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ConcurrentHashMap;
 
-  @Override
-  public Class<TektonClient> getExtensionType() {
-    return TektonClient.class;
-  }
+public class TektonExtensionAdapter extends ExtensionAdapterSupport implements ExtensionAdapter<TektonClient> {
 
-  @Override
-  public TektonClient adapt(Client client) {
-    return new DefaultTektonClient(client);
-  }
+    static final ConcurrentMap<URL, Boolean> IS_TEKTON = new ConcurrentHashMap<>();
+    static final ConcurrentMap<URL, Boolean> USES_TEKTON_APIGROUPS = new ConcurrentHashMap<>();
+    
+	@Override
+	public Class<TektonClient> getExtensionType() {
+		return TektonClient.class;
+	}
 
-  @Override
-  public void registerClients(ClientFactory factory) {
-    factory.register(V1beta1APIGroupDSL.class, new V1beta1APIGroupClient());
-    factory.register(V1alpha1APIGroupDSL.class, new V1alpha1APIGroupClient());
-  }
+	@Override
+	public Boolean isAdaptable(Client client) {
+		return isAdaptable(client, IS_TEKTON, USES_TEKTON_APIGROUPS, "tekton.dev");
+	}
 
+	@Override
+	public TektonClient adapt(Client client) {
+            return new DefaultTektonClient(client.adapt(OkHttpClient.class), client.getConfiguration());
+	}
 }

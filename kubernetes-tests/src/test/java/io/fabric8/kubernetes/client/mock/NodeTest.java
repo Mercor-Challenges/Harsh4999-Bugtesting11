@@ -43,17 +43,19 @@ public class NodeTest {
 
   @Test
   public void testList() {
-    server.expect().withPath("/api/v1/nodes").andReturn(200, new NodeListBuilder().addNewItem().and().build()).once();
+   server.expect().withPath("/api/v1/nodes").andReturn(200, new NodeListBuilder().addNewItem().and().build()).once();
 
     NodeList nodeList = client.nodes().list();
     assertNotNull(nodeList);
     assertEquals(1, nodeList.getItems().size());
   }
 
+
   @Test
   public void testGet() {
-    server.expect().withPath("/api/v1/nodes/node1").andReturn(200, new PodBuilder().build()).once();
-    server.expect().withPath("/api/v1/nodes/node2").andReturn(200, new PodBuilder().build()).once();
+   server.expect().withPath("/api/v1/nodes/node1").andReturn(200, new PodBuilder().build()).once();
+   server.expect().withPath("/api/v1/nodes/node2").andReturn(200, new PodBuilder().build()).once();
+
 
     Node node = client.nodes().withName("node1").get();
     assertNotNull(node);
@@ -65,18 +67,21 @@ public class NodeTest {
     assertNull(node);
   }
 
+
   @Test
   public void testDelete() {
-    server.expect().withPath("/api/v1/nodes/node1").andReturn(200, new PodBuilder().build()).once();
-    server.expect().withPath("/api/v1/nodes/node2").andReturn(200, new PodBuilder().build()).once();
+   server.expect().withPath("/api/v1/nodes/node1").andReturn(200, new PodBuilder().build()).once();
+   server.expect().withPath("/api/v1/nodes/node2").andReturn(200, new PodBuilder().build()).once();
 
-    boolean deleted = client.nodes().withName("node1").delete().size() == 1;
+
+    Boolean deleted = client.nodes().withName("node1").delete();
     assertTrue(deleted);
 
-    deleted = client.nodes().withName("node2").delete().size() == 1;
+    deleted = client.nodes().withName("node2").delete();
     assertTrue(deleted);
 
-    deleted = client.nodes().withName("node3").delete().size() == 1;
+
+    deleted = client.nodes().withName("node3").delete();
     assertFalse(deleted);
   }
 

@@ -21,7 +21,7 @@
   <parent>
     <groupId>io.fabric8</groupId>
     <artifactId>tekton-extension-pom</artifactId>
-    <version>6.4-SNAPSHOT</version>
+    <version>5.4-SNAPSHOT</version>
   </parent>
 
   <artifactId>tekton-tests</artifactId>
@@ -36,13 +36,15 @@
 
     <dependency>
       <groupId>io.fabric8</groupId>
-      <artifactId>kubernetes-server-mock</artifactId>
+      <artifactId>tekton-mock</artifactId>
+      <version>${project.version}</version>
       <scope>test</scope>
     </dependency>
 
     <dependency>
       <groupId>io.fabric8</groupId>
       <artifactId>mockwebserver</artifactId>
+      <version>${mockwebserver.version}</version>
       <scope>test</scope>
     </dependency>
 

@@ -103,9 +103,6 @@
         "fieldManager": {
           "type": "string"
         },
-        "fieldValidation": {
-          "type": "string"
-        },
         "kind": {
           "type": "string",
           "default": "CreateOptions",
@@ -218,7 +215,7 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/kubernetes_apimachinery_pkg_runtime_RawExtension",
-            "existingJavaType": "io.fabric8.kubernetes.api.model.KubernetesResource"
+            "existingJavaType": "io.fabric8.kubernetes.api.model.HasMetadata"
           }
         },
         "kind": {
@@ -232,10 +229,10 @@
         }
       },
       "additionalProperties": true,
-      "existingJavaType": "io.fabric8.kubernetes.api.model.KubernetesList",
+      "existingJavaType": "io.fabric8.kubernetes.api.model.BaseKubernetesList",
       "javaInterfaces": [
         "io.fabric8.kubernetes.api.model.KubernetesResource",
-        "io.fabric8.kubernetes.api.model.KubernetesResourceList\u003cio.fabric8.kubernetes.api.model.KubernetesResource\u003e"
+        "io.fabric8.kubernetes.api.model.KubernetesResourceList\u003cio.fabric8.kubernetes.api.model.HasMetadata\u003e"
       ]
     },
     "kubernetes_apimachinery_ListMeta": {
@@ -329,9 +326,6 @@
         "operation": {
           "type": "string"
         },
-        "subresource": {
-          "type": "string"
-        },
         "time": {
           "$ref": "#/definitions/kubernetes_apimachinery_Time",
           "existingJavaType": "String"
@@ -352,6 +346,9 @@
             "type": "string"
           },
           "existingJavaType": "java.util.Map\u003cString, String\u003e"
+        },
+        "clusterName": {
+          "type": "string"
         },
         "creationTimestamp": {
           "$ref": "#/definitions/kubernetes_apimachinery_Time",
@@ -478,9 +475,6 @@
           }
         },
         "fieldManager": {
-          "type": "string"
-        },
-        "fieldValidation": {
           "type": "string"
         },
         "force": {
@@ -685,9 +679,6 @@
         "fieldManager": {
           "type": "string"
         },
-        "fieldValidation": {
-          "type": "string"
-        },
         "kind": {
           "type": "string",
           "default": "UpdateOptions",
@@ -700,10 +691,18 @@
         "io.fabric8.kubernetes.api.model.KubernetesResource"
       ]
     },
+    "kubernetes_apimachinery_pkg_runtime_ImageRawExtension": {
+      "type": "object",
+      "additionalProperties": true,
+      "javaType": "io.fabric8.kubernetes.api.model.runtime.RawExtension",
+      "javaInterfaces": [
+        "io.fabric8.kubernetes.api.model.KubernetesResource"
+      ]
+    },
     "kubernetes_apimachinery_pkg_runtime_RawExtension": {
       "type": "object",
       "additionalProperties": true,
-      "existingJavaType": "io.fabric8.kubernetes.api.model.KubernetesResource",
+      "existingJavaType": "io.fabric8.kubernetes.api.model.HasMetadata",
       "javaInterfaces": [
         "io.fabric8.kubernetes.api.model.KubernetesResource"
       ]
@@ -1170,7 +1169,7 @@
     },
     "BaseKubernetesList": {
       "$ref": "#/definitions/kubernetes_apimachinery_List",
-      "existingJavaType": "io.fabric8.kubernetes.api.model.KubernetesList"
+      "existingJavaType": "io.fabric8.kubernetes.api.model.BaseKubernetesList"
     },
     "CreateOptions": {
       "$ref": "#/definitions/kubernetes_apimachinery_CreateOptions",
@@ -1331,9 +1330,6 @@
         "fieldManager": {
           "type": "string"
         },
-        "fieldValidation": {
-          "type": "string"
-        },
         "kind": {
           "type": "string",
           "default": "CreateOptions",
@@ -1387,19 +1383,12 @@
           }
         },
         "conditions": {
-          "$ref": "#/definitions/kubernetes_discovery_v1_EndpointConditions",
-          "existingJavaType": "io.fabric8.kubernetes.api.model.discovery.v1.EndpointConditions"
-        },
-        "deprecatedTopology": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          },
-          "existingJavaType": "java.util.Map\u003cString, String\u003e"
+          "$ref": "#/definitions/kubernetes_discovery_v1beta1_EndpointConditions",
+          "existingJavaType": "io.fabric8.kubernetes.api.model.discovery.v1beta1.EndpointConditions"
         },
         "hints": {
-          "$ref": "#/definitions/kubernetes_discovery_v1_EndpointHints",
-          "existingJavaType": "io.fabric8.kubernetes.api.model.discovery.v1.EndpointHints"
+          "$ref": "#/definitions/kubernetes_discovery_v1beta1_EndpointHints",
+          "existingJavaType": "io.fabric8.kubernetes.api.model.discovery.v1beta1.EndpointHints"
         },
         "hostname": {
           "type": "string"
@@ -1411,8 +1400,12 @@
           "$ref": "#/definitions/kubernetes_core_ObjectReference",
           "existingJavaType": "io.fabric8.kubernetes.api.model.ObjectReference"
         },
-        "zone": {
-          "type": "string"
+        "topology": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "existingJavaType": "java.util.Map\u003cString, String\u003e"
         }
       },
       "additionalProperties": true
@@ -1437,8 +1430,8 @@
           "type": "array",
           "javaOmitEmpty": true,
           "items": {
-            "$ref": "#/definitions/kubernetes_discovery_v1beta1_ForZone",
-            "existingJavaType": "io.fabric8.kubernetes.api.model.discovery.v1beta1.ForZone"
+            "$ref": "#/definitions/kubernetes_discovery_v1_ForZone",
+            "existingJavaType": "io.fabric8.kubernetes.api.model.discovery.v1.ForZone"
           }
         }
       },
@@ -1470,14 +1463,14 @@
         },
         "apiVersion": {
           "type": "string",
-          "default": "discovery.k8s.io/v1beta1",
+          "default": "discovery.k8s.io/v1",
           "required": true
         },
         "endpoints": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/kubernetes_discovery_v1beta1_Endpoint",
-            "existingJavaType": "io.fabric8.kubernetes.api.model.discovery.v1beta1.Endpoint"
+            "$ref": "#/definitions/kubernetes_discovery_v1_Endpoint",
+            "existingJavaType": "io.fabric8.kubernetes.api.model.discovery.v1.Endpoint"
           }
         },
         "kind": {
@@ -1492,8 +1485,8 @@
         "ports": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/kubernetes_discovery_v1beta1_EndpointPort",
-            "existingJavaType": "io.fabric8.kubernetes.api.model.discovery.v1beta1.EndpointPort"
+            "$ref": "#/definitions/kubernetes_discovery_v1_EndpointPort",
+            "existingJavaType": "io.fabric8.kubernetes.api.model.discovery.v1.EndpointPort"
           }
         }
       },
@@ -1565,6 +1558,9 @@
       },
       "additionalProperties": true
     },
+    "imagerawextension": {
+      "additionalProperties": true
+    },
     "info": {
       "properties": {
         "buildDate": {
@@ -1608,7 +1604,7 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/kubernetes_apimachinery_pkg_runtime_RawExtension",
-            "existingJavaType": "io.fabric8.kubernetes.api.model.KubernetesResource"
+            "existingJavaType": "io.fabric8.kubernetes.api.model.HasMetadata"
           }
         },
         "kind": {
@@ -1703,9 +1699,6 @@
         "operation": {
           "type": "string"
         },
-        "subresource": {
-          "type": "string"
-        },
         "time": {
           "$ref": "#/definitions/kubernetes_apimachinery_Time",
           "existingJavaType": "String"
@@ -1721,6 +1714,9 @@
             "type": "string"
           },
           "existingJavaType": "java.util.Map\u003cString, String\u003e"
+        },
+        "clusterName": {
+          "type": "string"
         },
         "creationTimestamp": {
           "$ref": "#/definitions/kubernetes_apimachinery_Time",
@@ -1858,9 +1854,6 @@
           }
         },
         "fieldManager": {
-          "type": "string"
-        },
-        "fieldValidation": {
           "type": "string"
         },
         "force": {
@@ -2029,9 +2022,6 @@
           }
         },
         "fieldManager": {
-          "type": "string"
-        },
-        "fieldValidation": {
           "type": "string"
         },
         "kind": {
