@@ -39,7 +39,6 @@ import lombok.experimental.Accessors;
     "metadata",
     "enable",
     "password",
-    "type",
     "user"
 })
 @ToString
@@ -71,8 +70,6 @@ public class KafkaSASLSpec implements KubernetesResource
     private Boolean enable;
     @JsonProperty("password")
     private SecretValueFromSource password;
-    @JsonProperty("type")
-    private SecretValueFromSource type;
     @JsonProperty("user")
     private SecretValueFromSource user;
     @JsonIgnore
@@ -89,14 +86,12 @@ public class KafkaSASLSpec implements KubernetesResource
      * 
      * @param password
      * @param enable
-     * @param type
      * @param user
      */
-    public KafkaSASLSpec(Boolean enable, SecretValueFromSource password, SecretValueFromSource type, SecretValueFromSource user) {
+    public KafkaSASLSpec(Boolean enable, SecretValueFromSource password, SecretValueFromSource user) {
         super();
         this.enable = enable;
         this.password = password;
-        this.type = type;
         this.user = user;
     }
 
@@ -118,16 +113,6 @@ public class KafkaSASLSpec implements KubernetesResource
     @JsonProperty("password")
     public void setPassword(SecretValueFromSource password) {
         this.password = password;
-    }
-
-    @JsonProperty("type")
-    public SecretValueFromSource getType() {
-        return type;
-    }
-
-    @JsonProperty("type")
-    public void setType(SecretValueFromSource type) {
-        this.type = type;
     }
 
     @JsonProperty("user")

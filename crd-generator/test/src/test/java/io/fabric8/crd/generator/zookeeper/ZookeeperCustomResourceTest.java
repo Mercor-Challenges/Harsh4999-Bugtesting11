@@ -31,7 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ZookeeperCustomResourceTest {
 
   @Test
-  void testCrdv1beta1() {
+  void testCrd() {
     CustomResourceDefinition d = Serialization.unmarshal(
         getClass().getClassLoader().getResourceAsStream("META-INF/fabric8/zookeepers.io.zookeeper-v1beta1.yml"),
         CustomResourceDefinition.class);
@@ -39,12 +39,6 @@ class ZookeeperCustomResourceTest {
     assertEquals("Zookeeper", d.getSpec().getNames().getKind());
     assertEquals("zookeepers", d.getSpec().getNames().getPlural());
     assertEquals("Namespaced", d.getSpec().getScope());
-
-    assertEquals("1", d.getMetadata().getAnnotations().get("one"));
-    assertEquals("2", d.getMetadata().getAnnotations().get("two"));
-    assertEquals("3", d.getMetadata().getLabels().get("three"));
-    assertEquals("4=4", d.getMetadata().getLabels().get("four"));
-    assertEquals("====>", d.getMetadata().getLabels().get("five"));
 
     assertNotNull(d.getSpec().getSubresources());
 
@@ -76,19 +70,5 @@ class ZookeeperCustomResourceTest {
       assertTrue(required.contains("version"));
     });
 
-  }
-
-  @Test
-  void testCrdv1Metadata() {
-    CustomResourceDefinition d = Serialization.unmarshal(
-        getClass().getClassLoader().getResourceAsStream("META-INF/fabric8/zookeepers.io.zookeeper-v1.yml"),
-        CustomResourceDefinition.class);
-    assertNotNull(d);
-
-    assertEquals("1", d.getMetadata().getAnnotations().get("one"));
-    assertEquals("2", d.getMetadata().getAnnotations().get("two"));
-    assertEquals("3", d.getMetadata().getLabels().get("three"));
-    assertEquals("4=4", d.getMetadata().getLabels().get("four"));
-    assertEquals("====>", d.getMetadata().getLabels().get("five"));
   }
 }

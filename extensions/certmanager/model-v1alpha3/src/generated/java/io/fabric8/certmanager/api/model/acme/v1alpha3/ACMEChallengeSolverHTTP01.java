@@ -37,7 +37,6 @@ import lombok.experimental.Accessors;
     "apiVersion",
     "kind",
     "metadata",
-    "gatewayHTTPRoute",
     "ingress"
 })
 @ToString
@@ -65,8 +64,6 @@ import lombok.experimental.Accessors;
 public class ACMEChallengeSolverHTTP01 implements KubernetesResource
 {
 
-    @JsonProperty("gatewayHTTPRoute")
-    private ACMEChallengeSolverHTTP01GatewayHTTPRoute gatewayHTTPRoute;
     @JsonProperty("ingress")
     private ACMEChallengeSolverHTTP01Ingress ingress;
     @JsonIgnore
@@ -82,22 +79,10 @@ public class ACMEChallengeSolverHTTP01 implements KubernetesResource
     /**
      * 
      * @param ingress
-     * @param gatewayHTTPRoute
      */
-    public ACMEChallengeSolverHTTP01(ACMEChallengeSolverHTTP01GatewayHTTPRoute gatewayHTTPRoute, ACMEChallengeSolverHTTP01Ingress ingress) {
+    public ACMEChallengeSolverHTTP01(ACMEChallengeSolverHTTP01Ingress ingress) {
         super();
-        this.gatewayHTTPRoute = gatewayHTTPRoute;
         this.ingress = ingress;
-    }
-
-    @JsonProperty("gatewayHTTPRoute")
-    public ACMEChallengeSolverHTTP01GatewayHTTPRoute getGatewayHTTPRoute() {
-        return gatewayHTTPRoute;
-    }
-
-    @JsonProperty("gatewayHTTPRoute")
-    public void setGatewayHTTPRoute(ACMEChallengeSolverHTTP01GatewayHTTPRoute gatewayHTTPRoute) {
-        this.gatewayHTTPRoute = gatewayHTTPRoute;
     }
 
     @JsonProperty("ingress")

@@ -23,7 +23,7 @@
   <parent>
     <groupId>io.fabric8</groupId>
     <artifactId>kubernetes-model-generator</artifactId>
-    <version>6.4-SNAPSHOT</version>
+    <version>6.0-SNAPSHOT</version>
   </parent>
 
   <artifactId>openshift-model-machineconfig</artifactId>
@@ -32,6 +32,10 @@
 
   <properties>
     <clone-kube>true</clone-kube>
+    <osgi.include.resources>
+      ${osgi.include.resources.default},
+      /machineconfig.properties=target/classes/machineconfig.properties
+    </osgi.include.resources>
     <osgi.import>*</osgi.import>
     <osgi.export>
       io.fabric8.openshift.api.model.machineconfig**,
@@ -49,7 +53,7 @@
     </dependency>
     <dependency>
       <groupId>io.fabric8</groupId>
-      <artifactId>openshift-model-config</artifactId>
+      <artifactId>openshift-model</artifactId>
     </dependency>
   </dependencies>
 

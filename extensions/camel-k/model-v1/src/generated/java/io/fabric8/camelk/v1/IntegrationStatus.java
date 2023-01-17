@@ -47,6 +47,7 @@ import lombok.experimental.Accessors;
     "generatedSources",
     "image",
     "integrationKit",
+    "kit",
     "lastInitTimestamp",
     "phase",
     "platform",
@@ -106,6 +107,8 @@ public class IntegrationStatus implements KubernetesResource
     private String image;
     @JsonProperty("integrationKit")
     private io.fabric8.kubernetes.api.model.ObjectReference integrationKit;
+    @JsonProperty("kit")
+    private String kit;
     @JsonProperty("lastInitTimestamp")
     private String lastInitTimestamp;
     @JsonProperty("phase")
@@ -150,12 +153,13 @@ public class IntegrationStatus implements KubernetesResource
      * @param dependencies
      * @param generatedResources
      * @param lastInitTimestamp
+     * @param kit
      * @param digest
      * @param selector
      * @param conditions
      * @param generatedSources
      */
-    public IntegrationStatus(List<String> capabilities, List<IntegrationCondition> conditions, List<ConfigurationSpec> configuration, List<String> dependencies, String digest, List<ResourceSpec> generatedResources, List<SourceSpec> generatedSources, String image, io.fabric8.kubernetes.api.model.ObjectReference integrationKit, String lastInitTimestamp, String phase, String platform, String profile, Integer replicas, String runtimeProvider, String runtimeVersion, String selector, String version) {
+    public IntegrationStatus(List<String> capabilities, List<IntegrationCondition> conditions, List<ConfigurationSpec> configuration, List<String> dependencies, String digest, List<ResourceSpec> generatedResources, List<SourceSpec> generatedSources, String image, io.fabric8.kubernetes.api.model.ObjectReference integrationKit, String kit, String lastInitTimestamp, String phase, String platform, String profile, Integer replicas, String runtimeProvider, String runtimeVersion, String selector, String version) {
         super();
         this.capabilities = capabilities;
         this.conditions = conditions;
@@ -166,6 +170,7 @@ public class IntegrationStatus implements KubernetesResource
         this.generatedSources = generatedSources;
         this.image = image;
         this.integrationKit = integrationKit;
+        this.kit = kit;
         this.lastInitTimestamp = lastInitTimestamp;
         this.phase = phase;
         this.platform = platform;
@@ -265,6 +270,16 @@ public class IntegrationStatus implements KubernetesResource
     @JsonProperty("integrationKit")
     public void setIntegrationKit(io.fabric8.kubernetes.api.model.ObjectReference integrationKit) {
         this.integrationKit = integrationKit;
+    }
+
+    @JsonProperty("kit")
+    public String getKit() {
+        return kit;
+    }
+
+    @JsonProperty("kit")
+    public void setKit(String kit) {
+        this.kit = kit;
     }
 
     @JsonProperty("lastInitTimestamp")

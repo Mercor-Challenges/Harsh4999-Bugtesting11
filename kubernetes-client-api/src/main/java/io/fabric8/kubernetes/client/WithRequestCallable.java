@@ -31,7 +31,8 @@ public class WithRequestCallable<C extends Client> implements FunctionCallable<C
 
   @Override
   public <O> O call(Function<C, O> function) {
-    C newClient = (C) this.client.newClient(requestConfig).adapt(this.client.getClass());
-    return function.apply(newClient);
+    try (C newClient = (C) this.client.newClient(requestConfig).adapt(this.client.getClass())) {
+      return function.apply(newClient);
+    }
   }
 }

@@ -4,43 +4,40 @@ package io.fabric8.istio.api.networking.v1beta1;
 import java.util.HashMap;
 import java.util.Map;
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
 
 public enum ServiceEntryLocation {
 
-    MESH_EXTERNAL(0),
-    MESH_INTERNAL(1);
-    private final Integer value;
-    private final static Map<Integer, ServiceEntryLocation> CONSTANTS = new HashMap<Integer, ServiceEntryLocation>();
-    private final static Map<String, ServiceEntryLocation> NAME_CONSTANTS = new HashMap<String, ServiceEntryLocation>();
+    MESH_EXTERNAL("MESH_EXTERNAL"),
+    MESH_INTERNAL("MESH_INTERNAL");
+    private final String value;
+    private final static Map<String, ServiceEntryLocation> CONSTANTS = new HashMap<String, ServiceEntryLocation>();
 
     static {
         for (ServiceEntryLocation c: values()) {
             CONSTANTS.put(c.value, c);
         }
-        for (ServiceEntryLocation c: values()) {
-            NAME_CONSTANTS.put(c.name().toLowerCase(), c);
-        }
     }
 
-    private ServiceEntryLocation(Integer value) {
+    private ServiceEntryLocation(String value) {
         this.value = value;
     }
 
+    @Override
+    public String toString() {
+        return this.value;
+    }
+
+    @JsonValue
+    public String value() {
+        return this.value;
+    }
+
     @JsonCreator
-    public static ServiceEntryLocation fromValue(Object value) {
-        if (value instanceof String) {
-            {
-                ServiceEntryLocation constant = NAME_CONSTANTS.get(((String) value).toLowerCase());
-                if (constant == null) {
-                    throw new IllegalArgumentException((value +""));
-                } else {
-                    return constant;
-                }
-            }
-        }
+    public static ServiceEntryLocation fromValue(String value) {
         ServiceEntryLocation constant = CONSTANTS.get(value);
         if (constant == null) {
-            throw new IllegalArgumentException((value +""));
+            throw new IllegalArgumentException(value);
         } else {
             return constant;
         }

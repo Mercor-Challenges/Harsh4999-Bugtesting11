@@ -1,8 +1,9 @@
 
 package io.fabric8.chaosmesh.v1alpha1;
 
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
@@ -38,20 +39,13 @@ import lombok.experimental.Accessors;
     "apiVersion",
     "kind",
     "metadata",
-    "abort",
-    "code",
-    "delay",
+    "action",
     "duration",
-    "method",
+    "headers",
     "mode",
-    "patch",
-    "path",
-    "port",
-    "replace",
-    "request_headers",
-    "response_headers",
+    "percent",
+    "scheduler",
     "selector",
-    "target",
     "value"
 })
 @ToString
@@ -79,36 +73,21 @@ import lombok.experimental.Accessors;
 public class HTTPChaosSpec implements KubernetesResource
 {
 
-    @JsonProperty("abort")
-    private Boolean abort;
-    @JsonProperty("code")
-    private Integer code;
-    @JsonProperty("delay")
-    private String delay;
+    @JsonProperty("action")
+    private java.lang.String action;
     @JsonProperty("duration")
     private String duration;
-    @JsonProperty("method")
-    private String method;
+    @JsonProperty("headers")
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    private List<Matcher> headers = new ArrayList<Matcher>();
     @JsonProperty("mode")
     private java.lang.String mode;
-    @JsonProperty("patch")
-    private PodHttpChaosPatchActions patch;
-    @JsonProperty("path")
-    private String path;
-    @JsonProperty("port")
-    private java.lang.Integer port;
-    @JsonProperty("replace")
-    private PodHttpChaosReplaceActions replace;
-    @JsonProperty("request_headers")
-    @JsonInclude(JsonInclude.Include.NON_EMPTY)
-    private Map<String, String> requestHeaders = new LinkedHashMap<String, String>();
-    @JsonProperty("response_headers")
-    @JsonInclude(JsonInclude.Include.NON_EMPTY)
-    private Map<String, String> responseHeaders = new LinkedHashMap<String, String>();
+    @JsonProperty("percent")
+    private java.lang.String percent;
+    @JsonProperty("scheduler")
+    private SchedulerSpec scheduler;
     @JsonProperty("selector")
-    private PodSelectorSpec selector;
-    @JsonProperty("target")
-    private java.lang.String target;
+    private SelectorSpec selector;
     @JsonProperty("value")
     private java.lang.String value;
     @JsonIgnore
@@ -123,69 +102,35 @@ public class HTTPChaosSpec implements KubernetesResource
 
     /**
      * 
-     * @param code
-     * @param method
-     * @param replace
-     * @param target
      * @param duration
      * @param mode
-     * @param patch
-     * @param path
-     * @param delay
-     * @param requestHeaders
-     * @param responseHeaders
-     * @param abort
-     * @param port
+     * @param scheduler
+     * @param headers
+     * @param action
      * @param selector
+     * @param percent
      * @param value
      */
-    public HTTPChaosSpec(Boolean abort, Integer code, String delay, String duration, String method, java.lang.String mode, PodHttpChaosPatchActions patch, String path, java.lang.Integer port, PodHttpChaosReplaceActions replace, Map<String, String> requestHeaders, Map<String, String> responseHeaders, PodSelectorSpec selector, java.lang.String target, java.lang.String value) {
+    public HTTPChaosSpec(java.lang.String action, String duration, List<Matcher> headers, java.lang.String mode, java.lang.String percent, SchedulerSpec scheduler, SelectorSpec selector, java.lang.String value) {
         super();
-        this.abort = abort;
-        this.code = code;
-        this.delay = delay;
+        this.action = action;
         this.duration = duration;
-        this.method = method;
+        this.headers = headers;
         this.mode = mode;
-        this.patch = patch;
-        this.path = path;
-        this.port = port;
-        this.replace = replace;
-        this.requestHeaders = requestHeaders;
-        this.responseHeaders = responseHeaders;
+        this.percent = percent;
+        this.scheduler = scheduler;
         this.selector = selector;
-        this.target = target;
         this.value = value;
     }
 
-    @JsonProperty("abort")
-    public Boolean getAbort() {
-        return abort;
+    @JsonProperty("action")
+    public java.lang.String getAction() {
+        return action;
     }
 
-    @JsonProperty("abort")
-    public void setAbort(Boolean abort) {
-        this.abort = abort;
-    }
-
-    @JsonProperty("code")
-    public Integer getCode() {
-        return code;
-    }
-
-    @JsonProperty("code")
-    public void setCode(Integer code) {
-        this.code = code;
-    }
-
-    @JsonProperty("delay")
-    public String getDelay() {
-        return delay;
-    }
-
-    @JsonProperty("delay")
-    public void setDelay(String delay) {
-        this.delay = delay;
+    @JsonProperty("action")
+    public void setAction(java.lang.String action) {
+        this.action = action;
     }
 
     @JsonProperty("duration")
@@ -198,14 +143,14 @@ public class HTTPChaosSpec implements KubernetesResource
         this.duration = duration;
     }
 
-    @JsonProperty("method")
-    public String getMethod() {
-        return method;
+    @JsonProperty("headers")
+    public List<Matcher> getHeaders() {
+        return headers;
     }
 
-    @JsonProperty("method")
-    public void setMethod(String method) {
-        this.method = method;
+    @JsonProperty("headers")
+    public void setHeaders(List<Matcher> headers) {
+        this.headers = headers;
     }
 
     @JsonProperty("mode")
@@ -218,84 +163,34 @@ public class HTTPChaosSpec implements KubernetesResource
         this.mode = mode;
     }
 
-    @JsonProperty("patch")
-    public PodHttpChaosPatchActions getPatch() {
-        return patch;
+    @JsonProperty("percent")
+    public java.lang.String getPercent() {
+        return percent;
     }
 
-    @JsonProperty("patch")
-    public void setPatch(PodHttpChaosPatchActions patch) {
-        this.patch = patch;
+    @JsonProperty("percent")
+    public void setPercent(java.lang.String percent) {
+        this.percent = percent;
     }
 
-    @JsonProperty("path")
-    public String getPath() {
-        return path;
+    @JsonProperty("scheduler")
+    public SchedulerSpec getScheduler() {
+        return scheduler;
     }
 
-    @JsonProperty("path")
-    public void setPath(String path) {
-        this.path = path;
-    }
-
-    @JsonProperty("port")
-    public java.lang.Integer getPort() {
-        return port;
-    }
-
-    @JsonProperty("port")
-    public void setPort(java.lang.Integer port) {
-        this.port = port;
-    }
-
-    @JsonProperty("replace")
-    public PodHttpChaosReplaceActions getReplace() {
-        return replace;
-    }
-
-    @JsonProperty("replace")
-    public void setReplace(PodHttpChaosReplaceActions replace) {
-        this.replace = replace;
-    }
-
-    @JsonProperty("request_headers")
-    public Map<String, String> getRequestHeaders() {
-        return requestHeaders;
-    }
-
-    @JsonProperty("request_headers")
-    public void setRequestHeaders(Map<String, String> requestHeaders) {
-        this.requestHeaders = requestHeaders;
-    }
-
-    @JsonProperty("response_headers")
-    public Map<String, String> getResponseHeaders() {
-        return responseHeaders;
-    }
-
-    @JsonProperty("response_headers")
-    public void setResponseHeaders(Map<String, String> responseHeaders) {
-        this.responseHeaders = responseHeaders;
+    @JsonProperty("scheduler")
+    public void setScheduler(SchedulerSpec scheduler) {
+        this.scheduler = scheduler;
     }
 
     @JsonProperty("selector")
-    public PodSelectorSpec getSelector() {
+    public SelectorSpec getSelector() {
         return selector;
     }
 
     @JsonProperty("selector")
-    public void setSelector(PodSelectorSpec selector) {
+    public void setSelector(SelectorSpec selector) {
         this.selector = selector;
-    }
-
-    @JsonProperty("target")
-    public java.lang.String getTarget() {
-        return target;
-    }
-
-    @JsonProperty("target")
-    public void setTarget(java.lang.String target) {
-        this.target = target;
     }
 
     @JsonProperty("value")

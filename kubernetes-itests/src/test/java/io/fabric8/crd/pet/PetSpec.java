@@ -28,6 +28,7 @@ public class PetSpec {
 
   @Override
   public String toString() {
-    return "PetSpec{type=" + type + "}";
+    return "PetSpec{type=" + type  + "}";
   }
 }
+

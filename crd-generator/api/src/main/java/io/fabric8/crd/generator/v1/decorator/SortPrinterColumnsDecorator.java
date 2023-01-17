@@ -15,14 +15,13 @@
  */
 package io.fabric8.crd.generator.v1.decorator;
 
+import java.util.List;
+
 import io.fabric8.crd.generator.decorator.Decorator;
 import io.fabric8.kubernetes.api.model.apiextensions.v1.CustomResourceColumnDefinition;
 import io.fabric8.kubernetes.api.model.apiextensions.v1.CustomResourceDefinitionVersionFluent;
 
-import java.util.List;
-
-public class SortPrinterColumnsDecorator
-    extends CustomResourceDefinitionVersionDecorator<CustomResourceDefinitionVersionFluent<?>> {
+public class SortPrinterColumnsDecorator extends CustomResourceDefinitionVersionDecorator<CustomResourceDefinitionVersionFluent<?>> {
 
   public SortPrinterColumnsDecorator(String name, String version) {
     super(name, version);
@@ -31,7 +30,7 @@ public class SortPrinterColumnsDecorator
   @Override
   public void andThenVisit(CustomResourceDefinitionVersionFluent<?> version) {
     List<CustomResourceColumnDefinition> columns = version.buildAdditionalPrinterColumns();
-    if (columns != null && !columns.isEmpty()) {
+    if(columns != null && !columns.isEmpty()) {
       columns.sort((o1, o2) -> String.CASE_INSENSITIVE_ORDER.compare(o1.getJsonPath(), o2.getJsonPath()));
     }
     version.withAdditionalPrinterColumns(columns);
@@ -73,9 +72,9 @@ public class SortPrinterColumnsDecorator
     return true;
   }
 
-  @Override
-  public String toString() {
-    return getClass().getName() + " [name:" + getName() + ", version:" + getVersion() + "]";
-  }
+	@Override
+	public String toString() {
+		return getClass().getName() + " [name:"+ getName() + ", version:"+ getVersion() + "]";
+	}
 
 }

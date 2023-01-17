@@ -25,6 +25,5 @@ import io.fabric8.kubernetes.client.dsl.Resource;
 
 public interface V1beta1AdmissionRegistrationAPIGroupDSL extends Client {
   MixedOperation<ValidatingWebhookConfiguration, ValidatingWebhookConfigurationList, Resource<ValidatingWebhookConfiguration>> validatingWebhookConfigurations();
-
   NonNamespaceOperation<MutatingWebhookConfiguration, MutatingWebhookConfigurationList, Resource<MutatingWebhookConfiguration>> mutatingWebhookConfigurations();
 }

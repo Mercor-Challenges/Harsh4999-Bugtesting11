@@ -17,33 +17,30 @@
 package io.fabric8.kubernetes.client.http;
 
 import io.fabric8.kubernetes.client.KubernetesClient;
+import io.fabric8.kubernetes.client.http.HttpClient.AsyncBody;
 import io.fabric8.kubernetes.client.http.WebSocket.Listener;
 import io.fabric8.kubernetes.client.okhttp.OkHttpClientFactory;
 import io.fabric8.kubernetes.client.server.mock.KubernetesMockServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
 import java.net.URI;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Tests a {@link HttpClient} at or below the {@link KubernetesClient} level.
@@ -54,8 +51,8 @@ class OkHttpClientTest {
     return new OkHttpClientFactory();
   }
 
-  KubernetesMockServer server;
-  KubernetesClient client;
+  private KubernetesMockServer server;
+  private KubernetesClient client;
 
   @BeforeEach
   void setUp() {
@@ -85,7 +82,7 @@ class OkHttpClientTest {
 
     assertThrows(WebSocketHandshakeException.class, () -> {
       try {
-        startedFuture.get(10, TimeUnit.SECONDS);
+        startedFuture.get();
       } catch (ExecutionException e) {
         throw e.getCause();
       }
@@ -99,20 +96,26 @@ class OkHttpClientTest {
         .open()
         .done().always();
 
-    final CompletableFuture<Boolean> opened = new CompletableFuture<>();
-    final CompletableFuture<Boolean> future = client.getHttpClient().newWebSocketBuilder()
+    CompletableFuture<Void> onOpen = new CompletableFuture<Void>();
+
+    CompletableFuture<WebSocket> startedFuture = client.getHttpClient().newWebSocketBuilder()
         .uri(URI.create(client.getConfiguration().getMasterUrl() + "foo"))
         .buildAsync(new Listener() {
 
           @Override
           public void onOpen(WebSocket webSocket) {
-            opened.complete(true);
+            onOpen.complete(null);
           }
 
-        })
-        .thenCompose(ws -> opened);
+        });
 
-    assertThat(future.get(10, TimeUnit.SECONDS)).isTrue();
+    // make sure onOpen has completed before this future
+    startedFuture.handle((w, t) -> {
+      assertTrue(onOpen.isDone());
+      return null;
+    });
+
+    startedFuture.get(10, TimeUnit.SECONDS);
   }
 
   @Test
@@ -139,28 +142,31 @@ class OkHttpClientTest {
 
         });
 
-    assertFalse(latch.await(10, TimeUnit.SECONDS));
+    assertFalse(latch.await(2, TimeUnit.SECONDS));
     assertEquals(1, latch.getCount());
 
-    startedFuture.get(10, TimeUnit.SECONDS).request();
+    startedFuture.get().request();
 
-    assertTrue(latch.await(10, TimeUnit.SECONDS));
+    assertTrue(latch.await(1, TimeUnit.SECONDS));
   }
 
   @Test
   void testAsyncBody() throws Exception {
-    int byteCount = 20000;
-    server.expect().withPath("/async").andReturn(200, new String(new byte[byteCount], StandardCharsets.UTF_8)).always();
+    server.expect().withPath("/async").andReturn(200, "hello world").always();
 
-    CompletableFuture<Integer> consumed = new CompletableFuture<>();
-    AtomicInteger total = new AtomicInteger();
+    CompletableFuture<Boolean> consumed = new CompletableFuture<>();
 
     CompletableFuture<HttpResponse<AsyncBody>> responseFuture = client.getHttpClient().consumeBytes(
         client.getHttpClient().newHttpRequestBuilder().uri(URI.create(client.getConfiguration().getMasterUrl() + "async"))
             .build(),
-        (value, asyncBody) -> {
-          value.stream().map(ByteBuffer::remaining).forEach(total::addAndGet);
-          asyncBody.consume();
+        new HttpClient.BodyConsumer<List<ByteBuffer>>() {
+
+          @Override
+          public void consume(List<ByteBuffer> value, AsyncBody asyncBody) throws Exception {
+            consumed.complete(true);
+            asyncBody.consume();
+          }
+
         });
 
     responseFuture.whenComplete((r, t) -> {
@@ -172,39 +178,39 @@ class OkHttpClientTest {
         r.body().done().whenComplete((v, ex) -> {
           if (ex != null) {
             consumed.completeExceptionally(ex);
-          } else {
-            consumed.complete(total.get());
+          }
+          if (v != null) {
+            consumed.complete(false);
           }
         });
       }
     });
 
-    assertEquals(byteCount, consumed.get(10, TimeUnit.SECONDS));
-  }
-
-  @DisplayName("Supported response body types")
-  @ParameterizedTest(name = "{index}: {0}")
-  @ValueSource(classes = { String.class, byte[].class, Reader.class, InputStream.class })
-  void supportedResponseBodyTypes(Class<?> type) throws Exception {
-    String value = new String(new byte[16384]);
-    server.expect().withPath("/type").andReturn(200, value).always();
-    final HttpResponse<?> result = client.getHttpClient()
-        .sendAsync(client.getHttpClient().newHttpRequestBuilder()
-            .uri(URI.create(client.getConfiguration().getMasterUrl() + "type")).build(), type)
-        .get(10, TimeUnit.SECONDS);
-    assertThat(result)
-        .satisfies(r -> assertThat(r.body()).isInstanceOf(type))
-        .satisfies(r -> assertThat(r.bodyString()).isEqualTo(value));
+    assertTrue(consumed.get(5, TimeUnit.SECONDS));
   }
 
   @Test
-  void supportedResponseTypeWithInvalid() {
-    final HttpClient httpClient = client.getHttpClient();
-    final HttpRequest request = httpClient.newHttpRequestBuilder()
-        .uri(URI.create(client.getConfiguration().getMasterUrl() + "type")).build();
-    assertThatIllegalArgumentException()
-        .isThrownBy(() -> httpClient.sendAsync(request, Boolean.class))
-        .withMessageStartingWith("Unsupported response type: ")
-        .withMessageContaining("Boolean");
+  void testSupportedTypes() throws Exception {
+    server.expect().withPath("/type").andReturn(200, "hello world").always();
+
+    testType(String.class);
+    testType(byte[].class);
+    testType(Reader.class);
+    testType(InputStream.class);
   }
+
+  private <T> void testType(Class<T> type) throws Exception {
+    client.getHttpClient()
+        .sendAsync(client.getHttpClient().newHttpRequestBuilder()
+            .uri(URI.create(client.getConfiguration().getMasterUrl() + "type")).build(), type)
+        .whenComplete((r, t) -> {
+          assertTrue(type.isAssignableFrom(r.body().getClass()));
+          try {
+            assertEquals("hello world", r.bodyString());
+          } catch (IOException e) {
+            fail(e);
+          }
+        }).get();
+  }
+
 }

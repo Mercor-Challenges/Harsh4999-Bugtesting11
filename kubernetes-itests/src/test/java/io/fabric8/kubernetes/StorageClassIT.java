@@ -34,7 +34,7 @@ class StorageClassIT {
   @Test
   void load() {
     StorageClass storageClassLoaded = client.storage().storageClasses()
-        .load(getClass().getResourceAsStream("/test-storageclass.yml")).item();
+        .load(getClass().getResourceAsStream("/test-storageclass.yml")).get();
     assertNotNull(storageClassLoaded);
     assertEquals("gluster-vol-default", storageClassLoaded.getMetadata().getName());
   }

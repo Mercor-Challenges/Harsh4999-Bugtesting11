@@ -16,7 +16,8 @@
 package io.fabric8.kubernetes.client.dsl;
 
 public interface WritableOperation<T> extends
+    CreateOrReplaceable<T>,
+    EditReplacePatchable<T>,
     ReplaceDeletable<T>,
-    NonDeletingOperation<T>,
-    FieldValidateable<NonDeletingOperation<T>> {
+    ItemWritableOperation<T> {
 }

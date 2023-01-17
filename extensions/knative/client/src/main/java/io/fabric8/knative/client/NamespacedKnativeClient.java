@@ -15,6 +15,7 @@
  */
 package io.fabric8.knative.client;
 
+
 public interface NamespacedKnativeClient extends KnativeClient,
-    GenericKnativeClient<NamespacedKnativeClient> {
+        GenericKnativeClient<NamespacedKnativeClient> {
 }

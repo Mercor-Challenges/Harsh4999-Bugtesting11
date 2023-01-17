@@ -71,7 +71,7 @@ class ServiceTest {
 
   @Test
   void testLoad() {
-    Service svc = client.services().load(getClass().getResourceAsStream("/test-service.yml")).item();
+    Service svc = client.services().load(getClass().getResourceAsStream("/test-service.yml")).get();
     assertNotNull(svc);
     assertEquals("httpbin", svc.getMetadata().getName());
   }
@@ -210,11 +210,11 @@ class ServiceTest {
             .addToPorts(new EndpointPortBuilder().withPort(8443).build())
             .build())
         .build();
-    server.expect().get().withPath("/api/v1/namespaces/ns1/endpoints?fieldSelector=metadata.name%3Dsvc1&resourceVersion=0")
+    server.expect().get().withPath("/api/v1/namespaces/ns1/endpoints?fieldSelector=metadata.name%3Dsvc1")
         .andReturn(HttpURLConnection.HTTP_OK,
             new EndpointsListBuilder().withItems(endpoint).withNewMetadata().withResourceVersion("1").endMetadata().build())
         .once();
-    server.expect().get().withPath("/api/v1/namespaces/ns1/services?fieldSelector=metadata.name%3Dsvc1&resourceVersion=0")
+    server.expect().get().withPath("/api/v1/namespaces/ns1/services?fieldSelector=metadata.name%3Dsvc1")
         .andReturn(HttpURLConnection.HTTP_OK,
             new ServiceListBuilder().withItems(svc1).withNewMetadata().withResourceVersion("1").endMetadata().build())
         .once();

@@ -317,24 +317,19 @@ class ResourceTest {
         .done()
         .always();
 
-    Pod p = client.resource(noReady).waitUntilReady(10, SECONDS);
+    Pod p = client.resource(noReady).waitUntilReady(5, SECONDS);
     Assert.assertTrue(Readiness.isPodReady(p));
   }
 
-  /**
-   * List the pod for the initial request from an informer
-   * 
-   * @param pod
-   */
   private void list(Pod pod) {
-    list(server, pod, "0");
+    list(server, pod);
   }
 
-  static void list(KubernetesMockServer server, Pod pod, String resourceVersion) {
+  static void list(KubernetesMockServer server, Pod pod) {
     server.expect()
         .get()
         .withPath("/api/v1/namespaces/" + pod.getMetadata().getNamespace() + "/pods?fieldSelector=metadata.name%3D"
-            + pod.getMetadata().getName() + (resourceVersion != null ? ("&resourceVersion=" + resourceVersion) : ""))
+            + pod.getMetadata().getName())
         .andReturn(200,
             new PodListBuilder().withItems(pod).withNewMetadata().withResourceVersion("1").endMetadata().build())
         .once();
@@ -355,7 +350,7 @@ class ResourceTest {
     // and again so that "periodicWatchUntilReady" successfully begins
     server.expect()
         .get()
-        .withPath("/api/v1/namespaces/test/pods?fieldSelector=metadata.name%3Dpod1&resourceVersion=0")
+        .withPath("/api/v1/namespaces/test/pods?fieldSelector=metadata.name%3Dpod1")
         .andReturn(200, noReady)
         .times(2);
 
@@ -370,7 +365,7 @@ class ResourceTest {
         .done()
         .always();
 
-    Pod p = client.pods().withName("pod1").waitUntilReady(10, SECONDS);
+    Pod p = client.pods().withName("pod1").waitUntilReady(5, SECONDS);
     Assert.assertTrue(Readiness.isPodReady(p));
   }
 
@@ -441,7 +436,7 @@ class ResourceTest {
                 .getConditions()
                 .stream()
                 .anyMatch(c -> "Dummy".equals(c.getType()) && "True".equals(c.getStatus())),
-            10, SECONDS);
+            8, SECONDS);
 
     assertThat(p.getStatus().getConditions())
         .extracting("type", "status")
@@ -449,7 +444,7 @@ class ResourceTest {
   }
 
   @Test
-  void testErrorEventDuringWaitReturnFromAPIIfMatch() throws InterruptedException {
+  void tesErrorEventDuringWaitReturnFromAPIIfMatch() throws InterruptedException {
     Pod pod1 = new PodBuilder().withNewMetadata()
         .withName("pod1")
         .withResourceVersion("1")
@@ -475,21 +470,12 @@ class ResourceTest {
         .open()
         .waitFor(500)
         .andEmit(new WatchEvent(status, "ERROR"))
-        .done()
-        .once();
-
-    server.expect()
-        .get()
-        .withPath(
-            "/api/v1/namespaces/test/pods?fieldSelector=metadata.name%3Dpod1&resourceVersion=1&allowWatchBookmarks=true&watch=true")
-        .andUpgradeToWebSocket()
-        .open()
         .waitFor(500)
         .andEmit(new WatchEvent(ready, "MODIFIED"))
         .done()
         .once();
 
-    Pod p = client.resource(noReady).waitUntilReady(10, SECONDS);
+    Pod p = client.resource(noReady).waitUntilReady(5, SECONDS);
     Assert.assertTrue(Readiness.isPodReady(p));
   }
 
@@ -534,7 +520,7 @@ class ResourceTest {
         .done()
         .once();
 
-    Pod p = client.resource(noReady).waitUntilReady(10, SECONDS);
+    Pod p = client.resource(noReady).waitUntilReady(5, SECONDS);
     Assert.assertTrue(Readiness.isPodReady(p));
   }
 
@@ -553,7 +539,7 @@ class ResourceTest {
     // once not ready, to begin watch
     list(ready);
 
-    Pod p = client.resource(noReady).waitUntilReady(10, SECONDS);
+    Pod p = client.resource(noReady).waitUntilReady(5, SECONDS);
     Assert.assertTrue(Readiness.isPodReady(p));
   }
 
@@ -587,9 +573,9 @@ class ResourceTest {
         .done()
         .once();
 
-    list(server, ready, null);
+    list(ready);
 
-    client.resource(noReady).waitUntilReady(10, SECONDS);
+    client.resource(noReady).waitUntilReady(5, SECONDS);
   }
 
   @Test
@@ -620,7 +606,7 @@ class ResourceTest {
         .done()
         .once();
 
-    Pod p = client.pods().withName("pod1").waitUntilCondition(Objects::isNull, 10, SECONDS);
+    Pod p = client.pods().withName("pod1").waitUntilCondition(Objects::isNull, 8, SECONDS);
     assertNull(p);
   }
 
@@ -667,7 +653,7 @@ class ResourceTest {
 
     server.expect().get().withPath("/api/v1/namespaces/test/pods/pod1").andReturn(200, pod).once();
 
-    HasMetadata response = client.resource(pod).get();
+    HasMetadata response = client.resource(pod).fromServer().get();
     assertEquals(pod, response);
   }
 
@@ -705,7 +691,7 @@ class ResourceTest {
     // When
     HasMetadata response = client
         .resource(new PodBuilder(conditionMetPod).build())
-        .waitUntilCondition(p -> "MET".equals(p.getMetadata().getLabels().get("CONDITION")), 10, SECONDS);
+        .waitUntilCondition(p -> "MET".equals(p.getMetadata().getLabels().get("CONDITION")), 1, SECONDS);
     // Then
     assertEquals(conditionMetPod, response);
     assertEquals(2, server.getRequestCount());
@@ -715,12 +701,12 @@ class ResourceTest {
   void testWaitNullDoesntExist() throws InterruptedException {
     server.expect()
         .get()
-        .withPath("/api/v1/namespaces/test/pods?fieldSelector=metadata.name%3Dpod1&resourceVersion=0")
+        .withPath("/api/v1/namespaces/test/pods?fieldSelector=metadata.name%3Dpod1")
         .andReturn(200,
             new PodListBuilder().withNewMetadata().withResourceVersion("1").endMetadata().build())
         .once();
 
-    Pod p = client.pods().withName("pod1").waitUntilCondition(Objects::isNull, 10, SECONDS);
+    Pod p = client.pods().withName("pod1").waitUntilCondition(Objects::isNull, 1, SECONDS);
     assertNull(p);
   }
 

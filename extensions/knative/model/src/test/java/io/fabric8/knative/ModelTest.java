@@ -15,26 +15,28 @@
  */
 package io.fabric8.knative;
 
-import io.fabric8.knative.serving.v1.*;
 import org.junit.jupiter.api.Test;
+
+import io.fabric8.knative.serving.v1.*;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class ModelTest {
 
   @Test
-  void shouldHaveBuildableContainer() {
+  void shouldHaveBuildableContainer()  {
     Service service = new ServiceBuilder()
-        .withNewSpec()
-        .withNewTemplate()
-        .withNewSpec()
-        .addNewContainer()
-        .withImage("my-image")
-        .endContainer()
-        .endSpec()
-        .endTemplate()
-        .endSpec()
-        .build();
+      .withNewSpec()
+      .withNewTemplate()
+      .withNewSpec()
+      .addNewContainer()
+      .withImage("my-image")
+      .endContainer()
+      .endSpec()
+      .endTemplate()
+      .endSpec()
+      .build();
     assertNotNull(service);
   }
 }
+

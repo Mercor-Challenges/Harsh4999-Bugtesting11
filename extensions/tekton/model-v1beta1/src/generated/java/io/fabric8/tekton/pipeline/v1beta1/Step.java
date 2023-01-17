@@ -57,10 +57,8 @@ import lombok.experimental.Accessors;
     "script",
     "securityContext",
     "startupProbe",
-    "stderrConfig",
     "stdin",
     "stdinOnce",
-    "stdoutConfig",
     "terminationMessagePath",
     "terminationMessagePolicy",
     "timeout",
@@ -132,14 +130,10 @@ public class Step implements KubernetesResource
     private SecurityContext securityContext;
     @JsonProperty("startupProbe")
     private Probe startupProbe;
-    @JsonProperty("stderrConfig")
-    private StepOutputConfig stderrConfig;
     @JsonProperty("stdin")
     private Boolean stdin;
     @JsonProperty("stdinOnce")
     private Boolean stdinOnce;
-    @JsonProperty("stdoutConfig")
-    private StepOutputConfig stdoutConfig;
     @JsonProperty("terminationMessagePath")
     private String terminationMessagePath;
     @JsonProperty("terminationMessagePolicy")
@@ -174,10 +168,8 @@ public class Step implements KubernetesResource
      * @param volumeDevices
      * @param stdin
      * @param terminationMessagePolicy
-     * @param stdoutConfig
      * @param securityContext
      * @param startupProbe
-     * @param stderrConfig
      * @param ports
      * @param timeout
      * @param volumeMounts
@@ -200,7 +192,7 @@ public class Step implements KubernetesResource
      * @param tty
      * @param stdinOnce
      */
-    public Step(List<String> args, List<String> command, List<io.fabric8.kubernetes.api.model.EnvVar> env, List<EnvFromSource> envFrom, String image, String imagePullPolicy, Lifecycle lifecycle, Probe livenessProbe, String name, String onError, List<io.fabric8.kubernetes.api.model.ContainerPort> ports, Probe readinessProbe, io.fabric8.kubernetes.api.model.ResourceRequirements resources, String script, SecurityContext securityContext, Probe startupProbe, StepOutputConfig stderrConfig, Boolean stdin, Boolean stdinOnce, StepOutputConfig stdoutConfig, String terminationMessagePath, String terminationMessagePolicy, Duration timeout, Boolean tty, List<VolumeDevice> volumeDevices, List<io.fabric8.kubernetes.api.model.VolumeMount> volumeMounts, String workingDir, List<WorkspaceUsage> workspaces) {
+    public Step(List<String> args, List<String> command, List<io.fabric8.kubernetes.api.model.EnvVar> env, List<EnvFromSource> envFrom, String image, String imagePullPolicy, Lifecycle lifecycle, Probe livenessProbe, String name, String onError, List<io.fabric8.kubernetes.api.model.ContainerPort> ports, Probe readinessProbe, io.fabric8.kubernetes.api.model.ResourceRequirements resources, String script, SecurityContext securityContext, Probe startupProbe, Boolean stdin, Boolean stdinOnce, String terminationMessagePath, String terminationMessagePolicy, Duration timeout, Boolean tty, List<VolumeDevice> volumeDevices, List<io.fabric8.kubernetes.api.model.VolumeMount> volumeMounts, String workingDir, List<WorkspaceUsage> workspaces) {
         super();
         this.args = args;
         this.command = command;
@@ -218,10 +210,8 @@ public class Step implements KubernetesResource
         this.script = script;
         this.securityContext = securityContext;
         this.startupProbe = startupProbe;
-        this.stderrConfig = stderrConfig;
         this.stdin = stdin;
         this.stdinOnce = stdinOnce;
-        this.stdoutConfig = stdoutConfig;
         this.terminationMessagePath = terminationMessagePath;
         this.terminationMessagePolicy = terminationMessagePolicy;
         this.timeout = timeout;
@@ -392,16 +382,6 @@ public class Step implements KubernetesResource
         this.startupProbe = startupProbe;
     }
 
-    @JsonProperty("stderrConfig")
-    public StepOutputConfig getStderrConfig() {
-        return stderrConfig;
-    }
-
-    @JsonProperty("stderrConfig")
-    public void setStderrConfig(StepOutputConfig stderrConfig) {
-        this.stderrConfig = stderrConfig;
-    }
-
     @JsonProperty("stdin")
     public Boolean getStdin() {
         return stdin;
@@ -420,16 +400,6 @@ public class Step implements KubernetesResource
     @JsonProperty("stdinOnce")
     public void setStdinOnce(Boolean stdinOnce) {
         this.stdinOnce = stdinOnce;
-    }
-
-    @JsonProperty("stdoutConfig")
-    public StepOutputConfig getStdoutConfig() {
-        return stdoutConfig;
-    }
-
-    @JsonProperty("stdoutConfig")
-    public void setStdoutConfig(StepOutputConfig stdoutConfig) {
-        this.stdoutConfig = stdoutConfig;
     }
 
     @JsonProperty("terminationMessagePath")

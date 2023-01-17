@@ -22,6 +22,4 @@ import io.fabric8.openshift.api.model.Build;
 
 public interface BuildResource extends Resource<Build>,
     TimestampBytesLimitTerminateTimeTailPrettyLoggable {
-
-  TimestampBytesLimitTerminateTimeTailPrettyLoggable withVersion(Integer version);
 }

@@ -23,7 +23,7 @@
   <parent>
     <groupId>io.fabric8</groupId>
     <artifactId>istio-extension-pom</artifactId>
-    <version>6.4-SNAPSHOT</version>
+    <version>6.0-SNAPSHOT</version>
   </parent>
 
   <artifactId>istio-model-v1alpha3</artifactId>
@@ -39,6 +39,10 @@
     <osgi.export>
       io.fabric8.istio.*
     </osgi.export>
+    <osgi.include.resources>
+      ${osgi.include.resources.default},
+      /model.properties=target/classes/model.properties
+    </osgi.include.resources>
   </properties>
 
   <dependencies>
@@ -64,41 +68,31 @@
     </dependency>
   </dependencies>
 
-  <profiles>
-    <profile>
-      <id>generate</id>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>org.jsonschema2pojo</groupId>
-            <artifactId>jsonschema2pojo-maven-plugin</artifactId>
-          </plugin>
-          <plugin>
-            <artifactId>maven-antrun-plugin</artifactId>
-            <executions>
-              <execution>
-                <phase>generate-sources</phase>
-                <configuration>
-                  <target>
-                    <!-- removing the generated Schema class -->
-                    <delete
-                      file="${generate.targetDirectory}/io/fabric8/istio/api/model/IstioSchema.java"
-                      verbose="true" />
-                  </target>
-                </configuration>
-                <goals>
-                  <goal>run</goal>
-                </goals>
-              </execution>
-            </executions>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
-  </profiles>
-
   <build>
     <plugins>
+      <plugin>
+        <groupId>org.jsonschema2pojo</groupId>
+        <artifactId>jsonschema2pojo-maven-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <artifactId>maven-antrun-plugin</artifactId>
+        <executions>
+          <execution>
+            <phase>generate-sources</phase>
+            <configuration>
+              <target>
+                <!-- removing the generated Schema class -->
+                <delete
+                  file="${generate.targetDirectory}/io/fabric8/istio/api/model/IstioSchema.java"
+                  verbose="true" />
+              </target>
+            </configuration>
+            <goals>
+              <goal>run</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>build-helper-maven-plugin</artifactId>
@@ -117,19 +111,6 @@
                   <classifier>schema</classifier>
                 </artifact>
               </artifacts>
-            </configuration>
-          </execution>
-          <execution>
-            <id>add-source</id>
-            <phase>process-resources</phase>
-            <goals>
-              <goal>add-source</goal>
-            </goals>
-            <configuration>
-              <sources>
-                <source>src/generated/java</source>
-                <source>target/generated-sources/annotations</source>
-              </sources>
             </configuration>
           </execution>
         </executions>

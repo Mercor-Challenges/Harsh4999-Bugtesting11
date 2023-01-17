@@ -16,12 +16,10 @@
 
 package io.fabric8.kubernetes.client.dsl.base;
 
-import io.fabric8.kubernetes.api.model.APIResourceBuilder;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ResourceDefinitionContextTest {
 
@@ -33,17 +31,5 @@ class ResourceDefinitionContextTest {
     ResourceDefinitionContext context = builder.build();
     assertEquals("kinds", context.getPlural());
   }
-
-  @Test
-  void fromCoreApiResource() {
-    ResourceDefinitionContext context = ResourceDefinitionContext.fromApiResource("v1",
-        new APIResourceBuilder().withKind("builtin").withName("builtins").withNamespaced(true).build());
-
-    assertEquals("builtins", context.getPlural());
-    assertEquals("builtin", context.getKind());
-    assertTrue(context.isNamespaceScoped());
-    assertEquals("", context.getGroup());
-    assertEquals("v1", context.getVersion());
-  }
-
+  
 }

@@ -38,7 +38,7 @@ class CSIStorageCapacityTest {
 
   @Test
   void load() {
-    List<HasMetadata> items = client.load(getClass().getResourceAsStream("/test-csistoragecapacity.yml")).items();
+    List<HasMetadata> items = client.load(getClass().getResourceAsStream("/test-csistoragecapacity.yml")).get();
     assertThat(items).isNotNull();
     AssertionsForClassTypes.assertThat(items.get(0))
         .isInstanceOf(CSIStorageCapacity.class)

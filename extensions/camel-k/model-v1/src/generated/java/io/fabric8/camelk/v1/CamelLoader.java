@@ -3,7 +3,6 @@ package io.fabric8.camelk.v1;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
@@ -72,22 +71,19 @@ public class CamelLoader implements KubernetesResource
 {
 
     @JsonProperty("artifactId")
-    private java.lang.String artifactId;
+    private String artifactId;
     @JsonProperty("dependencies")
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
     private List<MavenArtifact> dependencies = new ArrayList<MavenArtifact>();
     @JsonProperty("groupId")
-    private java.lang.String groupId;
+    private String groupId;
     @JsonProperty("languages")
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
-    private List<java.lang.String> languages = new ArrayList<java.lang.String>();
-    @JsonProperty("metadata")
-    @JsonInclude(JsonInclude.Include.NON_EMPTY)
-    private Map<String, String> metadata = new LinkedHashMap<String, String>();
+    private List<String> languages = new ArrayList<String>();
     @JsonProperty("version")
-    private java.lang.String version;
+    private String version;
     @JsonIgnore
-    private Map<java.lang.String, Object> additionalProperties = new HashMap<java.lang.String, Object>();
+    private Map<String, Object> additionalProperties = new HashMap<String, Object>();
 
     /**
      * No args constructor for use in serialization
@@ -98,30 +94,28 @@ public class CamelLoader implements KubernetesResource
 
     /**
      * 
-     * @param metadata
      * @param languages
      * @param groupId
      * @param artifactId
      * @param version
      * @param dependencies
      */
-    public CamelLoader(java.lang.String artifactId, List<MavenArtifact> dependencies, java.lang.String groupId, List<java.lang.String> languages, Map<String, String> metadata, java.lang.String version) {
+    public CamelLoader(String artifactId, List<MavenArtifact> dependencies, String groupId, List<String> languages, String version) {
         super();
         this.artifactId = artifactId;
         this.dependencies = dependencies;
         this.groupId = groupId;
         this.languages = languages;
-        this.metadata = metadata;
         this.version = version;
     }
 
     @JsonProperty("artifactId")
-    public java.lang.String getArtifactId() {
+    public String getArtifactId() {
         return artifactId;
     }
 
     @JsonProperty("artifactId")
-    public void setArtifactId(java.lang.String artifactId) {
+    public void setArtifactId(String artifactId) {
         this.artifactId = artifactId;
     }
 
@@ -136,52 +130,42 @@ public class CamelLoader implements KubernetesResource
     }
 
     @JsonProperty("groupId")
-    public java.lang.String getGroupId() {
+    public String getGroupId() {
         return groupId;
     }
 
     @JsonProperty("groupId")
-    public void setGroupId(java.lang.String groupId) {
+    public void setGroupId(String groupId) {
         this.groupId = groupId;
     }
 
     @JsonProperty("languages")
-    public List<java.lang.String> getLanguages() {
+    public List<String> getLanguages() {
         return languages;
     }
 
     @JsonProperty("languages")
-    public void setLanguages(List<java.lang.String> languages) {
+    public void setLanguages(List<String> languages) {
         this.languages = languages;
     }
 
-    @JsonProperty("metadata")
-    public Map<String, String> getMetadata() {
-        return metadata;
-    }
-
-    @JsonProperty("metadata")
-    public void setMetadata(Map<String, String> metadata) {
-        this.metadata = metadata;
-    }
-
     @JsonProperty("version")
-    public java.lang.String getVersion() {
+    public String getVersion() {
         return version;
     }
 
     @JsonProperty("version")
-    public void setVersion(java.lang.String version) {
+    public void setVersion(String version) {
         this.version = version;
     }
 
     @JsonAnyGetter
-    public Map<java.lang.String, Object> getAdditionalProperties() {
+    public Map<String, Object> getAdditionalProperties() {
         return this.additionalProperties;
     }
 
     @JsonAnySetter
-    public void setAdditionalProperty(java.lang.String name, Object value) {
+    public void setAdditionalProperty(String name, Object value) {
         this.additionalProperties.put(name, value);
     }
 

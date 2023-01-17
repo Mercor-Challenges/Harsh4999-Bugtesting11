@@ -15,14 +15,17 @@
  */
 package io.fabric8.kubernetes.client.dsl.internal;
 
+import io.fabric8.kubernetes.api.model.GenericKubernetesResource;
 import io.fabric8.kubernetes.api.model.HasMetadata;
+import io.fabric8.kubernetes.api.model.KubernetesResource;
 import io.fabric8.kubernetes.api.model.KubernetesResourceList;
+import io.fabric8.kubernetes.client.BaseClient;
 import io.fabric8.kubernetes.client.Client;
 import io.fabric8.kubernetes.client.dsl.MixedOperation;
 import io.fabric8.kubernetes.client.dsl.Resource;
 import io.fabric8.kubernetes.client.dsl.base.ResourceDefinitionContext;
-import io.fabric8.kubernetes.client.impl.BaseClient;
 import io.fabric8.kubernetes.client.utils.Utils;
+import io.fabric8.kubernetes.internal.KubernetesDeserializer;
 
 import static io.fabric8.kubernetes.client.utils.KubernetesResourceUtil.inferListType;
 
@@ -47,11 +50,25 @@ public class HasMetadataOperationsImpl<T extends HasMetadata, L extends Kubernet
         .withPlural(rdc.getPlural()), type, listType != null ? listType : (Class) inferListType(type));
 
     this.rdc = rdc;
+
+    if (!GenericKubernetesResource.class.isAssignableFrom(type)) {
+      // TODO: the static nature of these registrations is problematic,
+      // we should ensure that we aren't redefining an existing type
+      KubernetesDeserializer.registerCustomKind(apiVersion, kind(rdc), type);
+      if (KubernetesResource.class.isAssignableFrom(this.listType)) {
+        KubernetesDeserializer.registerCustomKind(this.listType.getSimpleName(),
+            (Class<? extends KubernetesResource>) this.listType);
+      }
+    }
   }
 
   @Override
   public HasMetadataOperationsImpl<T, L> newInstance(OperationContext context) {
     return new HasMetadataOperationsImpl<>(context, rdc, type, listType);
+  }
+
+  private String kind(ResourceDefinitionContext context) {
+    return context.getKind() != null ? context.getKind() : getKind();
   }
 
   @Override

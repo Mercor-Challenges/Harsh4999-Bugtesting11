@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @EnableKubernetesMockClient(crud = true)
 class VolumeSnapshotTest {
@@ -95,7 +96,7 @@ class VolumeSnapshotTest {
     assertEquals("true", u1.getMetadata().getLabels().get("updated"));
 
     //Delete
-    assertEquals(1, client.volumeSnapshots().withName("my-snapshot1").delete().size());
+    assertTrue(client.volumeSnapshots().withName("my-snapshot1").delete().size() == 1);
     assertNull(client.volumeSnapshots().withName("my-snapshot1").get());
   }
 }

@@ -60,7 +60,7 @@ class CustomResourceDefinitionIT {
   void load() {
     // When
     final CustomResourceDefinition result = client.apiextensions().v1().customResourceDefinitions()
-        .load(getClass().getResourceAsStream("/test-crd.yml")).item();
+        .load(getClass().getResourceAsStream("/test-crd.yml")).get();
     // Then
     assertThat(result).isNotNull();
   }

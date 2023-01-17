@@ -17,24 +17,20 @@ package io.fabric8.kubernetes.client.utils;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import io.fabric8.kubernetes.api.model.GenericKubernetesResource;
 import io.fabric8.kubernetes.api.model.KubernetesResource;
-import io.fabric8.kubernetes.api.model.runtime.RawExtension;
 import io.fabric8.kubernetes.client.KubernetesClientException;
-import io.fabric8.kubernetes.model.jackson.UnmatchedFieldTypeModule;
-import org.yaml.snakeyaml.DumperOptions;
+import io.fabric8.kubernetes.client.utils.serialization.UnmatchedFieldTypeModule;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.SafeConstructor;
-import org.yaml.snakeyaml.nodes.Tag;
-import org.yaml.snakeyaml.representer.Representer;
-import org.yaml.snakeyaml.resolver.Resolver;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Type;
@@ -56,7 +52,6 @@ public class Serialization {
   private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
   static {
     JSON_MAPPER.registerModules(new JavaTimeModule(), UNMATCHED_FIELD_TYPE_MODULE);
-    JSON_MAPPER.disable(DeserializationFeature.FAIL_ON_INVALID_SUBTYPE);
   }
 
   private static volatile ObjectMapper YAML_MAPPER;
@@ -158,8 +153,6 @@ public class Serialization {
 
   /**
    * Unmarshals a stream.
-   * <p>
-   * The type is assumed to be {@link KubernetesResource}
    *
    * @param is The {@link InputStream}.
    * @param <T> The target type.
@@ -172,27 +165,27 @@ public class Serialization {
 
   /**
    * Unmarshals a stream optionally performing placeholder substitution to the stream.
-   * <p>
-   * The type is assumed to be {@link KubernetesResource}
-   *
+   * 
    * @param is The {@link InputStream}.
    * @param parameters A {@link Map} with parameters for placeholder substitution.
    * @param <T> The target type.
    * @return returns returns de-serialized object
-   *
-   * @deprecated please directly apply {@link Utils#interpolateString(String, Map)} instead of passing parameters here
    */
-  @Deprecated
   @SuppressWarnings("unchecked")
   public static <T> T unmarshal(InputStream is, Map<String, String> parameters) {
-    return unmarshal(is, JSON_MAPPER, parameters);
+    String specFile = readSpecFileFromInputStream(is);
+    if (containsMultipleDocuments(specFile)) {
+      return (T) getKubernetesResourceList(parameters, specFile);
+    } else if (specFile.contains(DOCUMENT_DELIMITER)) {
+      specFile = specFile.replaceAll("^---([ \\t].*?)?\\r?\\n", "");
+      specFile = specFile.replaceAll("\\n---([ \\t].*?)?\\r?\\n?$", "\n");
+    }
+    return unmarshal(new ByteArrayInputStream(specFile.getBytes()), JSON_MAPPER, parameters);
   }
 
   /**
    * Unmarshals a stream.
-   * <p>
-   * The type is assumed to be {@link KubernetesResource}
-   *
+   * 
    * @param is The {@link InputStream}.
    * @param mapper The {@link ObjectMapper} to use.
    * @param <T> The target type.
@@ -204,45 +197,17 @@ public class Serialization {
 
   /**
    * Unmarshals a stream optionally performing placeholder substitution to the stream.
-   * <p>
-   * The type is assumed to be {@link KubernetesResource}
-   *
+   * 
    * @param is The {@link InputStream}.
    * @param mapper The {@link ObjectMapper} to use.
    * @param parameters A {@link Map} with parameters for placeholder substitution.
    * @param <T> The target type.
    * @return returns de-serialized object
-   *
-   * @deprecated please directly apply {@link Utils#interpolateString(String, Map)} instead of passing parameters here
    */
-  @Deprecated
   public static <T> T unmarshal(InputStream is, ObjectMapper mapper, Map<String, String> parameters) {
-    // it's not well documented which Serialization methods are aware of input that can contain
-    // multiple docs
-    String specFile;
-    try {
-      specFile = IOHelpers.readFully(is);
-    } catch (IOException e1) {
-      throw new RuntimeException("Could not read stream");
-    }
-    if (containsMultipleDocuments(specFile)) {
-      return (T) getKubernetesResourceList(Collections.emptyMap(), specFile);
-    } else if (specFile.contains(DOCUMENT_DELIMITER)) {
-      specFile = specFile.replaceAll("^---([ \\t].*?)?\\r?\\n", "");
-      specFile = specFile.replaceAll("\\n---([ \\t].*?)?\\r?\\n?$", "\n");
-    }
-
-    return unmarshal(new ByteArrayInputStream(specFile.getBytes(StandardCharsets.UTF_8)), mapper, new TypeReference<T>() {
-      @Override
-      public Type getType() {
-        return KubernetesResource.class;
-      }
-    }, parameters);
-  }
-
-  private static <T> T unmarshal(InputStream is, ObjectMapper mapper, TypeReference<T> type, Map<String, String> parameters) {
-    try (InputStream wrapped = parameters != null && !parameters.isEmpty() ? ReplaceValueStream.replaceValues(is, parameters)
-        : is;
+    try (
+        InputStream wrapped = parameters != null && !parameters.isEmpty() ? ReplaceValueStream.replaceValues(is, parameters)
+            : is;
         BufferedInputStream bis = new BufferedInputStream(wrapped)) {
       bis.mark(-1);
       int intch;
@@ -251,20 +216,10 @@ public class Serialization {
       } while (intch > -1 && Character.isWhitespace(intch));
       bis.reset();
 
-      final T result;
-      if (intch != '{' && intch != '[') {
-        final Yaml yaml = new Yaml(new SafeConstructor(), new Representer(), new DumperOptions(),
-            new CustomYamlTagResolverWithLimit());
-        final Object obj = yaml.load(bis);
-        if (obj instanceof Map) {
-          result = mapper.convertValue(obj, type);
-        } else {
-          result = mapper.convertValue(new RawExtension(obj), type);
-        }
-      } else {
-        result = mapper.readerFor(type).readValue(bis);
+      if (intch != '{') {
+        return unmarshalYaml(bis, null);
       }
-      return result;
+      return mapper.readerFor(KubernetesResource.class).readValue(bis);
     } catch (IOException e) {
       throw KubernetesClientException.launderThrowable(e);
     }
@@ -272,9 +227,7 @@ public class Serialization {
 
   /**
    * Unmarshals a {@link String}
-   * <p>
-   * The type is assumed to be {@link KubernetesResource}
-   *
+   * 
    * @param str The {@link String}.
    * @param <T> template argument denoting type
    * @return returns de-serialized object
@@ -289,7 +242,7 @@ public class Serialization {
 
   /**
    * Unmarshals a {@link String}
-   *
+   * 
    * @param str The {@link String}.
    * @param type The target type.
    * @param <T> template argument denoting type
@@ -301,17 +254,14 @@ public class Serialization {
 
   /**
    * Unmarshals a {@link String} optionally performing placeholder substitution to the String.
-   *
+   * 
    * @param str The {@link String}.
    * @param type The target type.
    * @param <T> Template argument denoting type
    * @param parameters A hashmap containing parameters
    *
    * @return returns de-serialized object
-   *
-   * @deprecated please directly apply {@link Utils#interpolateString(String, Map)} instead of passing parameters here
    */
-  @Deprecated
   public static <T> T unmarshal(String str, final Class<T> type, Map<String, String> parameters) {
     try (InputStream is = new ByteArrayInputStream(str.getBytes(StandardCharsets.UTF_8))) {
       return unmarshal(is, new TypeReference<T>() {
@@ -327,7 +277,7 @@ public class Serialization {
 
   /**
    * Unmarshals an {@link InputStream}.
-   *
+   * 
    * @param is The {@link InputStream}.
    * @param type The type.
    * @param <T> Template argument denoting type
@@ -339,16 +289,13 @@ public class Serialization {
 
   /**
    * Unmarshals an {@link InputStream} optionally performing placeholder substitution to the stream.
-   *
+   * 
    * @param is The {@link InputStream}.
    * @param type The type.
    * @param parameters A {@link Map} with parameters for placeholder substitution.
    * @param <T> Template argument denoting type
    * @return returns de-serialized object
-   *
-   * @deprecated please directly apply {@link Utils#interpolateString(String, Map)} instead of passing parameters here
    */
-  @Deprecated
   public static <T> T unmarshal(InputStream is, final Class<T> type, Map<String, String> parameters) {
     return unmarshal(is, new TypeReference<T>() {
       @Override
@@ -360,7 +307,7 @@ public class Serialization {
 
   /**
    * Unmarshals an {@link InputStream}.
-   *
+   * 
    * @param is The {@link InputStream}.
    * @param type The {@link TypeReference}.
    * @param <T> Template argument denoting type
@@ -379,19 +326,33 @@ public class Serialization {
    * @param <T> Template argument denoting type
    *
    * @return returns de-serialized object
-   *
-   * @deprecated please directly apply {@link Utils#interpolateString(String, Map)} instead of passing parameters here
    */
-  @Deprecated
   public static <T> T unmarshal(InputStream is, TypeReference<T> type, Map<String, String> parameters) {
-    return unmarshal(is, JSON_MAPPER, type, parameters);
+    try (
+        InputStream wrapped = parameters != null && !parameters.isEmpty() ? ReplaceValueStream.replaceValues(is, parameters)
+            : is;
+        BufferedInputStream bis = new BufferedInputStream(wrapped)) {
+      bis.mark(-1);
+      int intch;
+      do {
+        intch = bis.read();
+      } while (intch > -1 && Character.isWhitespace(intch));
+      bis.reset();
+
+      ObjectMapper mapper = JSON_MAPPER;
+      if (intch != '{') {
+        return unmarshalYaml(bis, type);
+      }
+      return mapper.readValue(bis, type);
+    } catch (IOException e) {
+      throw KubernetesClientException.launderThrowable(e);
+    }
   }
 
   private static List<KubernetesResource> getKubernetesResourceList(Map<String, String> parameters, String specFile) {
     return splitSpecFile(specFile).stream().filter(Serialization::validate)
         .map(
             document -> (KubernetesResource) Serialization.unmarshal(new ByteArrayInputStream(document.getBytes()), parameters))
-        .filter(o -> o != null)
         .collect(Collectors.toList());
   }
 
@@ -423,9 +384,37 @@ public class Serialization {
     return !document.isEmpty() && keyValueMatcher.find();
   }
 
+  private static String readSpecFileFromInputStream(InputStream inputStream) {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    byte[] buffer = new byte[1024];
+    int length;
+    try {
+      while ((length = inputStream.read(buffer)) != -1) {
+        outputStream.write(buffer, 0, length);
+      }
+      return outputStream.toString();
+    } catch (IOException e) {
+      throw new RuntimeException("Unable to read InputStream." + e);
+    }
+  }
+
+  private static <T> T unmarshalYaml(InputStream is, TypeReference<T> type) throws JsonProcessingException {
+    final Yaml yaml = new Yaml(new SafeConstructor());
+    Map<String, Object> obj = yaml.load(is);
+    String objAsJsonStr = JSON_MAPPER.writeValueAsString(obj);
+    return unmarshalJsonStr(objAsJsonStr, type);
+  }
+
+  private static <T> T unmarshalJsonStr(String jsonString, TypeReference<T> type) throws JsonProcessingException {
+    if (type != null) {
+      return JSON_MAPPER.readValue(jsonString, type);
+    }
+    return JSON_MAPPER.readerFor(KubernetesResource.class).readValue(jsonString);
+  }
+
   /**
    * Create a copy of the resource via serialization.
-   *
+   * 
    * @return a deep clone of the resource
    * @throws IllegalArgumentException if the cloning cannot be performed
    */
@@ -433,23 +422,19 @@ public class Serialization {
     // if full serialization seems too expensive, there is also
     //return (T) JSON_MAPPER.convertValue(resource, resource.getClass());
     try {
-      return (T) JSON_MAPPER.readValue(
-          JSON_MAPPER.writeValueAsString(resource), resource.getClass());
+      return JSON_MAPPER.readValue(
+          JSON_MAPPER.writeValueAsString(resource), new TypeReference<T>() {
+            @Override
+            public Type getType() {
+              if (resource instanceof KubernetesResource) {
+                // Force KubernetesResource so that the KubernetesDeserializer takes over any resource configured deserializer
+                return resource instanceof GenericKubernetesResource ? resource.getClass() : KubernetesResource.class;
+              }
+              return resource.getClass();
+            }
+          });
     } catch (JsonProcessingException e) {
       throw new IllegalStateException(e);
-    }
-  }
-
-  private static class CustomYamlTagResolverWithLimit extends Resolver {
-    @Override
-    public void addImplicitResolver(Tag tag, Pattern regexp, String first, int limit) {
-      if (tag == Tag.TIMESTAMP)
-        return;
-      if (tag.equals(Tag.BOOL)) {
-        regexp = Pattern.compile("^(?:true|True|TRUE|false|False|FALSE)$");
-        first = "tTfF";
-      }
-      super.addImplicitResolver(tag, regexp, first, limit);
     }
   }
 }

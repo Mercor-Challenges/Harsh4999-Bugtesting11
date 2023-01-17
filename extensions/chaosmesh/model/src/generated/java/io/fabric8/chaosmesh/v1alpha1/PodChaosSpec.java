@@ -1,9 +1,7 @@
 
 package io.fabric8.chaosmesh.v1alpha1;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
@@ -40,10 +38,11 @@ import lombok.experimental.Accessors;
     "kind",
     "metadata",
     "action",
-    "containerNames",
+    "containerName",
     "duration",
     "gracePeriod",
     "mode",
+    "scheduler",
     "selector",
     "value"
 })
@@ -74,16 +73,18 @@ public class PodChaosSpec implements KubernetesResource
 
     @JsonProperty("action")
     private java.lang.String action;
-    @JsonProperty("containerNames")
-    private List<java.lang.String> containerNames = new ArrayList<java.lang.String>();
+    @JsonProperty("containerName")
+    private java.lang.String containerName;
     @JsonProperty("duration")
     private String duration;
     @JsonProperty("gracePeriod")
     private Long gracePeriod;
     @JsonProperty("mode")
     private java.lang.String mode;
+    @JsonProperty("scheduler")
+    private SchedulerSpec scheduler;
     @JsonProperty("selector")
-    private PodSelectorSpec selector;
+    private SelectorSpec selector;
     @JsonProperty("value")
     private java.lang.String value;
     @JsonIgnore
@@ -100,19 +101,21 @@ public class PodChaosSpec implements KubernetesResource
      * 
      * @param duration
      * @param mode
+     * @param scheduler
      * @param gracePeriod
+     * @param containerName
      * @param action
      * @param selector
      * @param value
-     * @param containerNames
      */
-    public PodChaosSpec(java.lang.String action, List<java.lang.String> containerNames, String duration, Long gracePeriod, java.lang.String mode, PodSelectorSpec selector, java.lang.String value) {
+    public PodChaosSpec(java.lang.String action, java.lang.String containerName, String duration, Long gracePeriod, java.lang.String mode, SchedulerSpec scheduler, SelectorSpec selector, java.lang.String value) {
         super();
         this.action = action;
-        this.containerNames = containerNames;
+        this.containerName = containerName;
         this.duration = duration;
         this.gracePeriod = gracePeriod;
         this.mode = mode;
+        this.scheduler = scheduler;
         this.selector = selector;
         this.value = value;
     }
@@ -127,14 +130,14 @@ public class PodChaosSpec implements KubernetesResource
         this.action = action;
     }
 
-    @JsonProperty("containerNames")
-    public List<java.lang.String> getContainerNames() {
-        return containerNames;
+    @JsonProperty("containerName")
+    public java.lang.String getContainerName() {
+        return containerName;
     }
 
-    @JsonProperty("containerNames")
-    public void setContainerNames(List<java.lang.String> containerNames) {
-        this.containerNames = containerNames;
+    @JsonProperty("containerName")
+    public void setContainerName(java.lang.String containerName) {
+        this.containerName = containerName;
     }
 
     @JsonProperty("duration")
@@ -167,13 +170,23 @@ public class PodChaosSpec implements KubernetesResource
         this.mode = mode;
     }
 
+    @JsonProperty("scheduler")
+    public SchedulerSpec getScheduler() {
+        return scheduler;
+    }
+
+    @JsonProperty("scheduler")
+    public void setScheduler(SchedulerSpec scheduler) {
+        this.scheduler = scheduler;
+    }
+
     @JsonProperty("selector")
-    public PodSelectorSpec getSelector() {
+    public SelectorSpec getSelector() {
         return selector;
     }
 
     @JsonProperty("selector")
-    public void setSelector(PodSelectorSpec selector) {
+    public void setSelector(SelectorSpec selector) {
         this.selector = selector;
     }
 

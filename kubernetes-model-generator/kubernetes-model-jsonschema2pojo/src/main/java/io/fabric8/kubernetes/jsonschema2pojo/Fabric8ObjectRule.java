@@ -15,6 +15,15 @@
  */
 package io.fabric8.kubernetes.jsonschema2pojo;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.jsonschema2pojo.Schema;
+import org.jsonschema2pojo.rules.ObjectRule;
+import org.jsonschema2pojo.rules.RuleFactory;
+import org.jsonschema2pojo.util.ParcelableHelper;
+import org.jsonschema2pojo.util.ReflectionHelper;
+
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -26,15 +35,8 @@ import com.sun.codemodel.JCodeModel;
 import com.sun.codemodel.JDefinedClass;
 import com.sun.codemodel.JPackage;
 import com.sun.codemodel.JType;
-import io.fabric8.kubernetes.model.jackson.UnwrappedTypeResolverBuilder;
-import org.jsonschema2pojo.Schema;
-import org.jsonschema2pojo.rules.ObjectRule;
-import org.jsonschema2pojo.rules.RuleFactory;
-import org.jsonschema2pojo.util.ParcelableHelper;
-import org.jsonschema2pojo.util.ReflectionHelper;
 
-import java.util.ArrayList;
-import java.util.List;
+import io.fabric8.kubernetes.model.jackson.UnwrappedTypeResolverBuilder;
 
 /**
  * Class that extend the object rule to add support of interfaces.

@@ -15,7 +15,7 @@
  */
 package io.fabric8.kubernetes.examples.crds;
 
-import io.fabric8.kubernetes.api.model.DefaultKubernetesResourceList;
+import io.fabric8.kubernetes.client.CustomResourceList;
 
-public class DummyList extends DefaultKubernetesResourceList<Dummy> {
+public class DummyList extends CustomResourceList<Dummy> {
 }

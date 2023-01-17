@@ -15,9 +15,7 @@
  */
 package io.fabric8.kubernetes.client.dsl.internal;
 
-import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.http.WebSocket;
-import io.fabric8.kubernetes.client.utils.Utils;
 import io.fabric8.kubernetes.client.utils.internal.SerialExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,6 +46,8 @@ public class PortForwarderWebsocketListener implements WebSocket.Listener {
 
   private final AtomicBoolean alive = new AtomicBoolean(true);
 
+  private final AtomicBoolean errorOccurred = new AtomicBoolean(false);
+
   final Collection<Throwable> clientThrowables = new CopyOnWriteArrayList<>();
 
   final Collection<Throwable> serverThrowables = new CopyOnWriteArrayList<>();
@@ -75,9 +75,9 @@ public class PortForwarderWebsocketListener implements WebSocket.Listener {
           if (e instanceof InterruptedException) {
             Thread.currentThread().interrupt();
           }
-          logger.debug("Error while writing client data");
           if (alive.get()) {
             clientThrowables.add(e);
+            logger.error("Error while writing client data");
             closeBothWays(webSocket, 1001, "Client error");
           }
         }
@@ -101,27 +101,21 @@ public class PortForwarderWebsocketListener implements WebSocket.Listener {
     }
 
     if (!buffer.hasRemaining()) {
-      KubernetesClientException e = new KubernetesClientException("Received an empty message");
-      serverThrowables.add(e);
-      logger.debug("Protocol error", e);
+      errorOccurred.set(true);
+      logger.error("Received an empty message");
       closeBothWays(webSocket, 1002, PROTOCOL_ERROR);
       return;
     }
 
     byte channel = buffer.get();
     if (channel < 0 || channel > 1) {
-      KubernetesClientException e = new KubernetesClientException(
-          String.format("Received a wrong channel from the remote socket: %s", channel));
-      serverThrowables.add(e);
-      logger.debug("Protocol error", e);
+      errorOccurred.set(true);
+      logger.error("Received a wrong channel from the remote socket: {}", channel);
       closeBothWays(webSocket, 1002, PROTOCOL_ERROR);
     } else if (channel == 1) {
       // Error channel
-      // TODO: read the error
-      KubernetesClientException e = new KubernetesClientException(
-          String.format("Received an error from the remote socket"));
-      serverThrowables.add(e);
-      logger.debug("Server error", e);
+      errorOccurred.set(true);
+      logger.error("Received an error from the remote socket");
       closeForwarder();
     } else {
       // Data
@@ -142,7 +136,7 @@ public class PortForwarderWebsocketListener implements WebSocket.Listener {
             }
             if (alive.get()) {
               clientThrowables.add(e);
-              logger.debug("Error while forwarding data to the client", e);
+              logger.error("Error while forwarding data to the client", e);
               closeBothWays(webSocket, 1002, PROTOCOL_ERROR);
             }
           }
@@ -161,9 +155,10 @@ public class PortForwarderWebsocketListener implements WebSocket.Listener {
 
   @Override
   public void onError(WebSocket webSocket, Throwable t) {
-    logger.debug("{}: Throwable received from websocket", LOG_PREFIX, t);
+    logger.debug("{}: onFailure", LOG_PREFIX);
     if (alive.get()) {
       serverThrowables.add(t);
+      logger.error("{}: Throwable received from websocket", LOG_PREFIX, t);
       closeForwarder();
     }
   }
@@ -173,7 +168,7 @@ public class PortForwarderWebsocketListener implements WebSocket.Listener {
   }
 
   boolean errorOccurred() {
-    return !clientThrowables.isEmpty() || !serverThrowables.isEmpty();
+    return errorOccurred.get() || !clientThrowables.isEmpty() || !serverThrowables.isEmpty();
   }
 
   Collection<Throwable> getClientThrowables() {
@@ -184,14 +179,14 @@ public class PortForwarderWebsocketListener implements WebSocket.Listener {
     return serverThrowables;
   }
 
-  void closeBothWays(WebSocket webSocket, int code, String message) {
+  private void closeBothWays(WebSocket webSocket, int code, String message) {
     logger.debug("{}: Closing with code {} and reason: {}", LOG_PREFIX, code, message);
     alive.set(false);
     try {
       webSocket.sendClose(code, message);
     } catch (Exception e) {
       serverThrowables.add(e);
-      logger.debug("Error while closing the websocket", e);
+      logger.error("Error while closing the websocket", e);
     }
     closeForwarder();
   }
@@ -199,10 +194,18 @@ public class PortForwarderWebsocketListener implements WebSocket.Listener {
   private void closeForwarder() {
     alive.set(false);
     if (in != null) {
-      Utils.closeQuietly(in);
+      try {
+        in.close();
+      } catch (IOException e) {
+        logger.error("{}: Error while closing the client input channel", LOG_PREFIX, e);
+      }
     }
     if (out != null && out != in) {
-      Utils.closeQuietly(out);
+      try {
+        out.close();
+      } catch (IOException e) {
+        logger.error("{}: Error while closing the client output channel", LOG_PREFIX, e);
+      }
     }
     pumperService.shutdownNow();
     serialExecutor.shutdownNow();
@@ -225,5 +228,4 @@ public class PortForwarderWebsocketListener implements WebSocket.Listener {
       }
     } while (isAlive.getAsBoolean() && read >= 0);
   }
-
 }

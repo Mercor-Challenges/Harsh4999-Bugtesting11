@@ -22,18 +22,13 @@ import io.fabric8.kubernetes.api.model.Status;
 import io.fabric8.kubernetes.api.model.extensions.DeploymentRollback;
 import io.fabric8.kubernetes.client.Client;
 import io.fabric8.kubernetes.client.KubernetesClientException;
-import io.fabric8.kubernetes.client.dsl.BytesLimitTerminateTimeTailPrettyLoggable;
 import io.fabric8.kubernetes.client.dsl.LogWatch;
-import io.fabric8.kubernetes.client.dsl.Loggable;
 import io.fabric8.kubernetes.client.dsl.PodResource;
-import io.fabric8.kubernetes.client.dsl.PrettyLoggable;
 import io.fabric8.kubernetes.client.dsl.RollableScalableResource;
-import io.fabric8.kubernetes.client.dsl.TailPrettyLoggable;
-import io.fabric8.kubernetes.client.dsl.TimeTailPrettyLoggable;
 import io.fabric8.kubernetes.client.dsl.TimeoutImageEditReplacePatchable;
 import io.fabric8.kubernetes.client.dsl.internal.HasMetadataOperationsImpl;
 import io.fabric8.kubernetes.client.dsl.internal.OperationContext;
-import io.fabric8.kubernetes.client.dsl.internal.PodOperationContext;
+import io.fabric8.kubernetes.client.dsl.internal.RollingOperationContext;
 import io.fabric8.kubernetes.client.dsl.internal.apps.v1.RollableScalableResourceOperation;
 import io.fabric8.kubernetes.client.dsl.internal.apps.v1.RollingUpdater;
 import io.fabric8.kubernetes.client.utils.internal.PodOperationUtil;
@@ -51,10 +46,10 @@ public class ReplicationControllerOperationsImpl extends
     implements TimeoutImageEditReplacePatchable<ReplicationController> {
 
   public ReplicationControllerOperationsImpl(Client client) {
-    this(new PodOperationContext(), HasMetadataOperationsImpl.defaultContext(client));
+    this(new RollingOperationContext(), HasMetadataOperationsImpl.defaultContext(client));
   }
 
-  public ReplicationControllerOperationsImpl(PodOperationContext context, OperationContext superContext) {
+  public ReplicationControllerOperationsImpl(RollingOperationContext context, OperationContext superContext) {
     super(context, superContext.withPlural("replicationcontrollers"), ReplicationController.class,
         ReplicationControllerList.class);
   }
@@ -65,9 +60,8 @@ public class ReplicationControllerOperationsImpl extends
   }
 
   @Override
-  public ReplicationControllerOperationsImpl newInstance(PodOperationContext context,
-      OperationContext superContext) {
-    return new ReplicationControllerOperationsImpl(context, superContext);
+  public ReplicationControllerOperationsImpl newInstance(RollingOperationContext context) {
+    return new ReplicationControllerOperationsImpl(context, this.context);
   }
 
   @Override
@@ -105,17 +99,15 @@ public class ReplicationControllerOperationsImpl extends
 
   @Override
   public String getLog(boolean isPretty) {
-    return PodOperationUtil.getLog(
-        new ReplicationControllerOperationsImpl(rollingOperationContext.withPrettyOutput(isPretty), context).doGetLog(),
-        isPretty);
+    return PodOperationUtil.getLog(doGetLog(isPretty), isPretty);
   }
 
-  private List<PodResource> doGetLog() {
+  private List<PodResource> doGetLog(boolean isPretty) {
     ReplicationController rc = requireFromServer();
 
-    return PodOperationUtil.getPodOperationsForController(context,
-        rollingOperationContext, rc.getMetadata().getUid(),
-        getReplicationControllerPodLabels(rc));
+    return PodOperationUtil.getPodOperationsForController(context, rc.getMetadata().getUid(),
+        getReplicationControllerPodLabels(rc), isPretty, rollingOperationContext.getLogWaitTimeout(),
+        rollingOperationContext.getContainerId());
   }
 
   /**
@@ -125,7 +117,7 @@ public class ReplicationControllerOperationsImpl extends
    */
   @Override
   public Reader getLogReader() {
-    return PodOperationUtil.getLogReader(doGetLog());
+    return PodOperationUtil.getLogReader(doGetLog(false));
   }
 
   /**
@@ -135,12 +127,12 @@ public class ReplicationControllerOperationsImpl extends
    */
   @Override
   public InputStream getLogInputStream() {
-    return PodOperationUtil.getLogInputStream(doGetLog());
+    return PodOperationUtil.getLogInputStream(doGetLog(false));
   }
 
   @Override
   public LogWatch watchLog(OutputStream out) {
-    return PodOperationUtil.watchLog(doGetLog(), out);
+    return PodOperationUtil.watchLog(doGetLog(false), out);
   }
 
   @Override
@@ -177,38 +169,4 @@ public class ReplicationControllerOperationsImpl extends
     return value.getSpec().getTemplate().getSpec().getContainers();
   }
 
-  @Override
-  public TimeTailPrettyLoggable limitBytes(int limitBytes) {
-    return new ReplicationControllerOperationsImpl(rollingOperationContext.withLimitBytes(limitBytes), context);
-  }
-
-  @Override
-  public TimeTailPrettyLoggable terminated() {
-    return new ReplicationControllerOperationsImpl(rollingOperationContext.withTerminatedStatus(true), context);
-  }
-
-  @Override
-  public Loggable withPrettyOutput() {
-    return new ReplicationControllerOperationsImpl(rollingOperationContext.withPrettyOutput(true), context);
-  }
-
-  @Override
-  public PrettyLoggable tailingLines(int lines) {
-    return new ReplicationControllerOperationsImpl(rollingOperationContext.withTailingLines(lines), context);
-  }
-
-  @Override
-  public TailPrettyLoggable sinceTime(String timestamp) {
-    return new ReplicationControllerOperationsImpl(rollingOperationContext.withSinceTimestamp(timestamp), context);
-  }
-
-  @Override
-  public TailPrettyLoggable sinceSeconds(int seconds) {
-    return new ReplicationControllerOperationsImpl(rollingOperationContext.withSinceSeconds(seconds), context);
-  }
-
-  @Override
-  public BytesLimitTerminateTimeTailPrettyLoggable usingTimestamps() {
-    return new ReplicationControllerOperationsImpl(rollingOperationContext.withTimestamps(true), context);
-  }
 }

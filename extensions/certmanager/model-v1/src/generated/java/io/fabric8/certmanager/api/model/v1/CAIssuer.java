@@ -40,7 +40,6 @@ import lombok.experimental.Accessors;
     "kind",
     "metadata",
     "crlDistributionPoints",
-    "ocspServers",
     "secretName"
 })
 @ToString
@@ -71,9 +70,6 @@ public class CAIssuer implements KubernetesResource
     @JsonProperty("crlDistributionPoints")
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
     private List<String> crlDistributionPoints = new ArrayList<String>();
-    @JsonProperty("ocspServers")
-    @JsonInclude(JsonInclude.Include.NON_EMPTY)
-    private List<String> ocspServers = new ArrayList<String>();
     @JsonProperty("secretName")
     private String secretName;
     @JsonIgnore
@@ -88,14 +84,12 @@ public class CAIssuer implements KubernetesResource
 
     /**
      * 
-     * @param ocspServers
      * @param secretName
      * @param crlDistributionPoints
      */
-    public CAIssuer(List<String> crlDistributionPoints, List<String> ocspServers, String secretName) {
+    public CAIssuer(List<String> crlDistributionPoints, String secretName) {
         super();
         this.crlDistributionPoints = crlDistributionPoints;
-        this.ocspServers = ocspServers;
         this.secretName = secretName;
     }
 
@@ -107,16 +101,6 @@ public class CAIssuer implements KubernetesResource
     @JsonProperty("crlDistributionPoints")
     public void setCrlDistributionPoints(List<String> crlDistributionPoints) {
         this.crlDistributionPoints = crlDistributionPoints;
-    }
-
-    @JsonProperty("ocspServers")
-    public List<String> getOcspServers() {
-        return ocspServers;
-    }
-
-    @JsonProperty("ocspServers")
-    public void setOcspServers(List<String> ocspServers) {
-        this.ocspServers = ocspServers;
     }
 
     @JsonProperty("secretName")

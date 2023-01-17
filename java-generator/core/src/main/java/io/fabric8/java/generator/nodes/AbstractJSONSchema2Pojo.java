@@ -16,13 +16,14 @@
 package io.fabric8.java.generator.nodes;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.github.javaparser.ast.expr.AnnotationExpr;
-import com.github.javaparser.ast.expr.Name;
-import com.github.javaparser.ast.expr.SingleMemberAnnotationExpr;
-import com.github.javaparser.ast.expr.StringLiteralExpr;
+import com.github.javaparser.ast.expr.Expression;
+import com.github.javaparser.ast.expr.NameExpr;
+import com.github.javaparser.ast.stmt.BlockStmt;
+import com.github.javaparser.ast.stmt.ReturnStmt;
 import io.fabric8.java.generator.Config;
 import io.fabric8.java.generator.exceptions.JavaGeneratorException;
 import io.fabric8.kubernetes.api.model.apiextensions.v1.JSONSchemaProps;
+import io.fabric8.kubernetes.client.utils.Serialization;
 
 import java.util.Locale;
 import java.util.function.Function;
@@ -42,30 +43,10 @@ public abstract class AbstractJSONSchema2Pojo {
   static final String OBJECT_CRD_TYPE = "object";
   static final String ARRAY_CRD_TYPE = "array";
 
-  public static final AnnotationExpr GENERATED_ANNOTATION = new SingleMemberAnnotationExpr(
-      new Name("javax.annotation.processing.Generated"),
-      new StringLiteralExpr("io.fabric8.java.generator.CRGeneratorRunner"));
-
   protected final String description;
   protected final Config config;
   protected final boolean isNullable;
   protected final JsonNode defaultValue;
-
-  protected Double maximum;
-  protected Double minimum;
-  protected String pattern;
-
-  public Double getMaximum() {
-    return maximum;
-  }
-
-  public Double getMinimum() {
-    return minimum;
-  }
-
-  public String getPattern() {
-    return pattern;
-  }
 
   public abstract String getType();
 
@@ -73,11 +54,7 @@ public abstract class AbstractJSONSchema2Pojo {
 
   /** Takes a string and return the corresponding package name */
   public static String packageName(String str) {
-    String pkg = str.toLowerCase(Locale.ROOT);
-    if (pkg.equals(str)) { // avoid package/class name clash
-      pkg = "_" + pkg;
-    }
-    return pkg;
+    return str.toLowerCase(Locale.ROOT);
   }
 
   public String getDescription() {
@@ -92,25 +69,18 @@ public abstract class AbstractJSONSchema2Pojo {
     return getType();
   }
 
-  protected AbstractJSONSchema2Pojo(Config config, String description, final boolean isNullable, JsonNode defaultValue,
-      final ValidationProperties validationProperties) {
+  protected AbstractJSONSchema2Pojo(Config config, String description, final boolean isNullable, JsonNode defaultValue) {
     this.config = config;
     this.description = description;
     this.isNullable = isNullable;
     this.defaultValue = defaultValue;
-    if (validationProperties != null) {
-      this.maximum = validationProperties.getMaximum();
-      this.minimum = validationProperties.getMinimum();
-      this.pattern = validationProperties.getPattern();
-    }
   }
 
   /** Takes a random string and manipulate it to be a valid Java identifier */
   public static String sanitizeString(String str) {
     str = str.trim();
     String sanitized = "";
-    // https://docs.oracle.com/javase/specs/jls/se7/html/jls-3.html#jls-3.8
-    if (JAVA_KEYWORDS.contains(str) || (!str.isEmpty() && !Character.isJavaIdentifierStart(str.charAt(0)))) {
+    if (JAVA_KEYWORDS.contains(str)) {
       sanitized = "_" + str;
     } else {
       sanitized = str;
@@ -152,7 +122,7 @@ public abstract class AbstractJSONSchema2Pojo {
       return fromJsonSchema.apply(JPrimitiveNameAndType.INT_OR_STRING);
     } else if (type == null
         && Boolean.TRUE.equals(prop.getXKubernetesPreserveUnknownFields())) {
-      return fromJsonSchema.apply(JPrimitiveNameAndType.ANY_TYPE);
+      return fromJsonSchema.apply(new JObjectNameAndType(key));
     } else if (prop.getEnum() != null && prop.getEnum().size() > 0) {
       return fromJsonSchema.apply(new JEnumNameAndType(key));
     } else {
@@ -215,17 +185,7 @@ public abstract class AbstractJSONSchema2Pojo {
     final boolean isNullable = Boolean.TRUE.equals(prop.getNullable());
     switch (nt.getType()) {
       case PRIMITIVE:
-        return new JPrimitive(
-            nt.getName(),
-            config,
-            prop.getDescription(),
-            isNullable,
-            prop.getDefault(),
-            ValidationProperties.Builder.getInstance()
-                .withMaximum(prop.getMaximum())
-                .withMinimum(prop.getMinimum())
-                .withPattern(prop.getPattern())
-                .build());
+        return new JPrimitive(nt.getName(), config, prop.getDescription(), isNullable, prop.getDefault());
       case ARRAY:
         return new JArray(
             fromJsonSchema(
@@ -267,13 +227,7 @@ public abstract class AbstractJSONSchema2Pojo {
             isNullable,
             prop.getDefault());
       case ENUM:
-        return new JEnum(
-            key,
-            prop.getEnum(),
-            config,
-            prop.getDescription(),
-            isNullable,
-            prop.getDefault());
+        return new JEnum(key, prop.getEnum(), config, prop.getDescription(), isNullable, prop.getDefault());
       default:
         throw new JavaGeneratorException("Unreachable " + nt.getType());
     }

@@ -22,15 +22,13 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 class WatcherWebSocketListener<T extends HasMetadata> implements WebSocket.Listener {
   protected static final Logger logger = LoggerFactory.getLogger(WatcherWebSocketListener.class);
 
   protected final AbstractWatchManager<T> manager;
 
-  private AtomicBoolean reconnected = new AtomicBoolean();
-  private AtomicBoolean closed = new AtomicBoolean();
+  private boolean reconnected = false;
 
   protected WatcherWebSocketListener(AbstractWatchManager<T> manager) {
     this.manager = manager;
@@ -50,13 +48,16 @@ class WatcherWebSocketListener<T extends HasMetadata> implements WebSocket.Liste
 
   @Override
   public void onMessage(WebSocket webSocket, String text) {
+    // onMesssage and onClose are serialized, but it's not specified if onError
+    // may occur simultaneous with onMessage.  So we prevent concurrent processing
     try {
-      if (!closed.get()) {
+      synchronized (this) {
         manager.onMessage(text);
       }
     } finally {
       webSocket.request();
     }
+    webSocket.request();
   }
 
   @Override
@@ -71,14 +72,11 @@ class WatcherWebSocketListener<T extends HasMetadata> implements WebSocket.Liste
     scheduleReconnect();
   }
 
-  private void scheduleReconnect() {
-    if (reconnected.compareAndSet(false, true)) {
+  private synchronized void scheduleReconnect() {
+    if (!reconnected) {
       manager.scheduleReconnect();
+      reconnected = true;
     }
-  }
-
-  public void close() {
-    closed.set(true);
   }
 
 }

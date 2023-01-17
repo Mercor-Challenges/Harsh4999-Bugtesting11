@@ -286,10 +286,10 @@ public interface KubernetesClient extends Client {
   NonNamespaceOperation<ComponentStatus, ComponentStatusList, Resource<ComponentStatus>> componentstatuses();
 
   /**
-   * Load Kubernetes resource object(s) from the provided InputStream.
+   * Load a Kubernetes resource object from file InputStream
    *
-   * @param is the input stream containing JSON/YAML content
-   * @return an operation instance to work on the list of Kubernetes Resource objects
+   * @param is File input stream object containing json/yaml content
+   * @return deserialized object
    */
   ParameterNamespaceListVisitFromServerGetDeleteRecreateWaitApplicable<HasMetadata> load(InputStream is);
 
@@ -297,7 +297,7 @@ public interface KubernetesClient extends Client {
    * Load a Kubernetes list object
    *
    * @param s kubernetes list as string
-   * @return an operation instance to work on the deserialized KubernetesList objects
+   * @return deserialized KubernetesList object
    */
   ParameterNamespaceListVisitFromServerGetDeleteRecreateWaitApplicable<HasMetadata> resourceList(String s);
 
@@ -340,19 +340,10 @@ public interface KubernetesClient extends Client {
    * KubernetesResource operations. You can pass any Kubernetes resource as string object and do
    * all operations
    *
-   * @param s a Kubernetes resource object as string
+   * @param s Kubernetes resource object as string
    * @return operations object for Kubernetes resource
    */
   NamespaceableResource<HasMetadata> resource(String s);
-
-  /**
-   * KubernetesResource operations. You can pass any Kubernetes resource as an InputStream object and perform
-   * all operations
-   *
-   * @param is the InputStream containing a serialized Kubernetes resource.
-   * @return operations object for Kubernetes resource.
-   */
-  NamespaceableResource<HasMetadata> resource(InputStream is);
 
   /**
    * Operations for Binding resource in APIgroup core/v1
@@ -520,11 +511,4 @@ public interface KubernetesClient extends Client {
    * @return {@link NonNamespaceOperation} for RuntimeClass
    */
   NonNamespaceOperation<RuntimeClass, RuntimeClassList, Resource<RuntimeClass>> runtimeClasses();
-
-  /**
-   * Visit all resources with the given {@link ApiVisitor}.
-   *
-   * @param visitor
-   */
-  void visitResources(ApiVisitor visitor);
 }

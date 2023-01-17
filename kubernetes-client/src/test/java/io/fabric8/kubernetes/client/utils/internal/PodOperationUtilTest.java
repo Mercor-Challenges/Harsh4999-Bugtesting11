@@ -23,7 +23,6 @@ import io.fabric8.kubernetes.client.dsl.FilterWatchListDeletable;
 import io.fabric8.kubernetes.client.dsl.LogWatch;
 import io.fabric8.kubernetes.client.dsl.PodResource;
 import io.fabric8.kubernetes.client.dsl.internal.OperationContext;
-import io.fabric8.kubernetes.client.dsl.internal.PodOperationContext;
 import io.fabric8.kubernetes.client.dsl.internal.core.v1.PodOperationsImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -79,8 +78,7 @@ class PodOperationUtilTest {
   @Test
   void testGetGenericPodOperations() {
     // When
-    PodOperationsImpl podOperations = PodOperationUtil.getGenericPodOperations(operationContext,
-        new PodOperationContext().withPrettyOutput(false).withReadyWaitTimeout(5).withContainerId("container1"));
+    PodOperationsImpl podOperations = PodOperationUtil.getGenericPodOperations(operationContext, false, 5, "container1");
 
     // Then
     assertThat(podOperations).isNotNull();
@@ -91,7 +89,7 @@ class PodOperationUtilTest {
   @Test
   void testWaitUntilReadyBeforeFetchingLogs() {
     // When
-    PodOperationUtil.waitUntilReadyOrSucceded(podOperations, 5);
+    PodOperationUtil.waitUntilReadyBeforeFetchingLogs(podOperations, 5);
     // Then
     verify(podOperations, times(1)).waitUntilCondition(any(), eq(5L), eq(TimeUnit.SECONDS));
   }

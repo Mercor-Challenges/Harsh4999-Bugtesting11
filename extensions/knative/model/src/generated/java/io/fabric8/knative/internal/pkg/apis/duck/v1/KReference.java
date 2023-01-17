@@ -37,7 +37,6 @@ import lombok.experimental.Accessors;
     "apiVersion",
     "kind",
     "metadata",
-    "group",
     "name",
     "namespace"
 })
@@ -68,8 +67,6 @@ public class KReference implements KubernetesResource
 
     @JsonProperty("apiVersion")
     private String apiVersion;
-    @JsonProperty("group")
-    private String group;
     @JsonProperty("kind")
     private String kind;
     @JsonProperty("name")
@@ -92,12 +89,10 @@ public class KReference implements KubernetesResource
      * @param kind
      * @param name
      * @param namespace
-     * @param group
      */
-    public KReference(String apiVersion, String group, String kind, String name, String namespace) {
+    public KReference(String apiVersion, String kind, String name, String namespace) {
         super();
         this.apiVersion = apiVersion;
-        this.group = group;
         this.kind = kind;
         this.name = name;
         this.namespace = namespace;
@@ -111,16 +106,6 @@ public class KReference implements KubernetesResource
     @JsonProperty("apiVersion")
     public void setApiVersion(String apiVersion) {
         this.apiVersion = apiVersion;
-    }
-
-    @JsonProperty("group")
-    public String getGroup() {
-        return group;
-    }
-
-    @JsonProperty("group")
-    public void setGroup(String group) {
-        this.group = group;
     }
 
     @JsonProperty("kind")

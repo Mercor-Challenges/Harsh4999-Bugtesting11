@@ -13,7 +13,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import io.fabric8.kubernetes.api.model.Container;
-import io.fabric8.kubernetes.api.model.GenericKubernetesResource;
+import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.IntOrString;
 import io.fabric8.kubernetes.api.model.KubernetesResource;
 import io.fabric8.kubernetes.api.model.LabelSelector;
@@ -23,7 +23,6 @@ import io.fabric8.kubernetes.api.model.ObjectReference;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.PodTemplateSpec;
 import io.fabric8.kubernetes.api.model.ResourceRequirements;
-import io.fabric8.kubernetes.api.model.runtime.RawExtension;
 import io.sundr.builder.annotations.Buildable;
 import io.sundr.builder.annotations.BuildableReference;
 import lombok.EqualsAndHashCode;
@@ -70,9 +69,7 @@ import lombok.experimental.Accessors;
     @BuildableReference(IntOrString.class),
     @BuildableReference(ObjectReference.class),
     @BuildableReference(LocalObjectReference.class),
-    @BuildableReference(PersistentVolumeClaim.class),
-    @BuildableReference(GenericKubernetesResource.class),
-    @BuildableReference(RawExtension.class)
+    @BuildableReference(PersistentVolumeClaim.class)
 })
 public class NetworkSpec implements KubernetesResource
 {
@@ -101,13 +98,13 @@ public class NetworkSpec implements KubernetesResource
     @JsonProperty("migration")
     private NetworkMigration migration;
     @JsonProperty("observedConfig")
-    private KubernetesResource observedConfig;
+    private HasMetadata observedConfig;
     @JsonProperty("operatorLogLevel")
     private String operatorLogLevel;
     @JsonProperty("serviceNetwork")
     private List<String> serviceNetwork = new ArrayList<String>();
     @JsonProperty("unsupportedConfigOverrides")
-    private KubernetesResource unsupportedConfigOverrides;
+    private HasMetadata unsupportedConfigOverrides;
     @JsonProperty("useMultiNetworkPolicy")
     private Boolean useMultiNetworkPolicy;
     @JsonIgnore
@@ -139,7 +136,7 @@ public class NetworkSpec implements KubernetesResource
      * @param disableMultiNetwork
      * @param managementState
      */
-    public NetworkSpec(List<AdditionalNetworkDefinition> additionalNetworks, List<ClusterNetworkEntry> clusterNetwork, DefaultNetworkDefinition defaultNetwork, Boolean deployKubeProxy, Boolean disableMultiNetwork, Boolean disableNetworkDiagnostics, ExportNetworkFlows exportNetworkFlows, ProxyConfig kubeProxyConfig, String logLevel, String managementState, NetworkMigration migration, KubernetesResource observedConfig, String operatorLogLevel, List<String> serviceNetwork, KubernetesResource unsupportedConfigOverrides, Boolean useMultiNetworkPolicy) {
+    public NetworkSpec(List<AdditionalNetworkDefinition> additionalNetworks, List<ClusterNetworkEntry> clusterNetwork, DefaultNetworkDefinition defaultNetwork, Boolean deployKubeProxy, Boolean disableMultiNetwork, Boolean disableNetworkDiagnostics, ExportNetworkFlows exportNetworkFlows, ProxyConfig kubeProxyConfig, String logLevel, String managementState, NetworkMigration migration, HasMetadata observedConfig, String operatorLogLevel, List<String> serviceNetwork, HasMetadata unsupportedConfigOverrides, Boolean useMultiNetworkPolicy) {
         super();
         this.additionalNetworks = additionalNetworks;
         this.clusterNetwork = clusterNetwork;
@@ -270,12 +267,12 @@ public class NetworkSpec implements KubernetesResource
     }
 
     @JsonProperty("observedConfig")
-    public KubernetesResource getObservedConfig() {
+    public HasMetadata getObservedConfig() {
         return observedConfig;
     }
 
     @JsonProperty("observedConfig")
-    public void setObservedConfig(KubernetesResource observedConfig) {
+    public void setObservedConfig(HasMetadata observedConfig) {
         this.observedConfig = observedConfig;
     }
 
@@ -300,12 +297,12 @@ public class NetworkSpec implements KubernetesResource
     }
 
     @JsonProperty("unsupportedConfigOverrides")
-    public KubernetesResource getUnsupportedConfigOverrides() {
+    public HasMetadata getUnsupportedConfigOverrides() {
         return unsupportedConfigOverrides;
     }
 
     @JsonProperty("unsupportedConfigOverrides")
-    public void setUnsupportedConfigOverrides(KubernetesResource unsupportedConfigOverrides) {
+    public void setUnsupportedConfigOverrides(HasMetadata unsupportedConfigOverrides) {
         this.unsupportedConfigOverrides = unsupportedConfigOverrides;
     }
 

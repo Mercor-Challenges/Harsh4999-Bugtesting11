@@ -22,6 +22,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 class URLUtilsTest {
 
+
   @Test
   void shouldJoinUrlWithoutQueryParams() {
 
@@ -89,5 +90,6 @@ class URLUtilsTest {
     assertThat(fullUrl, is("images.openshift.io/api"));
 
   }
+
 
 }

@@ -23,6 +23,7 @@ import io.fabric8.kubernetes.client.dsl.Resource;
 import io.fabric8.kubernetes.client.dsl.internal.HasMetadataOperation;
 import io.fabric8.kubernetes.client.dsl.internal.HasMetadataOperationsImpl;
 import io.fabric8.kubernetes.client.dsl.internal.NamespaceVisitFromServerGetWatchDeleteRecreateWaitApplicableListImpl;
+import io.fabric8.kubernetes.client.dsl.internal.NamespaceVisitOperationContext;
 import io.fabric8.kubernetes.client.dsl.internal.OperationContext;
 import io.fabric8.openshift.api.model.Project;
 import io.fabric8.openshift.api.model.ProjectBuilder;
@@ -73,7 +74,7 @@ public class ProjectOperationsImpl extends HasMetadataOperation<Project, Project
 
     // Create Role Bindings
     NamespaceVisitFromServerGetWatchDeleteRecreateWaitApplicableListImpl listOp = new NamespaceVisitFromServerGetWatchDeleteRecreateWaitApplicableListImpl(
-        context.withItem(projectRoleBindings));
+        context.withItem(projectRoleBindings), new NamespaceVisitOperationContext());
     result.addAll(listOp.createOrReplace());
 
     return result;

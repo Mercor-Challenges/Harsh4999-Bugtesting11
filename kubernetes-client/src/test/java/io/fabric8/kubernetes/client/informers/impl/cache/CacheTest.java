@@ -87,13 +87,13 @@ class CacheTest {
 
     cache.put(testPodObj);
 
-    // replace cached object with new value
-    String newGenerateName = "test-cluster";
-    testPodObj.getMetadata().setGenerateName(newGenerateName);
+    // replace cached object with null value
+    String newClusterName = "test_cluster";
+    testPodObj.getMetadata().setClusterName(newClusterName);
     cache.put(testPodObj);
 
     assertEquals(1, cache.list().size());
-    assertEquals(newGenerateName, testPodObj.getMetadata().getGenerateName());
+    assertEquals(newClusterName, testPodObj.getMetadata().getClusterName());
   }
 
   @Test
@@ -129,12 +129,12 @@ class CacheTest {
 
     Map<String, Function<Pod, List<String>>> indexers = new HashMap<>();
     indexers.put(nodeIndex, pod -> Collections.singletonList(pod.getSpec().getNodeName()));
-    indexers.put(clusterIndex, pod -> Collections.singletonList(pod.getMetadata().getGenerateName()));
+    indexers.put(clusterIndex, pod -> Collections.singletonList(pod.getMetadata().getClusterName()));
 
     podCache.addIndexers(indexers);
 
     Pod testPod = new PodBuilder()
-        .withNewMetadata().withNamespace("test").withName("test-pod").withGenerateName("test-cluster").endMetadata()
+        .withNewMetadata().withNamespace("test").withName("test-pod").withClusterName("test-cluster").endMetadata()
         .withNewSpec().withNodeName("test-node").endSpec()
         .build();
     podCache.put(testPod);

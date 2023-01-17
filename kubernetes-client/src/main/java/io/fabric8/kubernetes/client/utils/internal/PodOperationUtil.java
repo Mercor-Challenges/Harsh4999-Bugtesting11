@@ -18,9 +18,11 @@ package io.fabric8.kubernetes.client.utils.internal;
 import io.fabric8.kubernetes.api.model.OwnerReference;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.PodList;
+import io.fabric8.kubernetes.api.model.apps.ReplicaSet;
 import io.fabric8.kubernetes.client.dsl.LogWatch;
 import io.fabric8.kubernetes.client.dsl.Loggable;
 import io.fabric8.kubernetes.client.dsl.PodResource;
+import io.fabric8.kubernetes.client.dsl.RollableScalableResource;
 import io.fabric8.kubernetes.client.dsl.internal.OperationContext;
 import io.fabric8.kubernetes.client.dsl.internal.PodOperationContext;
 import io.fabric8.kubernetes.client.dsl.internal.core.v1.PodOperationsImpl;
@@ -37,7 +39,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 
 public class PodOperationUtil {
   private static final Logger LOG = LoggerFactory.getLogger(PodOperationUtil.class);
@@ -65,16 +66,17 @@ public class PodOperationUtil {
     return pods;
   }
 
-  public static PodOperationsImpl getGenericPodOperations(OperationContext context, PodOperationContext podOperationContext) {
+  public static PodOperationsImpl getGenericPodOperations(OperationContext context, boolean isPretty, Integer podLogWaitTimeout,
+      String containerId) {
     return new PodOperationsImpl(
-        podOperationContext,
+        PodOperationContext.builder().containerId(containerId).prettyOutput(isPretty).logWaitTimeout(podLogWaitTimeout).build(),
         context.withName(null).withApiGroupName(null).withApiGroupVersion("v1"));
   }
 
-  public static List<PodResource> getPodOperationsForController(OperationContext context,
-      PodOperationContext podOperationContext, String controllerUid, Map<String, String> selectorLabels) {
+  public static List<PodResource> getPodOperationsForController(OperationContext context, String controllerUid,
+      Map<String, String> selectorLabels, boolean isPretty, Integer podLogWaitTimeout, String containerId) {
     return getPodOperationsForController(
-        PodOperationUtil.getGenericPodOperations(context, podOperationContext), controllerUid,
+        PodOperationUtil.getGenericPodOperations(context, isPretty, podLogWaitTimeout, containerId), controllerUid,
         selectorLabels);
   }
 
@@ -115,19 +117,14 @@ public class PodOperationUtil {
     return PodOperationUtil.getFilteredPodsForLogs(podOperations, controllerPodList, controllerUid);
   }
 
-  public static Pod waitUntilReadyOrSucceded(PodResource podOperation, Integer logWaitTimeout) {
-    AtomicReference<Pod> podRef = new AtomicReference<>();
+  public static void waitUntilReadyBeforeFetchingLogs(PodResource podOperation, Integer logWaitTimeout) {
     try {
       // Wait for Pod to become ready or succeeded
-      podOperation.waitUntilCondition(p -> {
-        podRef.set(p);
-        return p != null && (Readiness.isPodReady(p) || Readiness.isPodSucceeded(p));
-      },
+      podOperation.waitUntilCondition(p -> p != null && (Readiness.isPodReady(p) || Readiness.isPodSucceeded(p)),
           logWaitTimeout,
           TimeUnit.SECONDS);
     } catch (Exception otherException) {
       LOG.debug("Error while waiting for Pod to become Ready: {}", otherException.getMessage());
     }
-    return podRef.get();
   }
 }

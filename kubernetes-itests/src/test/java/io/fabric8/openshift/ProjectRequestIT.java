@@ -50,7 +50,7 @@ class ProjectRequestIT {
     client.projects()
         .withName(name)
         .informOnCondition(pl -> pl.stream().anyMatch(p -> p.getMetadata().getName().equals(name)))
-        .get(30, TimeUnit.SECONDS);
+        .get(1, TimeUnit.SECONDS);
     final Project createdProject = client.projects().withName(name).get();
     assertNotNull(createdProject);
     assertEquals(name, createdProject.getMetadata().getName());

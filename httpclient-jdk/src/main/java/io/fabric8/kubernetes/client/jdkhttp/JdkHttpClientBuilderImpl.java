@@ -18,17 +18,25 @@ package io.fabric8.kubernetes.client.jdkhttp;
 
 import io.fabric8.kubernetes.client.http.BasicBuilder;
 import io.fabric8.kubernetes.client.http.HttpClient;
+import io.fabric8.kubernetes.client.http.HttpClient.Builder;
 import io.fabric8.kubernetes.client.http.HttpHeaders;
 import io.fabric8.kubernetes.client.http.Interceptor;
-import io.fabric8.kubernetes.client.http.StandardHttpClientBuilder;
 import io.fabric8.kubernetes.client.http.TlsVersion;
+import io.fabric8.kubernetes.client.internal.SSLUtils;
 
+import java.net.InetSocketAddress;
 import java.net.ProxySelector;
 import java.net.http.HttpClient.Redirect;
 import java.net.http.HttpClient.Version;
+import java.time.Duration;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.concurrent.TimeUnit;
 
+import javax.net.ssl.KeyManager;
+import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLParameters;
+import javax.net.ssl.TrustManager;
 
 /**
  * TODO: if there is another implementation that does not support client builder copying, then this needs to be abstracted -
@@ -40,20 +48,31 @@ import javax.net.ssl.SSLParameters;
  *
  */
 
-class JdkHttpClientBuilderImpl
-    extends StandardHttpClientBuilder<JdkHttpClientImpl, JdkHttpClientFactory, JdkHttpClientBuilderImpl> {
+class JdkHttpClientBuilderImpl implements Builder {
 
-  public JdkHttpClientBuilderImpl(JdkHttpClientFactory factory) {
-    super(factory);
+  LinkedHashMap<String, Interceptor> interceptors = new LinkedHashMap<>();
+  Duration connectTimeout;
+  Duration readTimeout;
+  private SSLContext sslContext;
+  JdkHttpClientFactory clientFactory;
+  private String proxyAuthorization;
+  private InetSocketAddress proxyAddress;
+  private boolean followRedirects;
+  private boolean preferHttp11;
+  private TlsVersion[] tlsVersions;
+  private java.net.http.HttpClient httpClient;
+
+  JdkHttpClientBuilderImpl(JdkHttpClientFactory factory) {
+    this.clientFactory = factory;
   }
 
   @Override
   public HttpClient build() {
-    if (client != null) {
-      return new JdkHttpClientImpl(this, client.getHttpClient());
+    if (httpClient != null) {
+      return new JdkHttpClientImpl(this, httpClient);
     }
     java.net.http.HttpClient.Builder builder = clientFactory.createNewHttpClientBuilder();
-    if (connectTimeout != null && !java.time.Duration.ZERO.equals(connectTimeout)) {
+    if (connectTimeout != null) {
       builder.connectTimeout(connectTimeout);
     }
     if (sslContext != null) {
@@ -89,8 +108,98 @@ class JdkHttpClientBuilderImpl
   }
 
   @Override
-  protected JdkHttpClientBuilderImpl newInstance(JdkHttpClientFactory clientFactory) {
-    return new JdkHttpClientBuilderImpl(clientFactory);
+  public JdkHttpClientBuilderImpl readTimeout(long readTimeout, TimeUnit unit) {
+    if (readTimeout == 0) {
+      this.readTimeout = null;
+    } else {
+      this.readTimeout = Duration.ofNanos(unit.toNanos(readTimeout));
+    }
+    return this;
+  }
+
+  @Override
+  public Builder connectTimeout(long connectTimeout, TimeUnit unit) {
+    this.connectTimeout = Duration.ofNanos(unit.toNanos(connectTimeout));
+    return this;
+  }
+
+  @Override
+  public Builder forStreaming() {
+    // nothing to do
+    return this;
+  }
+
+  @Override
+  public Builder writeTimeout(long timeout, TimeUnit timeoutUnit) {
+    // nothing to do
+    return this;
+  }
+
+  @Override
+  public Builder addOrReplaceInterceptor(String name, Interceptor interceptor) {
+    if (interceptor == null) {
+      interceptors.remove(name);
+    } else {
+      interceptors.put(name, interceptor);
+    }
+    return this;
+  }
+
+  @Override
+  public Builder authenticatorNone() {
+    return this;
+  }
+
+  @Override
+  public Builder sslContext(KeyManager[] keyManagers, TrustManager[] trustManagers) {
+    this.sslContext = SSLUtils.sslContext(keyManagers, trustManagers);
+    return this;
+  }
+
+  @Override
+  public Builder followAllRedirects() {
+    this.followRedirects = true;
+    return this;
+  }
+
+  @Override
+  public Builder proxyAddress(InetSocketAddress proxyAddress) {
+    this.proxyAddress = proxyAddress;
+    return this;
+  }
+
+  @Override
+  public Builder proxyAuthorization(String credentials) {
+    this.proxyAuthorization = credentials;
+    return this;
+  }
+
+  @Override
+  public Builder preferHttp11() {
+    this.preferHttp11 = true;
+    return this;
+  }
+
+  @Override
+  public Builder tlsVersions(TlsVersion[] tlsVersions) {
+    this.tlsVersions = tlsVersions;
+    return this;
+  }
+
+  public JdkHttpClientBuilderImpl copy(java.net.http.HttpClient httpClient) {
+    JdkHttpClientBuilderImpl copy = new JdkHttpClientBuilderImpl(this.clientFactory);
+    copy.connectTimeout = this.connectTimeout;
+    copy.readTimeout = this.readTimeout;
+    copy.sslContext = this.sslContext;
+    copy.interceptors = new LinkedHashMap<>(this.interceptors);
+    copy.followRedirects = this.followRedirects;
+    copy.proxyAddress = this.proxyAddress;
+    copy.proxyAuthorization = this.proxyAuthorization;
+    copy.tlsVersions = this.tlsVersions;
+    copy.preferHttp11 = this.preferHttp11;
+    copy.followRedirects = this.followRedirects;
+    copy.httpClient = httpClient;
+    return copy;
   }
 
 }

@@ -75,7 +75,7 @@ public class KubeSchema {
     @JsonProperty("APIGroupList")
     private APIGroupList aPIGroupList;
     @JsonProperty("BaseKubernetesList")
-    private KubernetesList baseKubernetesList;
+    private BaseKubernetesList baseKubernetesList;
     @JsonProperty("ClusterAutoscaler")
     private ClusterAutoscaler clusterAutoscaler;
     @JsonProperty("ClusterAutoscalerList")
@@ -122,7 +122,7 @@ public class KubeSchema {
      * @param info
      * @param status
      */
-    public KubeSchema(APIGroup aPIGroup, APIGroupList aPIGroupList, KubernetesList baseKubernetesList, ClusterAutoscaler clusterAutoscaler, ClusterAutoscalerList clusterAutoscalerList, Info info, io.fabric8.kubernetes.api.model.ObjectMeta objectMeta, Patch patch, Status status, String time, TypeMeta typeMeta, MachineAutoscaler v1beta1MachineAutoscaler, MachineAutoscalerList v1beta1MachineAutoscalerList) {
+    public KubeSchema(APIGroup aPIGroup, APIGroupList aPIGroupList, BaseKubernetesList baseKubernetesList, ClusterAutoscaler clusterAutoscaler, ClusterAutoscalerList clusterAutoscalerList, Info info, io.fabric8.kubernetes.api.model.ObjectMeta objectMeta, Patch patch, Status status, String time, TypeMeta typeMeta, MachineAutoscaler v1beta1MachineAutoscaler, MachineAutoscalerList v1beta1MachineAutoscalerList) {
         super();
         this.aPIGroup = aPIGroup;
         this.aPIGroupList = aPIGroupList;
@@ -160,12 +160,12 @@ public class KubeSchema {
     }
 
     @JsonProperty("BaseKubernetesList")
-    public KubernetesList getBaseKubernetesList() {
+    public BaseKubernetesList getBaseKubernetesList() {
         return baseKubernetesList;
     }
 
     @JsonProperty("BaseKubernetesList")
-    public void setBaseKubernetesList(KubernetesList baseKubernetesList) {
+    public void setBaseKubernetesList(BaseKubernetesList baseKubernetesList) {
         this.baseKubernetesList = baseKubernetesList;
     }
 

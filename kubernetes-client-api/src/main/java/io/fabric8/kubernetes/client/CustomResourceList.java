@@ -18,9 +18,5 @@ package io.fabric8.kubernetes.client;
 import io.fabric8.kubernetes.api.model.DefaultKubernetesResourceList;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 
-/**
- * @deprecated use DefaultKubernetesResourceList instead
- */
-@Deprecated
 public class CustomResourceList<T extends HasMetadata> extends DefaultKubernetesResourceList<T> {
 }

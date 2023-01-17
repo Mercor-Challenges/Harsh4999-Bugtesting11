@@ -15,12 +15,12 @@
  */
 package io.fabric8.kubernetes.examples;
 
-import io.fabric8.kubernetes.api.model.DefaultKubernetesResourceList;
 import io.fabric8.kubernetes.api.model.Namespaced;
 import io.fabric8.kubernetes.api.model.ObjectMetaBuilder;
 import io.fabric8.kubernetes.api.model.apiextensions.v1.CustomResourceDefinition;
 import io.fabric8.kubernetes.api.model.apiextensions.v1.JSONSchemaPropsBuilder;
 import io.fabric8.kubernetes.client.CustomResource;
+import io.fabric8.kubernetes.client.CustomResourceList;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientBuilder;
 import io.fabric8.kubernetes.client.dsl.NonNamespaceOperation;
@@ -62,7 +62,7 @@ public class CustomResourceV1Example {
       System.out.println("Added three shows");
       shows.list().getItems()
           .forEach(s -> System.out.printf(" - %s%n", s.getSpec().name));
-      final Show theWire = shows.withName("the-wire").get();
+      final Show theWire = shows.withName("the-wire").fromServer().get();
       System.out.printf("The Wire Score is: %s%n", theWire.getSpec().score);
     }
   }
@@ -82,7 +82,7 @@ public class CustomResourceV1Example {
     }
   }
 
-  public static final class ShowList extends DefaultKubernetesResourceList<Show> {
+  public static final class ShowList extends CustomResourceList<Show> {
   }
 
   @SuppressWarnings("unused")

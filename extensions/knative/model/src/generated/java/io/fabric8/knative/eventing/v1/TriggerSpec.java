@@ -1,9 +1,7 @@
 
 package io.fabric8.knative.eventing.v1;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
@@ -44,7 +42,6 @@ import lombok.experimental.Accessors;
     "broker",
     "delivery",
     "filter",
-    "filters",
     "subscriber"
 })
 @ToString
@@ -78,9 +75,6 @@ public class TriggerSpec implements KubernetesResource
     private DeliverySpec delivery;
     @JsonProperty("filter")
     private TriggerFilter filter;
-    @JsonProperty("filters")
-    @JsonInclude(JsonInclude.Include.NON_EMPTY)
-    private List<SubscriptionsAPIFilter> filters = new ArrayList<SubscriptionsAPIFilter>();
     @JsonProperty("subscriber")
     private Destination subscriber;
     @JsonIgnore
@@ -98,15 +92,13 @@ public class TriggerSpec implements KubernetesResource
      * @param filter
      * @param delivery
      * @param subscriber
-     * @param filters
      * @param broker
      */
-    public TriggerSpec(String broker, DeliverySpec delivery, TriggerFilter filter, List<SubscriptionsAPIFilter> filters, Destination subscriber) {
+    public TriggerSpec(String broker, DeliverySpec delivery, TriggerFilter filter, Destination subscriber) {
         super();
         this.broker = broker;
         this.delivery = delivery;
         this.filter = filter;
-        this.filters = filters;
         this.subscriber = subscriber;
     }
 
@@ -138,16 +130,6 @@ public class TriggerSpec implements KubernetesResource
     @JsonProperty("filter")
     public void setFilter(TriggerFilter filter) {
         this.filter = filter;
-    }
-
-    @JsonProperty("filters")
-    public List<SubscriptionsAPIFilter> getFilters() {
-        return filters;
-    }
-
-    @JsonProperty("filters")
-    public void setFilters(List<SubscriptionsAPIFilter> filters) {
-        this.filters = filters;
     }
 
     @JsonProperty("subscriber")

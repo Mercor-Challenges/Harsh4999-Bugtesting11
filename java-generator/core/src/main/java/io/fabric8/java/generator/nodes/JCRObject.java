@@ -37,8 +37,6 @@ public class JCRObject extends AbstractJSONSchema2Pojo implements JObjectExtraAn
   private final String statusClassName;
   private final boolean withSpec;
   private final boolean withStatus;
-  private final String singular;
-  private final String plural;
 
   private final boolean storage;
   private final boolean served;
@@ -54,10 +52,8 @@ public class JCRObject extends AbstractJSONSchema2Pojo implements JObjectExtraAn
       boolean withStatus,
       boolean storage,
       boolean served,
-      String singular,
-      String plural,
       Config config) {
-    super(config, null, false, null, null);
+    super(config, null, false, null);
 
     this.pkg = (pkg == null) ? "" : pkg.trim();
     this.type = (this.pkg.isEmpty()) ? type : pkg + "." + type;
@@ -70,8 +66,6 @@ public class JCRObject extends AbstractJSONSchema2Pojo implements JObjectExtraAn
     this.withStatus = withStatus;
     this.storage = storage;
     this.served = served;
-    this.singular = singular;
-    this.plural = plural;
   }
 
   @Override
@@ -102,20 +96,6 @@ public class JCRObject extends AbstractJSONSchema2Pojo implements JObjectExtraAn
             new Name("io.fabric8.kubernetes.model.annotation.Group"),
             new StringLiteralExpr(group)));
 
-    if (singular != null) {
-      clz.addAnnotation(
-          new SingleMemberAnnotationExpr(
-              new Name("io.fabric8.kubernetes.model.annotation.Singular"),
-              new StringLiteralExpr(singular)));
-    }
-
-    if (plural != null) {
-      clz.addAnnotation(
-          new SingleMemberAnnotationExpr(
-              new Name("io.fabric8.kubernetes.model.annotation.Plural"),
-              new StringLiteralExpr(plural)));
-    }
-
     ClassOrInterfaceType jlVoid = new ClassOrInterfaceType().setName("java.lang.Void");
 
     ClassOrInterfaceType spec = (withSpec)
@@ -126,6 +106,10 @@ public class JCRObject extends AbstractJSONSchema2Pojo implements JObjectExtraAn
         ? new ClassOrInterfaceType().setName(this.pkg + "." + this.statusClassName)
         : jlVoid;
 
+    if (config.isObjectExtraAnnotations()) {
+      addExtraAnnotations(clz);
+    }
+
     ClassOrInterfaceType crType = new ClassOrInterfaceType()
         .setName("io.fabric8.kubernetes.client.CustomResource")
         .setTypeArguments(spec, status);
@@ -133,12 +117,6 @@ public class JCRObject extends AbstractJSONSchema2Pojo implements JObjectExtraAn
     clz.addExtendedType(crType);
     clz.addImplementedType("io.fabric8.kubernetes.api.model.Namespaced");
 
-    if (config.isGeneratedAnnotations()) {
-      clz.addAnnotation(GENERATED_ANNOTATION);
-    }
-    if (config.isObjectExtraAnnotations()) {
-      addExtraAnnotations(clz);
-    }
     return new GeneratorResult(
         Collections.singletonList(new GeneratorResult.ClassResult(className, cu)));
   }

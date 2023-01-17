@@ -27,6 +27,8 @@ import io.fabric8.kubernetes.client.dsl.CertificateSigningRequestResource;
 import io.fabric8.kubernetes.client.dsl.internal.HasMetadataOperation;
 import io.fabric8.kubernetes.client.dsl.internal.HasMetadataOperationsImpl;
 import io.fabric8.kubernetes.client.dsl.internal.OperationContext;
+import io.fabric8.kubernetes.client.http.HttpRequest;
+import io.fabric8.kubernetes.client.utils.URLUtils;
 
 import java.io.IOException;
 
@@ -50,25 +52,27 @@ public class CertificateSigningRequestOperationsImpl extends
 
   @Override
   public CertificateSigningRequest approve(CertificateSigningRequestCondition certificateSigningRequestCondition) {
-    return addStatusToCSRAndSubmit(certificateSigningRequestCondition);
+    return approveOrDeny(certificateSigningRequestCondition);
   }
 
   @Override
   public CertificateSigningRequest deny(CertificateSigningRequestCondition certificateSigningRequestCondition) {
-    return addStatusToCSRAndSubmit(certificateSigningRequestCondition);
+    return approveOrDeny(certificateSigningRequestCondition);
   }
 
-  private CertificateSigningRequest addStatusToCSRAndSubmit(
-      CertificateSigningRequestCondition certificateSigningRequestCondition) {
+  private CertificateSigningRequest approveOrDeny(CertificateSigningRequestCondition csrCondition) {
     try {
-      CertificateSigningRequest fromServerCsr = get();
-      fromServerCsr.setStatus(createCertificateSigningRequestStatus(certificateSigningRequestCondition));
-      return handleApproveOrDeny(fromServerCsr, CertificateSigningRequest.class);
+      CertificateSigningRequest fromServerCsr = fromServer().get();
+      fromServerCsr.setStatus(createCertificateSigningRequestStatus(csrCondition));
+      String uri = URLUtils.join(getResourceUrl(null, fromServerCsr.getMetadata().getName(), false).toString(), "approval");
+      HttpRequest.Builder requestBuilder = httpClient.newHttpRequestBuilder()
+          .put(JSON, JSON_MAPPER.writeValueAsString(fromServerCsr)).uri(uri);
+      return handleResponse(requestBuilder, CertificateSigningRequest.class);
     } catch (InterruptedException ie) {
       Thread.currentThread().interrupt();
-      throw KubernetesClientException.launderThrowable(forOperationType("approval " + type), ie);
+      throw KubernetesClientException.launderThrowable(forOperationType("CeritificateSigningRequest " + type), ie);
     } catch (IOException e) {
-      throw KubernetesClientException.launderThrowable(forOperationType("approval " + type), e);
+      throw KubernetesClientException.launderThrowable(forOperationType("CertificateSigningRequest " + type), e);
     }
   }
 

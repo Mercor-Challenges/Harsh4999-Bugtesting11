@@ -50,7 +50,6 @@ public class LeaderElector {
   private final AtomicReference<LeaderElectionRecord> observedRecord = new AtomicReference<>();
   private final AtomicReference<LocalDateTime> observedTime = new AtomicReference<>();
   private final Executor executor;
-  private boolean stopped;
 
   public LeaderElector(KubernetesClient kubernetesClient, LeaderElectionConfig leaderElectionConfig, Executor executor) {
     this.kubernetesClient = kubernetesClient;
@@ -78,7 +77,7 @@ public class LeaderElector {
   /**
    * Start a leader elector. The future may be cancelled to stop
    * the leader elector.
-   *
+   * 
    * @return the future
    */
   public CompletableFuture<?> start() {
@@ -92,57 +91,23 @@ public class LeaderElector {
         CompletableFuture<?> renewFuture = renewWithTimeout();
         result.whenComplete((v1, t1) -> renewFuture.cancel(true));
         renewFuture.whenComplete((v1, t1) -> {
-          stopLeading();
           if (t1 != null) {
             result.completeExceptionally(t1);
           } else {
             result.complete(null);
           }
         });
-      } else {
-        // there's a possibility that we'll obtain the lock, but get cancelled
-        // before completing the future
-        stopLeading();
       }
     });
     result.whenComplete((v, t) -> {
       acquireFuture.cancel(true);
+      LeaderElectionRecord current = observedRecord.get();
+      // if cancelled we still want to notify of stopping leadership
+      if (current != null && Objects.equals(current.getHolderIdentity(), leaderElectionConfig.getLock().identity())) {
+        leaderElectionConfig.getLeaderCallbacks().onStopLeading();
+      }
     });
     return result;
-  }
-
-  private synchronized void stopLeading() {
-    stopped = true;
-    LeaderElectionRecord current = observedRecord.get();
-    if (current == null || !isLeader(current)) {
-      return; // not leading
-    }
-    try {
-      if (leaderElectionConfig.isReleaseOnCancel()) {
-        release(current);
-      }
-    } finally {
-      // called regardless of isReleaseOnCancel
-      leaderElectionConfig.getLeaderCallbacks().onStopLeading();
-    }
-  }
-
-  private void release(LeaderElectionRecord current) {
-    try {
-      ZonedDateTime now = now();
-      final LeaderElectionRecord newLeaderElectionRecord = new LeaderElectionRecord(
-          null,
-          Duration.ofSeconds(1),
-          now,
-          now,
-          current.getLeaderTransitions());
-      newLeaderElectionRecord.setVersion(current.getVersion());
-
-      leaderElectionConfig.getLock().update(kubernetesClient, newLeaderElectionRecord);
-    } catch (LockException | KubernetesClientException e) {
-      final String lockDescription = leaderElectionConfig.getLock().describe();
-      LOGGER.error("Exception occurred while releasing lock '{}'", lockDescription, e);
-    }
   }
 
   private CompletableFuture<Void> acquire() {
@@ -184,10 +149,7 @@ public class LeaderElector {
     }, () -> leaderElectionConfig.getRetryPeriod().toMillis(), executor);
   }
 
-  synchronized boolean tryAcquireOrRenew() throws LockException {
-    if (stopped) {
-      return false;
-    }
+  private boolean tryAcquireOrRenew() throws LockException {
     final Lock lock = leaderElectionConfig.getLock();
     final ZonedDateTime now = now();
     final LeaderElectionRecord oldLeaderElectionRecord = lock.get(kubernetesClient);
@@ -209,7 +171,7 @@ public class LeaderElector {
         leaderElectionConfig.getLeaseDuration(),
         isLeader ? oldLeaderElectionRecord.getAcquireTime() : now,
         now,
-        oldLeaderElectionRecord.getLeaderTransitions() + (isLeader ? 0 : 1));
+        isLeader ? (oldLeaderElectionRecord.getLeaderTransitions() + 1) : 0);
     newLeaderElectionRecord.setVersion(oldLeaderElectionRecord.getVersion());
     leaderElectionConfig.getLock().update(kubernetesClient, newLeaderElectionRecord);
     updateObserved(newLeaderElectionRecord);
@@ -240,8 +202,7 @@ public class LeaderElector {
   }
 
   protected final boolean canBecomeLeader(LeaderElectionRecord leaderElectionRecord) {
-    return Utils.isNullOrEmpty(leaderElectionRecord.getHolderIdentity())
-        || !leaderElectionRecord.getRenewTime().plus(leaderElectionConfig.getLeaseDuration()).isAfter(now());
+    return !leaderElectionRecord.getRenewTime().plus(leaderElectionConfig.getLeaseDuration()).isAfter(now());
   }
 
   /**

@@ -24,8 +24,10 @@ import java.util.List;
 import java.util.Map;
 
 import static io.fabric8.kubernetes.client.Config.DEFAULT_LOGGING_INTERVAL;
-import static io.fabric8.kubernetes.client.Config.DEFAULT_REQUEST_RETRY_BACKOFFINTERVAL;
+import static io.fabric8.kubernetes.client.Config.DEFAULT_MAX_CONCURRENT_REQUESTS;
+import static io.fabric8.kubernetes.client.Config.DEFAULT_MAX_CONCURRENT_REQUESTS_PER_HOST;
 import static io.fabric8.kubernetes.client.Config.DEFAULT_REQUEST_RETRY_BACKOFFLIMIT;
+import static io.fabric8.kubernetes.client.Config.DEFAULT_REQUEST_RETRY_BACKOFFINTERVAL;
 import static io.fabric8.kubernetes.client.Config.DEFAULT_ROLLING_TIMEOUT;
 import static io.fabric8.kubernetes.client.Config.DEFAULT_SCALE_TIMEOUT;
 import static io.fabric8.kubernetes.client.Config.DEFAULT_UPLOAD_CONNECTION_TIMEOUT;
@@ -57,6 +59,8 @@ public class RequestConfig {
   private int loggingInterval = DEFAULT_LOGGING_INTERVAL;
   private long websocketTimeout = DEFAULT_WEBSOCKET_TIMEOUT;
   private long websocketPingInterval = DEFAULT_WEBSOCKET_PING_INTERVAL;
+  private int maxConcurrentRequests = DEFAULT_MAX_CONCURRENT_REQUESTS;
+  private int maxConcurrentRequestsPerHost = DEFAULT_MAX_CONCURRENT_REQUESTS_PER_HOST;
 
   RequestConfig() {
   }
@@ -80,24 +84,22 @@ public class RequestConfig {
    */
   @Deprecated
   public RequestConfig(String username, String password, String oauthToken,
-      int watchReconnectLimit, int watchReconnectInterval,
-      int connectionTimeout, long rollingTimeout, int requestTimeout, long scaleTimeout, int loggingInterval,
-      long websocketTimeout, long websocketPingInterval,
-      int maxConcurrentRequests, int maxConcurrentRequestsPerHost) {
-    this(username, password, oauthToken, watchReconnectLimit, watchReconnectInterval, connectionTimeout, rollingTimeout,
-        requestTimeout, scaleTimeout, loggingInterval,
-        websocketTimeout, websocketPingInterval, null,
-        DEFAULT_REQUEST_RETRY_BACKOFFLIMIT, DEFAULT_REQUEST_RETRY_BACKOFFINTERVAL,
-        DEFAULT_UPLOAD_CONNECTION_TIMEOUT, DEFAULT_UPLOAD_REQUEST_TIMEOUT);
+                       int watchReconnectLimit, int watchReconnectInterval,
+                       int connectionTimeout, long rollingTimeout, int requestTimeout, long scaleTimeout, int loggingInterval,
+                       long websocketTimeout, long websocketPingInterval,
+                       int maxConcurrentRequests, int maxConcurrentRequestsPerHost) {
+    this(username, password, oauthToken, watchReconnectLimit, watchReconnectInterval, connectionTimeout, rollingTimeout, requestTimeout, scaleTimeout, loggingInterval,
+         websocketTimeout,  websocketPingInterval,maxConcurrentRequests, maxConcurrentRequestsPerHost, null, DEFAULT_REQUEST_RETRY_BACKOFFLIMIT, DEFAULT_REQUEST_RETRY_BACKOFFINTERVAL,
+         DEFAULT_UPLOAD_CONNECTION_TIMEOUT, DEFAULT_UPLOAD_REQUEST_TIMEOUT);
   }
 
   @Buildable(builderPackage = "io.fabric8.kubernetes.api.builder", editableEnabled = false)
   public RequestConfig(String username, String password, String oauthToken,
-      int watchReconnectLimit, int watchReconnectInterval,
-      int connectionTimeout, long rollingTimeout, int requestTimeout, long scaleTimeout, int loggingInterval,
-      long websocketTimeout, long websocketPingInterval,
-      OAuthTokenProvider oauthTokenProvider,
-      int requestRetryBackoffLimit, int requestRetryBackoffInterval, int uploadConnectionTimeout, int uploadRequestTimeout) {
+                       int watchReconnectLimit, int watchReconnectInterval,
+                       int connectionTimeout, long rollingTimeout, int requestTimeout, long scaleTimeout, int loggingInterval,
+                       long websocketTimeout, long websocketPingInterval,
+                       int maxConcurrentRequests, int maxConcurrentRequestsPerHost, OAuthTokenProvider oauthTokenProvider,
+                       int requestRetryBackoffLimit, int requestRetryBackoffInterval, int uploadConnectionTimeout, int uploadRequestTimeout) {
     this.username = username;
     this.oauthToken = oauthToken;
     this.password = password;
@@ -110,6 +112,8 @@ public class RequestConfig {
     this.websocketTimeout = websocketTimeout;
     this.loggingInterval = loggingInterval;
     this.websocketPingInterval = websocketPingInterval;
+    this.maxConcurrentRequests = maxConcurrentRequests;
+    this.maxConcurrentRequestsPerHost = maxConcurrentRequestsPerHost;
     this.oauthTokenProvider = oauthTokenProvider;
     this.requestRetryBackoffLimit = requestRetryBackoffLimit;
     this.requestRetryBackoffInterval = requestRetryBackoffInterval;
@@ -256,6 +260,22 @@ public class RequestConfig {
     this.websocketPingInterval = websocketPingInterval;
   }
 
+  public int getMaxConcurrentRequests() {
+    return maxConcurrentRequests;
+  }
+
+  public void setMaxConcurrentRequests(int maxConcurrentRequests) {
+    this.maxConcurrentRequests = maxConcurrentRequests;
+  }
+
+  public int getMaxConcurrentRequestsPerHost() {
+    return maxConcurrentRequestsPerHost;
+  }
+
+  public void setMaxConcurrentRequestsPerHost(int maxConcurrentRequestsPerHost) {
+    this.maxConcurrentRequestsPerHost = maxConcurrentRequestsPerHost;
+  }
+
   public void setImpersonateUsername(String impersonateUsername) {
     this.impersonateUsername = impersonateUsername;
   }
@@ -264,9 +284,30 @@ public class RequestConfig {
     return impersonateUsername;
   }
 
+  /**
+   * Method to set Impersonate Group
+   *
+   * @param impersonateGroup impersonate group string
+   * @deprecated Use {@link #setImpersonateGroups(String...)} instead
+   */
+  @Deprecated
+  public void setImpersonateGroup(String impersonateGroup) {
+    setImpersonateGroups(impersonateGroup);
+  }
+
+  /**
+   * Method for getting Impersonate Groups
+   *
+   * @return Impersonate group string
+   * @deprecated Use {@link #getImpersonateGroups()} instead
+   */
+  @Deprecated
+  public String getImpersonateGroup() {
+    return (impersonateGroups == null || impersonateGroups.length == 0) ? null : impersonateGroups[0];
+  }
+
   public void setImpersonateGroups(String... impersonateGroups) {
-    this.impersonateGroups = impersonateGroups == null ? new String[0]
-        : Arrays.copyOf(impersonateGroups, impersonateGroups.length);
+    this.impersonateGroups = impersonateGroups == null ? new String[0] : Arrays.copyOf(impersonateGroups, impersonateGroups.length);
   }
 
   public String[] getImpersonateGroups() {

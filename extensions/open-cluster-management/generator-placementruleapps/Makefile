@@ -20,7 +20,7 @@ all: build
 
 build: gobuild
 	pushd ../model-placementruleapps && \
-	mvn -Pgenerate clean install -DskipTests -o && \
+	mvn clean install -o && \
 	popd
 
 gobuild:

@@ -20,8 +20,8 @@ import com.mifmif.common.regex.Generex;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.KubernetesList;
 import io.fabric8.kubernetes.api.model.KubernetesListBuilder;
+import io.fabric8.kubernetes.api.model.KubernetesResourceList;
 import io.fabric8.kubernetes.client.Client;
-import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.dsl.ParameterMixedOperation;
 import io.fabric8.kubernetes.client.dsl.internal.HasMetadataOperation;
@@ -29,6 +29,7 @@ import io.fabric8.kubernetes.client.dsl.internal.HasMetadataOperationsImpl;
 import io.fabric8.kubernetes.client.dsl.internal.OperationContext;
 import io.fabric8.kubernetes.client.http.HttpRequest;
 import io.fabric8.kubernetes.client.utils.Serialization;
+import io.fabric8.kubernetes.client.utils.URLUtils;
 import io.fabric8.kubernetes.client.utils.Utils;
 import io.fabric8.openshift.api.model.Parameter;
 import io.fabric8.openshift.api.model.Template;
@@ -45,12 +46,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 import static io.fabric8.openshift.client.OpenShiftAPIGroups.TEMPLATE;
 
@@ -164,82 +166,106 @@ public class TemplateOperationsImpl
 
   @Override
   public KubernetesList processLocally(Map<String, String> valuesMap) {
-    Template t = processParameters(getItemOrRequireFromServer());
+    Template t = withParameters(valuesMap).get();
 
-    List<Parameter> parameters = t.getParameters();
+    List<Parameter> parameters = t != null ? t.getParameters() : null;
     KubernetesList list = new KubernetesListBuilder()
-        .withItems(t.getObjects())
+        .withItems(t != null && t.getObjects() != null ? t.getObjects() : Collections.<HasMetadata> emptyList())
         .build();
 
-    String json = Serialization.asJson(list);
-    String last = null;
-
-    if (parameters != null && !parameters.isEmpty()) {
-      while (!Objects.equals(last, json)) {
-        last = json;
-        for (Parameter parameter : parameters) {
-          String parameterName = parameter.getName();
-          String parameterValue;
-          if (valuesMap.containsKey(parameterName)) {
-            parameterValue = valuesMap.get(parameterName);
-          } else if (Utils.isNotNullOrEmpty(parameter.getValue())) {
-            parameterValue = parameter.getValue();
-          } else if (EXPRESSION.equals(parameter.getGenerate())) {
-            Generex generex = new Generex(parameter.getFrom());
-            parameterValue = generex.random();
-          } else if (parameter.getRequired() == null || !parameter.getRequired()) {
-            parameterValue = "";
-          } else {
-            throw new IllegalArgumentException("No value available for parameter name: " + parameterName);
+    try {
+      String json = JSON_MAPPER.writeValueAsString(list);
+      if (parameters != null && !parameters.isEmpty()) {
+        // lets make a few passes in case there's expressions in values
+        for (int i = 0; i < 5; i++) {
+          for (Parameter parameter : parameters) {
+            String parameterName = parameter.getName();
+            String parameterValue;
+            if (valuesMap.containsKey(parameterName)) {
+              parameterValue = valuesMap.get(parameterName);
+            } else if (Utils.isNotNullOrEmpty(parameter.getValue())) {
+              parameterValue = parameter.getValue();
+            } else if (EXPRESSION.equals(parameter.getGenerate())) {
+              Generex generex = new Generex(parameter.getFrom());
+              parameterValue = generex.random();
+            } else if (parameter.getRequired() == null || !parameter.getRequired()) {
+              parameterValue = "";
+            } else {
+              throw new IllegalArgumentException("No value available for parameter name: " + parameterName);
+            }
+            if (parameterValue == null) {
+              logger.debug("Parameter {} has a null value", parameterName);
+              parameterValue = "";
+            }
+            json = Utils.interpolateString(json, Collections.singletonMap(parameterName, parameterValue));
           }
-          if (parameterValue == null) {
-            logger.debug("Parameter {} has a null value", parameterName);
-            parameterValue = "";
-          }
-          json = Utils.interpolateString(json, Collections.singletonMap(parameterName, parameterValue));
         }
       }
-    }
 
-    return Serialization.unmarshal(json, KubernetesList.class);
+      list = JSON_MAPPER.readValue(json, KubernetesList.class);
+    } catch (IOException e) {
+      throw KubernetesClientException.launderThrowable(e);
+    }
+    return list;
   }
 
   private URL getProcessUrl() throws MalformedURLException {
-    return getNamespacedUrl(getNamespace(), "processedtemplates");
-  }
-
-  @Override
-  public Template get() {
-    return processParameters(super.get());
-  }
-
-  private Template processParameters(Template t) {
-    if (this.parameters != null && !this.parameters.isEmpty()) {
-      return Serialization.unmarshal(Utils.interpolateString(Serialization.asJson(t), this.parameters), Template.class);
+    URL requestUrl = getRootUrl();
+    if (getNamespace() != null) {
+      requestUrl = new URL(URLUtils.join(requestUrl.toString(), "namespaces", getNamespace()));
     }
-    return t;
+    requestUrl = new URL(URLUtils.join(requestUrl.toString(), "processedtemplates"));
+    return requestUrl;
   }
 
   @Override
   public TemplateResource<Template, KubernetesList> load(InputStream is) {
+    String generatedName = "template-" + Utils.randomString(5);
     Template template = null;
-    List<HasMetadata> items = this.context.getClient().adapt(KubernetesClient.class).load(is).items();
-    Object item = items;
-    if (items.size() == 1) {
-      item = items.get(0);
-    }
+    Object item = Serialization.unmarshal(is, parameters);
     if (item instanceof Template) {
       template = (Template) item;
-    } else {
-      String generatedName = "template-" + Utils.randomString(5);
+    } else if (item instanceof HasMetadata) {
+      HasMetadata h = (HasMetadata) item;
+      template = new TemplateBuilder()
+          .withNewMetadata()
+          .withName(generatedName)
+          .withNamespace(h.getMetadata() != null ? h.getMetadata().getNamespace() : null)
+          .endMetadata()
+          .withObjects(h).build();
+    } else if (item instanceof KubernetesResourceList) {
+      List<HasMetadata> list = ((KubernetesResourceList<HasMetadata>) item).getItems();
       template = new TemplateBuilder()
           .withNewMetadata()
           .withName(generatedName)
           .endMetadata()
-          .withObjects(items).build();
+          .withObjects(list.toArray(new HasMetadata[list.size()])).build();
+    } else if (item instanceof HasMetadata[]) {
+      template = new TemplateBuilder()
+          .withNewMetadata()
+          .withName(generatedName)
+          .endMetadata()
+          .withObjects((HasMetadata[]) item).build();
+    } else if (item instanceof Collection) {
+      List<HasMetadata> items = new ArrayList<>();
+      for (Object o : (Collection) item) {
+        if (o instanceof HasMetadata) {
+          items.add((HasMetadata) o);
+        }
+      }
+      template = new TemplateBuilder()
+          .withNewMetadata()
+          .withName(generatedName)
+          .endMetadata()
+          .withObjects(items.toArray(new HasMetadata[items.size()])).build();
     }
 
-    return resource(template);
+    return newInstance(context.withItem(template));
+  }
+
+  @Override
+  public Map<String, String> getParameters() {
+    return parameters;
   }
 
 }

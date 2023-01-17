@@ -60,6 +60,6 @@ public class DefaultIstioClient extends ExtensionRootClientAdapter<DefaultIstioC
 
   @Override
   public boolean isSupported() {
-    return hasApiGroup("istio.io", false);
+    return hasApiGroup("networking.istio.io", true);
   }
 }

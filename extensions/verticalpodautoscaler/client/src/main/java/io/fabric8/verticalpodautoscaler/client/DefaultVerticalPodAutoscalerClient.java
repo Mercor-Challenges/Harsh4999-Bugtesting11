@@ -56,7 +56,7 @@ public class DefaultVerticalPodAutoscalerClient extends ExtensionRootClientAdapt
 
   @Override
   public boolean isSupported() {
-    return getClient().hasApiGroup(VerticalPodAutoscalerExtensionAdapter.API_GROUP, false);
+    return getClient().hasApiGroup(VerticalPodAutoscalerExtensionAdapter.API_GROUP, true);
   }
 
 }

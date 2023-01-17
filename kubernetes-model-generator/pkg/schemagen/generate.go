@@ -128,7 +128,7 @@ func (g *schemaGenerator) generateReference(t reflect.Type) string {
 func (g *schemaGenerator) javaTypeArrayList(t reflect.Type) string {
 	typeName := g.javaTypeWrapPrimitive(t)
 	switch typeName {
-	case "Byte":
+	case "Byte", "Integer":
 		return "String"
 	default:
 		return "java.util.ArrayList<" + typeName + ">"
@@ -178,9 +178,9 @@ func (g *schemaGenerator) javaType(t reflect.Type) string {
 		case "Time":
 			return "String"
 		case "RawExtension":
-			return "io.fabric8.kubernetes.api.model.KubernetesResource"			
+			return BasePackage + ".HasMetadata"
 		case "List":
-			return pkgDesc.JavaPackage + ".KubernetesList"
+			return pkgDesc.JavaPackage + ".BaseKubernetesList"
 		default:
 			return pkgDesc.JavaPackage + "." + t.Name()
 		}
@@ -193,11 +193,9 @@ func (g *schemaGenerator) javaType(t reflect.Type) string {
 	switch t.Kind() {
 	case reflect.Bool:
 		return "bool"
-	case reflect.Uint8:
-	  return "Byte"
 	case reflect.Int, reflect.Int8, reflect.Int16,
 		reflect.Int32, reflect.Uint,
-		reflect.Uint16, reflect.Uint32:
+		reflect.Uint8, reflect.Uint16, reflect.Uint32:
 		return "int"
 	case reflect.Int64, reflect.Uint64:
 		return "Long"
@@ -211,10 +209,7 @@ func (g *schemaGenerator) javaType(t reflect.Type) string {
 	case reflect.Map:
 		return "java.util.Map<String," + g.javaTypeWrapPrimitive(t.Elem()) + ">"
 	default:
-	    if t.Name() == "RawExtension" {
-	        return "io.fabric8.kubernetes.api.model.KubernetesResource"
-	    }
-	    if t.Name() == "Time" {
+		if t.Name() == "Time" {
 			return "String"
 		}
 		if len(t.Name()) == 0 && t.NumField() == 0 {
@@ -301,7 +296,45 @@ func (g *schemaGenerator) generate(t reflect.Type, moduleName string) (*JSONSche
 					ExistingJavaType: javaType,
 				}
 			}
-			
+			/* Added a specific class for DockerImageMetadata because its kind of RawExtension
+			and is set to HasMetadata Java Type. Because of this thing its not getting marshalled
+			and throwing error. We need to change it to RawExtension but to change it to Raw Extension
+			we need to create a special class for DockerMetadata Only.Reason is all the RawExtension Object
+			are set to HasMetadata Java Type and if we change all the objects to RawExtension then
+			classes like KubernetesList etc. are throwing error If we change the class of DockerMetadata
+			only then also it will get generated of kind HasMetadata because RawExtension Object is also set
+			to HasMetadata Jaya Type If we further change RawExtension Object to RawExtension Java Type then
+			again all KubernetesList like object throw error so created a special Class ImageRawExtension
+			for DockerImageData which will be of Raw Extension Java Type and the problem of marshalling
+			get Resolved. This will be applied to DockerMetadata only and all the other will refer to
+			original RawExtension which is of HasMetadata Java Type.*/
+
+			if name == "kubernetes_apimachinery_pkg_runtime_RawExtension" {
+				dockermetadata_name := "kubernetes_apimachinery_pkg_runtime_ImageRawExtension"
+				dockermetadata_resource := "imagerawextension"
+				dockermetadata_value := JSONPropertyDescriptor{
+					JSONDescriptor: &JSONDescriptor{
+						Type: "object",
+					},
+					JSONObjectDescriptor: v,
+					JavaTypeDescriptor: &JavaTypeDescriptor{
+						JavaType: g.javaType(k),
+					},
+					JavaInterfacesDescriptor: &JavaInterfacesDescriptor{
+						JavaInterfaces: g.javaInterfaces(k),
+					},
+				}
+				javaTypeStr := "io.fabric8."
+				if moduleName == "openshift" {
+					javaTypeStr = javaTypeStr + "openshift"
+				} else {
+					javaTypeStr = javaTypeStr + "kubernetes"
+				}
+				javaTypeStr = javaTypeStr + ".api.model.runtime.RawExtension"
+				dockermetadata_value.JavaType = javaTypeStr
+				s.Definitions[dockermetadata_name] = dockermetadata_value
+				s.Resources[dockermetadata_resource] = v
+			}
 			s.Definitions[name] = value
 			s.Resources[resource] = v
 		}
@@ -425,7 +458,23 @@ func (g *schemaGenerator) getStructProperties(t reflect.Type) map[string]JSONPro
 		if name == "-" {
 			continue
 		}
+		/* Specifying dockerImageMetadata field separately Because by default it is taking
+		HasMetadata as type and we have declared a special class ImageRawExtension
+		for this to remove marshalling error.*/
 		path := pkgPath(t)
+		if t.Name() == "Image" && name == "dockerImageMetadata" {
+			prop := JSONPropertyDescriptor{
+				JSONReferenceDescriptor: &JSONReferenceDescriptor{
+					Reference: "#/definitions/kubernetes_apimachinery_pkg_runtime_ImageRawExtension",
+				},
+				JavaTypeDescriptor: &JavaTypeDescriptor{
+					JavaType: BasePackage + ".runtime.RawExtension",
+				},
+			}
+			props[name] = prop
+			continue
+		}
+
 		desc := getFieldDescription(field)
 		omitEmpty := isOmitEmpty(field)
 		prop := g.getPropertyDescriptor(field.Type, desc, omitEmpty)
@@ -598,8 +647,6 @@ func (g *schemaGenerator) isClusterScopedResource(t reflect.Type) bool {
 		"k8s.io/api/storage/v1beta1/StorageClass",
 		"k8s.io/api/flowcontrol/v1beta1/FlowSchema",
 		"k8s.io/api/flowcontrol/v1beta1/PriorityLevelConfiguration",
-		"k8s.io/api/flowcontrol/v1beta2/FlowSchema",
-		"k8s.io/api/flowcontrol/v1beta2/PriorityLevelConfiguration",
 		"github.com/openshift/api/authorization/v1/ClusterRole",
 		"github.com/openshift/api/authorization/v1/ClusterRoleBinding",
 		"github.com/openshift/api/authorization/v1/ResourceAccessReview",
@@ -607,13 +654,10 @@ func (g *schemaGenerator) isClusterScopedResource(t reflect.Type) bool {
 		"github.com/openshift/api/oauth/v1/UserOAuthAccessToken",
 		"github.com/openshift/api/oauth/v1/OAuthClientAuthorization",
 		"github.com/openshift/api/config/v1/Authentication",
-		"github.com/openshift/api/config/v1/Build",
 		"github.com/openshift/api/config/v1/Console",
 		"github.com/openshift/api/config/v1/DNS",
 		"github.com/openshift/api/config/v1/Network",
 		"github.com/openshift/api/config/v1/Infrastructure",
-		"github.com/openshift/api/config/v1/Image",
-		"github.com/openshift/api/config/v1/ImageContentPolicy",
 		"github.com/openshift/api/config/v1/FeatureGate",
 		"github.com/openshift/api/config/v1/OperatorHub",
 		"github.com/openshift/api/config/v1/APIServer",
@@ -625,7 +669,6 @@ func (g *schemaGenerator) isClusterScopedResource(t reflect.Type) bool {
 		"github.com/openshift/api/config/v1/ClusterOperator",
 		"github.com/openshift/api/network/v1/NetNamespace",
 		"github.com/openshift/api/config/v1/Proxy",
-		"github.com/openshift/api/config/v1/Project",
 		"github.com/openshift/api/security/v1/RangeAllocation",
 		"github.com/openshift/api/image/v1/Image",
 		"github.com/openshift/api/image/v1/ImageSignature",
@@ -686,8 +729,6 @@ func (g *schemaGenerator) isClusterScopedResource(t reflect.Type) bool {
                 "github.com/openshift/hive/apis/hive/v1/HiveConfig",
 		"sigs.k8s.io/kube-storage-version-migrator/pkg/apis/migration/v1alpha1/StorageState",
 		"sigs.k8s.io/kube-storage-version-migrator/pkg/apis/migration/v1alpha1/StorageVersionMigration",
-                "sigs.k8s.io/gateway-api/apis/v1alpha2/GatewayClass",
-                "sigs.k8s.io/gateway-api/apis/v1beta1/GatewayClass",
 	}
 
 	return Contains(clusterScopedResourcesList, t.PkgPath()+"/"+t.Name())

@@ -25,9 +25,8 @@ public class JPrimitive extends AbstractJSONSchema2Pojo {
 
   private static final GeneratorResult empty = new GeneratorResult(new ArrayList<>(), new ArrayList<>());
 
-  public JPrimitive(String type, Config config, String description, final boolean isNullable, JsonNode defaultValue,
-      final ValidationProperties validationProperties) {
-    super(config, description, isNullable, defaultValue, validationProperties);
+  public JPrimitive(String type, Config config, String description, final boolean isNullable, JsonNode defaultValue) {
+    super(config, description, isNullable, defaultValue);
     this.type = type;
   }
 

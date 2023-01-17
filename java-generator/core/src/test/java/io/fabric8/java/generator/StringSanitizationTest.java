@@ -45,16 +45,4 @@ class StringSanitizationTest {
     // Assert
     assertEquals("propertyName", res);
   }
-
-  @Test
-  void shouldAddTrailingUnderscoreOnInvalidClassAndPackageNames() {
-    // Arrange
-    String str = "3property-name-";
-
-    // Act
-    String res = AbstractJSONSchema2Pojo.sanitizeString(str);
-
-    // Assert
-    assertEquals("_3propertyName", res);
-  }
 }

@@ -22,10 +22,8 @@ import com.github.javaparser.ast.NodeList;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.EnumDeclaration;
 import com.github.javaparser.ast.body.FieldDeclaration;
-import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.body.VariableDeclarator;
 import com.github.javaparser.ast.expr.*;
-import com.github.javaparser.ast.stmt.BlockStmt;
 import com.github.javaparser.ast.type.ClassOrInterfaceType;
 import com.github.javaparser.utils.StringEscapeUtils;
 import io.fabric8.java.generator.Config;
@@ -34,10 +32,20 @@ import io.fabric8.kubernetes.api.model.apiextensions.v1.JSONSchemaProps;
 import io.fabric8.kubernetes.client.utils.Serialization;
 import io.fabric8.kubernetes.client.utils.Utils;
 
+import java.io.InputStream;
 import java.util.*;
 import java.util.stream.Collectors;
 
 public class JObject extends AbstractJSONSchema2Pojo implements JObjectExtraAnnotations {
+
+  private static final Set<String> IGNORED_FIELDS = new HashSet<>();
+
+  static {
+    IGNORED_FIELDS.add("description");
+    IGNORED_FIELDS.add("schema");
+    IGNORED_FIELDS.add("example");
+    IGNORED_FIELDS.add("examples");
+  }
 
   private final String type;
   private final String className;
@@ -58,7 +66,7 @@ public class JObject extends AbstractJSONSchema2Pojo implements JObjectExtraAnno
       Config config,
       String description,
       final boolean isNullable, JsonNode defaultValue) {
-    super(config, description, isNullable, defaultValue, null);
+    super(config, description, isNullable, defaultValue);
     this.required = new HashSet<>(Optional.ofNullable(required).orElse(Collections.emptyList()));
     this.fields = new HashMap<>();
     this.preserveUnknownFields = preserveUnknownFields;
@@ -90,17 +98,19 @@ public class JObject extends AbstractJSONSchema2Pojo implements JObjectExtraAnno
       }
 
       for (Map.Entry<String, JSONSchemaProps> field : fields.entrySet()) {
-        String nextPrefix = (config.getPrefixStrategy() == Config.Prefix.ALWAYS) ? classPrefix : "";
-        String nextSuffix = (config.getSuffixStrategy() == Config.Suffix.ALWAYS) ? classSuffix : "";
-        this.fields.put(
-            field.getKey(),
-            AbstractJSONSchema2Pojo.fromJsonSchema(
-                field.getKey(),
-                field.getValue(),
-                nextPackagePath,
-                nextPrefix,
-                nextSuffix,
-                config));
+        if (!IGNORED_FIELDS.contains(field.getKey())) {
+          String nextPrefix = (config.getPrefixStrategy() == Config.Prefix.ALWAYS) ? classPrefix : "";
+          String nextSuffix = (config.getSuffixStrategy() == Config.Suffix.ALWAYS) ? classSuffix : "";
+          this.fields.put(
+              field.getKey(),
+              AbstractJSONSchema2Pojo.fromJsonSchema(
+                  field.getKey(),
+                  field.getValue(),
+                  nextPackagePath,
+                  nextPrefix,
+                  nextSuffix,
+                  config));
+        }
       }
     }
   }
@@ -149,9 +159,6 @@ public class JObject extends AbstractJSONSchema2Pojo implements JObjectExtraAnno
             new NameExpr(
                 "using = com.fasterxml.jackson.databind.JsonDeserializer.None.class")));
 
-    if (config.isGeneratedAnnotations()) {
-      clz.addAnnotation(GENERATED_ANNOTATION);
-    }
     if (config.isObjectExtraAnnotations()) {
       addExtraAnnotations(clz);
     }
@@ -168,8 +175,7 @@ public class JObject extends AbstractJSONSchema2Pojo implements JObjectExtraAnno
       GeneratorResult gr = prop.generateJava();
 
       // For now the inner types are only for enums
-      boolean isEnum = !gr.getInnerClasses().isEmpty();
-      if (isEnum) {
+      if (!gr.getInnerClasses().isEmpty()) {
         for (GeneratorResult.ClassResult enumCR : gr.getInnerClasses()) {
           Optional<EnumDeclaration> ed = enumCR.getCompilationUnit().getEnumByName(enumCR.getName());
           if (ed.isPresent()) {
@@ -191,25 +197,7 @@ public class JObject extends AbstractJSONSchema2Pojo implements JObjectExtraAnno
                 new StringLiteralExpr(originalFieldName)));
 
         if (isRequired) {
-          objField.addAnnotation("io.fabric8.generator.annotation.Required");
-        }
-        if (prop.getMaximum() != null) {
-          objField.addAnnotation(
-              new SingleMemberAnnotationExpr(
-                  new Name("io.fabric8.generator.annotation.Max"),
-                  new DoubleLiteralExpr(prop.getMaximum())));
-        }
-        if (prop.getMinimum() != null) {
-          objField.addAnnotation(
-              new SingleMemberAnnotationExpr(
-                  new Name("io.fabric8.generator.annotation.Min"),
-                  new DoubleLiteralExpr(prop.getMinimum())));
-        }
-        if (prop.getPattern() != null) {
-          objField.addAnnotation(
-              new SingleMemberAnnotationExpr(
-                  new Name("io.fabric8.generator.annotation.Pattern"),
-                  new StringLiteralExpr(StringEscapeUtils.escapeJava(prop.getPattern()))));
+          objField.addAnnotation("javax.validation.constraints.NotNull");
         }
 
         objField.createGetter();
@@ -223,7 +211,7 @@ public class JObject extends AbstractJSONSchema2Pojo implements JObjectExtraAnno
                   new Name(
                       "com.fasterxml.jackson.annotation.JsonPropertyDescription"),
                   new StringLiteralExpr(
-                      StringEscapeUtils.escapeJava(prop.getDescription()))));
+                      prop.getDescription().replace("\"", "\\\""))));
         }
 
         if (!prop.isNullable) {
@@ -241,23 +229,10 @@ public class JObject extends AbstractJSONSchema2Pojo implements JObjectExtraAnno
               new SingleMemberAnnotationExpr(
                   new Name("com.fasterxml.jackson.annotation.JsonSetter"),
                   new NameExpr("nulls = com.fasterxml.jackson.annotation.Nulls.SET")));
-          objField.addAnnotation("io.fabric8.generator.annotation.Nullable");
         }
 
         if (prop.getDefaultValue() != null) {
-          Expression primitiveDefault = (isEnum) ? null : generatePrimitiveDefaultInitializerExpression(prop);
-
-          if (primitiveDefault != null) {
-            objField.getVariable(0).setInitializer(primitiveDefault);
-          } else {
-            objField.getVariable(0).setInitializer(
-                new NameExpr(
-                    "io.fabric8.kubernetes.client.utils.Serialization.unmarshal("
-                        + "\"" + StringEscapeUtils.escapeJava(Serialization.asJson(prop.getDefaultValue())) + "\""
-                        + ", "
-                        + prop.getClassType() + ".class"
-                        + ")"));
-          }
+          objField.getVariable(0).setInitializer(generateDefaultInitializerExpression(prop));
         }
       } catch (Exception cause) {
         throw new JavaGeneratorException(
@@ -284,13 +259,6 @@ public class JObject extends AbstractJSONSchema2Pojo implements JObjectExtraAnno
 
       objField.createGetter().addAnnotation("com.fasterxml.jackson.annotation.JsonAnyGetter");
       objField.createSetter().addAnnotation("com.fasterxml.jackson.annotation.JsonAnySetter");
-
-      MethodDeclaration additionalSetter = clz.addMethod("setAdditionalProperty", Modifier.Keyword.PUBLIC);
-      additionalSetter.addAnnotation("com.fasterxml.jackson.annotation.JsonAnySetter");
-      additionalSetter.addParameter("String", "key");
-      additionalSetter.addParameter("Object", "value");
-      additionalSetter
-          .setBody(new BlockStmt().addStatement(new NameExpr("this." + Keywords.ADDITIONAL_PROPERTIES + ".put(key, value)")));
     }
 
     buffer.add(new GeneratorResult.ClassResult(this.className, cu));
@@ -299,25 +267,17 @@ public class JObject extends AbstractJSONSchema2Pojo implements JObjectExtraAnno
   }
 
   /**
-   * This method is responsible for creating an expression that will initialize the default value if primitive
+   * This method is responsible for creating an expression that will initialize the default value.
    *
    * @return a {@link Expression} instance that contains a call to the
    *         {@link Serialization#unmarshal(String, Class)} method.
    */
-  private Expression generatePrimitiveDefaultInitializerExpression(AbstractJSONSchema2Pojo prop) {
-    if (prop.getDefaultValue().isValueNode()) {
-      String value = prop.getDefaultValue().toString();
-      if (prop.getClassType().equals("Long") && prop.getDefaultValue().canConvertToLong()) {
-        return new LongLiteralExpr(value + "L");
-      } else if (prop.getClassType().equals("Float") && prop.getDefaultValue().isFloatingPointNumber()) {
-        return new DoubleLiteralExpr(value + "f");
-      } else if (prop.getClassType().equals("Boolean") && prop.getDefaultValue().isBoolean()) {
-        return new BooleanLiteralExpr(prop.getDefaultValue().booleanValue());
-      } else {
-        return new NameExpr(value);
-      }
-    } else {
-      return null;
-    }
+  private Expression generateDefaultInitializerExpression(AbstractJSONSchema2Pojo prop) {
+    return new NameExpr(
+        "io.fabric8.kubernetes.client.utils.Serialization.unmarshal("
+            + "\"" + StringEscapeUtils.escapeJava(Serialization.asJson(prop.getDefaultValue())) + "\""
+            + ", "
+            + prop.getClassType() + ".class"
+            + ")");
   }
 }

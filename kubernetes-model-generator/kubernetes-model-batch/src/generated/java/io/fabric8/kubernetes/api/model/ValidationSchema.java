@@ -84,7 +84,7 @@ public class ValidationSchema {
     @JsonProperty("APIGroupList")
     private APIGroupList aPIGroupList;
     @JsonProperty("BaseKubernetesList")
-    private KubernetesList baseKubernetesList;
+    private BaseKubernetesList baseKubernetesList;
     @JsonProperty("CreateOptions")
     private CreateOptions createOptions;
     @JsonProperty("CronJob")
@@ -164,7 +164,7 @@ public class ValidationSchema {
      * @param info
      * @param status
      */
-    public ValidationSchema(APIGroup aPIGroup, APIGroupList aPIGroupList, KubernetesList baseKubernetesList, CreateOptions createOptions, io.fabric8.kubernetes.api.model.batch.v1beta1.CronJob cronJob, io.fabric8.kubernetes.api.model.batch.v1beta1.CronJobList cronJobList, DeleteOptions deleteOptions, GetOptions getOptions, Info info, Job job, JobList jobList, ListOptions listOptions, io.fabric8.kubernetes.api.model.ObjectMeta objectMeta, Patch patch, PatchOptions patchOptions, PodTemplate podTemplateList, Quantity quantity, RootPaths rootPaths, Status status, String time, TypeMeta typeMeta, UpdateOptions updateOptions, io.fabric8.kubernetes.api.model.batch.v1.CronJob v1CronJob, io.fabric8.kubernetes.api.model.batch.v1.CronJobList v1CronJobList) {
+    public ValidationSchema(APIGroup aPIGroup, APIGroupList aPIGroupList, BaseKubernetesList baseKubernetesList, CreateOptions createOptions, io.fabric8.kubernetes.api.model.batch.v1beta1.CronJob cronJob, io.fabric8.kubernetes.api.model.batch.v1beta1.CronJobList cronJobList, DeleteOptions deleteOptions, GetOptions getOptions, Info info, Job job, JobList jobList, ListOptions listOptions, io.fabric8.kubernetes.api.model.ObjectMeta objectMeta, Patch patch, PatchOptions patchOptions, PodTemplate podTemplateList, Quantity quantity, RootPaths rootPaths, Status status, String time, TypeMeta typeMeta, UpdateOptions updateOptions, io.fabric8.kubernetes.api.model.batch.v1.CronJob v1CronJob, io.fabric8.kubernetes.api.model.batch.v1.CronJobList v1CronJobList) {
         super();
         this.aPIGroup = aPIGroup;
         this.aPIGroupList = aPIGroupList;
@@ -213,12 +213,12 @@ public class ValidationSchema {
     }
 
     @JsonProperty("BaseKubernetesList")
-    public KubernetesList getBaseKubernetesList() {
+    public BaseKubernetesList getBaseKubernetesList() {
         return baseKubernetesList;
     }
 
     @JsonProperty("BaseKubernetesList")
-    public void setBaseKubernetesList(KubernetesList baseKubernetesList) {
+    public void setBaseKubernetesList(BaseKubernetesList baseKubernetesList) {
         this.baseKubernetesList = baseKubernetesList;
     }
 

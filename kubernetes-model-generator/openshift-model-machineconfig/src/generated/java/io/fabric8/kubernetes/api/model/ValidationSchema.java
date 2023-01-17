@@ -87,7 +87,7 @@ public class ValidationSchema {
     @JsonProperty("APIGroupList")
     private APIGroupList aPIGroupList;
     @JsonProperty("BaseKubernetesList")
-    private KubernetesList baseKubernetesList;
+    private BaseKubernetesList baseKubernetesList;
     @JsonProperty("ContainerRuntimeConfig")
     private ContainerRuntimeConfig containerRuntimeConfig;
     @JsonProperty("ContainerRuntimeConfigList")
@@ -152,7 +152,7 @@ public class ValidationSchema {
      * @param info
      * @param status
      */
-    public ValidationSchema(APIGroup aPIGroup, APIGroupList aPIGroupList, KubernetesList baseKubernetesList, ContainerRuntimeConfig containerRuntimeConfig, ContainerRuntimeConfigList containerRuntimeConfigList, ControllerConfig controllerConfig, ControllerConfigList controllerConfigList, Info info, KubeletConfig kubeletConfig, KubeletConfigList kubeletConfigList, MachineConfig machineConfig, MachineConfigList machineConfigList, MachineConfigPool machineConfigPool, MachineConfigPoolList machineConfigPoolList, io.fabric8.kubernetes.api.model.ObjectMeta objectMeta, Patch patch, Status status, String time, TypeMeta typeMeta) {
+    public ValidationSchema(APIGroup aPIGroup, APIGroupList aPIGroupList, BaseKubernetesList baseKubernetesList, ContainerRuntimeConfig containerRuntimeConfig, ContainerRuntimeConfigList containerRuntimeConfigList, ControllerConfig controllerConfig, ControllerConfigList controllerConfigList, Info info, KubeletConfig kubeletConfig, KubeletConfigList kubeletConfigList, MachineConfig machineConfig, MachineConfigList machineConfigList, MachineConfigPool machineConfigPool, MachineConfigPoolList machineConfigPoolList, io.fabric8.kubernetes.api.model.ObjectMeta objectMeta, Patch patch, Status status, String time, TypeMeta typeMeta) {
         super();
         this.aPIGroup = aPIGroup;
         this.aPIGroupList = aPIGroupList;
@@ -196,12 +196,12 @@ public class ValidationSchema {
     }
 
     @JsonProperty("BaseKubernetesList")
-    public KubernetesList getBaseKubernetesList() {
+    public BaseKubernetesList getBaseKubernetesList() {
         return baseKubernetesList;
     }
 
     @JsonProperty("BaseKubernetesList")
-    public void setBaseKubernetesList(KubernetesList baseKubernetesList) {
+    public void setBaseKubernetesList(BaseKubernetesList baseKubernetesList) {
         this.baseKubernetesList = baseKubernetesList;
     }
 

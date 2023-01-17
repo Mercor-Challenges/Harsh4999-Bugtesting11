@@ -40,6 +40,7 @@ import lombok.experimental.Accessors;
     "duration",
     "failKernRequest",
     "mode",
+    "scheduler",
     "selector",
     "value"
 })
@@ -74,8 +75,10 @@ public class KernelChaosSpec implements KubernetesResource
     private FailKernRequest failKernRequest;
     @JsonProperty("mode")
     private java.lang.String mode;
+    @JsonProperty("scheduler")
+    private SchedulerSpec scheduler;
     @JsonProperty("selector")
-    private PodSelectorSpec selector;
+    private SelectorSpec selector;
     @JsonProperty("value")
     private java.lang.String value;
     @JsonIgnore
@@ -92,15 +95,17 @@ public class KernelChaosSpec implements KubernetesResource
      * 
      * @param duration
      * @param mode
+     * @param scheduler
      * @param failKernRequest
      * @param selector
      * @param value
      */
-    public KernelChaosSpec(String duration, FailKernRequest failKernRequest, java.lang.String mode, PodSelectorSpec selector, java.lang.String value) {
+    public KernelChaosSpec(String duration, FailKernRequest failKernRequest, java.lang.String mode, SchedulerSpec scheduler, SelectorSpec selector, java.lang.String value) {
         super();
         this.duration = duration;
         this.failKernRequest = failKernRequest;
         this.mode = mode;
+        this.scheduler = scheduler;
         this.selector = selector;
         this.value = value;
     }
@@ -135,13 +140,23 @@ public class KernelChaosSpec implements KubernetesResource
         this.mode = mode;
     }
 
+    @JsonProperty("scheduler")
+    public SchedulerSpec getScheduler() {
+        return scheduler;
+    }
+
+    @JsonProperty("scheduler")
+    public void setScheduler(SchedulerSpec scheduler) {
+        this.scheduler = scheduler;
+    }
+
     @JsonProperty("selector")
-    public PodSelectorSpec getSelector() {
+    public SelectorSpec getSelector() {
         return selector;
     }
 
     @JsonProperty("selector")
-    public void setSelector(PodSelectorSpec selector) {
+    public void setSelector(SelectorSpec selector) {
         this.selector = selector;
     }
 

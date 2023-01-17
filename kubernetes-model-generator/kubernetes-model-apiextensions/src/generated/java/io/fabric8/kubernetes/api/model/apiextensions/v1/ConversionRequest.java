@@ -13,7 +13,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import io.fabric8.kubernetes.api.model.Container;
-import io.fabric8.kubernetes.api.model.GenericKubernetesResource;
+import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.IntOrString;
 import io.fabric8.kubernetes.api.model.KubernetesResource;
 import io.fabric8.kubernetes.api.model.LabelSelector;
@@ -23,7 +23,6 @@ import io.fabric8.kubernetes.api.model.ObjectReference;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.PodTemplateSpec;
 import io.fabric8.kubernetes.api.model.ResourceRequirements;
-import io.fabric8.kubernetes.api.model.runtime.RawExtension;
 import io.sundr.builder.annotations.Buildable;
 import io.sundr.builder.annotations.BuildableReference;
 import lombok.EqualsAndHashCode;
@@ -57,9 +56,7 @@ import lombok.experimental.Accessors;
     @BuildableReference(IntOrString.class),
     @BuildableReference(ObjectReference.class),
     @BuildableReference(LocalObjectReference.class),
-    @BuildableReference(PersistentVolumeClaim.class),
-    @BuildableReference(GenericKubernetesResource.class),
-    @BuildableReference(RawExtension.class)
+    @BuildableReference(PersistentVolumeClaim.class)
 })
 public class ConversionRequest implements KubernetesResource
 {
@@ -67,7 +64,7 @@ public class ConversionRequest implements KubernetesResource
     @JsonProperty("desiredAPIVersion")
     private String desiredAPIVersion;
     @JsonProperty("objects")
-    private List<KubernetesResource> objects = new ArrayList<KubernetesResource>();
+    private List<HasMetadata> objects = new ArrayList<HasMetadata>();
     @JsonProperty("uid")
     private String uid;
     @JsonIgnore
@@ -86,7 +83,7 @@ public class ConversionRequest implements KubernetesResource
      * @param objects
      * @param desiredAPIVersion
      */
-    public ConversionRequest(String desiredAPIVersion, List<KubernetesResource> objects, String uid) {
+    public ConversionRequest(String desiredAPIVersion, List<HasMetadata> objects, String uid) {
         super();
         this.desiredAPIVersion = desiredAPIVersion;
         this.objects = objects;
@@ -104,12 +101,12 @@ public class ConversionRequest implements KubernetesResource
     }
 
     @JsonProperty("objects")
-    public List<KubernetesResource> getObjects() {
+    public List<HasMetadata> getObjects() {
         return objects;
     }
 
     @JsonProperty("objects")
-    public void setObjects(List<KubernetesResource> objects) {
+    public void setObjects(List<HasMetadata> objects) {
         this.objects = objects;
     }
 

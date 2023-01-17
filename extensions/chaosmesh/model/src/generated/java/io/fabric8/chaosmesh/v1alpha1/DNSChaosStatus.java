@@ -1,9 +1,7 @@
 
 package io.fabric8.chaosmesh.v1alpha1;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
@@ -39,8 +37,9 @@ import lombok.experimental.Accessors;
     "apiVersion",
     "kind",
     "metadata",
-    "conditions",
-    "experiment"
+    "experiment",
+    "failedMessage",
+    "scheduler"
 })
 @ToString
 @EqualsAndHashCode
@@ -67,11 +66,12 @@ import lombok.experimental.Accessors;
 public class DNSChaosStatus implements KubernetesResource
 {
 
-    @JsonProperty("conditions")
-    @JsonInclude(JsonInclude.Include.NON_EMPTY)
-    private List<ChaosCondition> conditions = new ArrayList<ChaosCondition>();
     @JsonProperty("experiment")
     private ExperimentStatus experiment;
+    @JsonProperty("failedMessage")
+    private String failedMessage;
+    @JsonProperty("scheduler")
+    private ScheduleStatus scheduler;
     @JsonIgnore
     private Map<String, Object> additionalProperties = new HashMap<String, Object>();
 
@@ -84,23 +84,15 @@ public class DNSChaosStatus implements KubernetesResource
 
     /**
      * 
+     * @param scheduler
      * @param experiment
-     * @param conditions
+     * @param failedMessage
      */
-    public DNSChaosStatus(List<ChaosCondition> conditions, ExperimentStatus experiment) {
+    public DNSChaosStatus(ExperimentStatus experiment, String failedMessage, ScheduleStatus scheduler) {
         super();
-        this.conditions = conditions;
         this.experiment = experiment;
-    }
-
-    @JsonProperty("conditions")
-    public List<ChaosCondition> getConditions() {
-        return conditions;
-    }
-
-    @JsonProperty("conditions")
-    public void setConditions(List<ChaosCondition> conditions) {
-        this.conditions = conditions;
+        this.failedMessage = failedMessage;
+        this.scheduler = scheduler;
     }
 
     @JsonProperty("experiment")
@@ -111,6 +103,26 @@ public class DNSChaosStatus implements KubernetesResource
     @JsonProperty("experiment")
     public void setExperiment(ExperimentStatus experiment) {
         this.experiment = experiment;
+    }
+
+    @JsonProperty("failedMessage")
+    public String getFailedMessage() {
+        return failedMessage;
+    }
+
+    @JsonProperty("failedMessage")
+    public void setFailedMessage(String failedMessage) {
+        this.failedMessage = failedMessage;
+    }
+
+    @JsonProperty("scheduler")
+    public ScheduleStatus getScheduler() {
+        return scheduler;
+    }
+
+    @JsonProperty("scheduler")
+    public void setScheduler(ScheduleStatus scheduler) {
+        this.scheduler = scheduler;
     }
 
     @JsonAnyGetter

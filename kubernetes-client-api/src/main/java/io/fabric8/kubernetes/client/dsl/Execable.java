@@ -18,29 +18,6 @@ package io.fabric8.kubernetes.client.dsl;
 
 public interface Execable {
 
-  /**
-   * Execute a command in a container
-   *
-   * @param input the command to run
-   * @return container with stdin, stdout, stderr streams
-   *         (if redirectingInput(), redirectingOutput(), redirectingError() were called respectively)
-   */
   ExecWatch exec(String... input);
-
-  /**
-   * Attach to the main process of a container
-   *
-   * @return container with stdin, stdout, stderr streams
-   *         (if redirectingInput(), redirectingOutput(), redirectingError() were called respectively)
-   */
-  ExecWatch attach();
-
-  /**
-   * How long shall we wait until a Pod is ready before attaching or execing
-   *
-   * @param timeout in milliseconds
-   * @return {@link Loggable} for fetching logs
-   */
-  Execable withReadyWaitTimeout(Integer timeout);
 
 }

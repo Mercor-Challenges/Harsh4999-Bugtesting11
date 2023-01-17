@@ -18,21 +18,10 @@ package io.fabric8.kubernetes.client.dsl;
 
 import java.util.concurrent.TimeUnit;
 
-public interface Timeoutable {
+public interface Timeoutable<T> {
 
-  /**
-   * Wait for the given operation timeout.
-   *
-   * @param timeout 0 indicates no wait
-   * @param unit
-   */
-  Object withTimeout(long timeout, TimeUnit unit);
+  T withTimeout(long timeout, TimeUnit unit);
 
-  /**
-   * Wait for the given operation timeout in milliseconds.
-   *
-   * @param timeoutInMillis 0 indicates no wait
-   */
-  Object withTimeoutInMillis(long timeoutInMillis);
 
+  T withTimeoutInMillis(long timeoutInMillis);
 }

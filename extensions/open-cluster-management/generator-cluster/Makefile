@@ -20,7 +20,7 @@ all: build
 
 build: gobuild
 	pushd ../model-cluster && \
-	mvn -Pgenerate clean install -DskipTests -o && \
+	mvn clean install -o && \
 	popd
 
 gobuild:

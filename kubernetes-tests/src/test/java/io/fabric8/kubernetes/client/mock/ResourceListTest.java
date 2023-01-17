@@ -37,13 +37,13 @@ import io.fabric8.kubernetes.client.dsl.ListVisitFromServerGetDeleteRecreateWait
 import io.fabric8.kubernetes.client.dsl.NamespaceListVisitFromServerGetDeleteRecreateWaitApplicable;
 import io.fabric8.kubernetes.client.server.mock.EnableKubernetesMockClient;
 import io.fabric8.kubernetes.client.server.mock.KubernetesMockServer;
-import io.fabric8.kubernetes.client.utils.Serialization;
 import okhttp3.mockwebserver.RecordedRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 
@@ -105,16 +105,14 @@ public class ResourceListTest {
   }
 
   @Test
-  void testCreateWithExplicitNamespace() throws InterruptedException {
+  void testCreateWithExplicitNamespace() {
     Pod pod1 = new PodBuilder().withNewMetadata().withName("pod1").withNamespace("test").and().build();
 
     server.expect().post().withPath("/api/v1/namespaces/ns1/pods").andReturn(HTTP_CREATED, pod1).once();
 
-    client.resourceList(new PodListBuilder().addToItems(pod1).build()).inNamespace("ns1").createOrReplace();
-
-    Pod sent = Serialization.unmarshal(server.getLastRequest().getBody().inputStream());
-    // ensure the namespace was modified
-    assertEquals("ns1", sent.getMetadata().getNamespace());
+    List<HasMetadata> response = client.resourceList(new PodListBuilder().addToItems(pod1).build()).inNamespace("ns1")
+        .createOrReplace();
+    assertTrue(response.contains(pod1));
   }
 
   @Test
@@ -159,12 +157,11 @@ public class ResourceListTest {
   void testCreateOrReplaceWithDeleteExisting() throws Exception {
     server.expect().delete().withPath("/api/v1/namespaces/ns1/services/my-service").andReturn(HTTP_OK, service).once();
     server.expect().delete().withPath("/api/v1/namespaces/ns1/configmaps/my-configmap").andReturn(HTTP_OK, configMap).once();
-    server.expect().get().withPath("/api/v1/namespaces/ns1/services?fieldSelector=metadata.name%3Dmy-service&resourceVersion=0")
+    server.expect().get().withPath("/api/v1/namespaces/ns1/services?fieldSelector=metadata.name%3Dmy-service")
         .andReturn(HTTP_OK,
             new KubernetesListBuilder().withNewMetadata().endMetadata().build())
         .once();
-    server.expect().get()
-        .withPath("/api/v1/namespaces/ns1/configmaps?fieldSelector=metadata.name%3Dmy-configmap&resourceVersion=0")
+    server.expect().get().withPath("/api/v1/namespaces/ns1/configmaps?fieldSelector=metadata.name%3Dmy-configmap")
         .andReturn(HTTP_OK,
             new KubernetesListBuilder().withNewMetadata().endMetadata().build())
         .once();
@@ -173,7 +170,8 @@ public class ResourceListTest {
 
     ListVisitFromServerGetDeleteRecreateWaitApplicable<HasMetadata> resourceList = client.resourceList(resourcesToUpdate)
         .inNamespace("ns1");
-    resourceList.withTimeout(10, TimeUnit.SECONDS).delete();
+    resourceList.delete();
+    resourceList.waitUntilCondition(Objects::isNull, 10, TimeUnit.SECONDS);
     resourceList.createOrReplace();
 
     assertEquals(6, server.getRequestCount());
@@ -202,8 +200,8 @@ public class ResourceListTest {
         .anyMatch(c -> "True".equals(c.getStatus()));
 
     // The pods are never ready if you request them directly.
-    ResourceTest.list(server, noReady1, "0");
-    ResourceTest.list(server, noReady2, "0");
+    ResourceTest.list(server, noReady1);
+    ResourceTest.list(server, noReady2);
 
     server.expect().get().withPath(
         "/api/v1/namespaces/ns1/pods?fieldSelector=metadata.name%3Dpod1&resourceVersion=1&allowWatchBookmarks=true&watch=true")
@@ -223,7 +221,7 @@ public class ResourceListTest {
 
     KubernetesList list = new KubernetesListBuilder().withItems(pod1, pod2).build();
     List<HasMetadata> results = client.resourceList(list).inNamespace("ns1")
-        .waitUntilCondition(isReady, 10, SECONDS);
+        .waitUntilCondition(isReady, 5, SECONDS);
     assertThat(results)
         .containsExactlyInAnyOrder(ready1, ready2);
   }
@@ -247,8 +245,8 @@ public class ResourceListTest {
         .anyMatch(c -> "True".equals(c.getStatus()));
 
     // The pods are never ready if you request them directly.
-    ResourceTest.list(server, noReady1, "0");
-    ResourceTest.list(server, noReady2, "0");
+    ResourceTest.list(server, noReady1);
+    ResourceTest.list(server, noReady2);
 
     Status gone = new StatusBuilder()
         .withCode(HTTP_GONE)
@@ -275,7 +273,7 @@ public class ResourceListTest {
     KubernetesList list = new KubernetesListBuilder().withItems(pod1, pod2).build();
     final ListVisitFromServerGetDeleteRecreateWaitApplicable<HasMetadata> ops = client.resourceList(list).inNamespace("ns1");
     KubernetesClientTimeoutException ex = assertThrows(KubernetesClientTimeoutException.class,
-        () -> ops.waitUntilCondition(isReady, 10, SECONDS));
+        () -> ops.waitUntilCondition(isReady, 5, SECONDS));
     assertThat(ex.getResourcesNotReady())
         .containsExactly(pod1);
   }
@@ -298,8 +296,8 @@ public class ResourceListTest {
         .anyMatch(c -> "True".equals(c.getStatus()));
 
     // The pods are never ready if you request them directly.
-    ResourceTest.list(server, noReady1, null);
-    ResourceTest.list(server, noReady2, null);
+    ResourceTest.list(server, noReady1);
+    ResourceTest.list(server, noReady2);
 
     Status gone = new StatusBuilder()
         .withCode(HTTP_GONE)
@@ -325,7 +323,7 @@ public class ResourceListTest {
     KubernetesList list = new KubernetesListBuilder().withItems(pod1, pod2).build();
     final ListVisitFromServerGetDeleteRecreateWaitApplicable<HasMetadata> ops = client.resourceList(list).inNamespace("ns1");
     KubernetesClientTimeoutException ex = assertThrows(KubernetesClientTimeoutException.class,
-        () -> ops.waitUntilCondition(isReady, 10, SECONDS));
+        () -> ops.waitUntilCondition(isReady, 5, SECONDS));
     assertThat(ex.getResourcesNotReady())
         .containsExactlyInAnyOrder(pod1, pod2);
   }

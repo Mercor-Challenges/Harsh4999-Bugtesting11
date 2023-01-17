@@ -75,7 +75,7 @@ public class KubeSchema {
     @JsonProperty("APIGroupList")
     private APIGroupList aPIGroupList;
     @JsonProperty("BaseKubernetesList")
-    private KubernetesList baseKubernetesList;
+    private BaseKubernetesList baseKubernetesList;
     @JsonProperty("Info")
     private Info info;
     @JsonProperty("ObjectMeta")
@@ -122,7 +122,7 @@ public class KubeSchema {
      * @param info
      * @param status
      */
-    public KubeSchema(APIGroup aPIGroup, APIGroupList aPIGroupList, KubernetesList baseKubernetesList, Info info, io.fabric8.kubernetes.api.model.ObjectMeta objectMeta, Patch patch, Status status, StorageState storageState, StorageStateList storageStateList, StorageVersionMigration storageVersionMigration, StorageVersionMigrationList storageVersionMigrationList, String time, TypeMeta typeMeta) {
+    public KubeSchema(APIGroup aPIGroup, APIGroupList aPIGroupList, BaseKubernetesList baseKubernetesList, Info info, io.fabric8.kubernetes.api.model.ObjectMeta objectMeta, Patch patch, Status status, StorageState storageState, StorageStateList storageStateList, StorageVersionMigration storageVersionMigration, StorageVersionMigrationList storageVersionMigrationList, String time, TypeMeta typeMeta) {
         super();
         this.aPIGroup = aPIGroup;
         this.aPIGroupList = aPIGroupList;
@@ -160,12 +160,12 @@ public class KubeSchema {
     }
 
     @JsonProperty("BaseKubernetesList")
-    public KubernetesList getBaseKubernetesList() {
+    public BaseKubernetesList getBaseKubernetesList() {
         return baseKubernetesList;
     }
 
     @JsonProperty("BaseKubernetesList")
-    public void setBaseKubernetesList(KubernetesList baseKubernetesList) {
+    public void setBaseKubernetesList(BaseKubernetesList baseKubernetesList) {
         this.baseKubernetesList = baseKubernetesList;
     }
 

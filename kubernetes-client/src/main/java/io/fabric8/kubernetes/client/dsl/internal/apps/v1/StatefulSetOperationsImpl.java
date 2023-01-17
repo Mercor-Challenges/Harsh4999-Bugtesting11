@@ -24,20 +24,15 @@ import io.fabric8.kubernetes.api.model.apps.StatefulSetList;
 import io.fabric8.kubernetes.api.model.extensions.DeploymentRollback;
 import io.fabric8.kubernetes.client.Client;
 import io.fabric8.kubernetes.client.KubernetesClientException;
-import io.fabric8.kubernetes.client.dsl.BytesLimitTerminateTimeTailPrettyLoggable;
 import io.fabric8.kubernetes.client.dsl.LogWatch;
-import io.fabric8.kubernetes.client.dsl.Loggable;
 import io.fabric8.kubernetes.client.dsl.PodResource;
-import io.fabric8.kubernetes.client.dsl.PrettyLoggable;
 import io.fabric8.kubernetes.client.dsl.RollableScalableResource;
-import io.fabric8.kubernetes.client.dsl.TailPrettyLoggable;
-import io.fabric8.kubernetes.client.dsl.TimeTailPrettyLoggable;
 import io.fabric8.kubernetes.client.dsl.TimeoutImageEditReplacePatchable;
 import io.fabric8.kubernetes.client.dsl.base.PatchContext;
 import io.fabric8.kubernetes.client.dsl.base.PatchType;
 import io.fabric8.kubernetes.client.dsl.internal.HasMetadataOperationsImpl;
 import io.fabric8.kubernetes.client.dsl.internal.OperationContext;
-import io.fabric8.kubernetes.client.dsl.internal.PodOperationContext;
+import io.fabric8.kubernetes.client.dsl.internal.RollingOperationContext;
 import io.fabric8.kubernetes.client.utils.Serialization;
 import io.fabric8.kubernetes.client.utils.internal.PodOperationUtil;
 
@@ -53,10 +48,10 @@ public class StatefulSetOperationsImpl
     extends RollableScalableResourceOperation<StatefulSet, StatefulSetList, RollableScalableResource<StatefulSet>>
     implements TimeoutImageEditReplacePatchable<StatefulSet> {
   public StatefulSetOperationsImpl(Client client) {
-    this(new PodOperationContext(), HasMetadataOperationsImpl.defaultContext(client));
+    this(new RollingOperationContext(), HasMetadataOperationsImpl.defaultContext(client));
   }
 
-  public StatefulSetOperationsImpl(PodOperationContext context, OperationContext superContext) {
+  public StatefulSetOperationsImpl(RollingOperationContext context, OperationContext superContext) {
     super(context, superContext.withApiGroupName("apps")
         .withApiGroupVersion("v1")
         .withPlural("statefulsets"), StatefulSet.class, StatefulSetList.class);
@@ -68,9 +63,8 @@ public class StatefulSetOperationsImpl
   }
 
   @Override
-  public StatefulSetOperationsImpl newInstance(PodOperationContext context,
-      OperationContext superContext) {
-    return new StatefulSetOperationsImpl(context, superContext);
+  public StatefulSetOperationsImpl newInstance(RollingOperationContext context) {
+    return new StatefulSetOperationsImpl(context, this.context);
   }
 
   @Override
@@ -107,16 +101,15 @@ public class StatefulSetOperationsImpl
 
   @Override
   public String getLog(boolean isPretty) {
-    return PodOperationUtil.getLog(
-        new StatefulSetOperationsImpl(rollingOperationContext.withPrettyOutput(isPretty), context).doGetLog(), isPretty);
+    return PodOperationUtil.getLog(doGetLog(isPretty), isPretty);
   }
 
-  private List<PodResource> doGetLog() {
+  private List<PodResource> doGetLog(boolean isPretty) {
     StatefulSet statefulSet = requireFromServer();
 
-    return PodOperationUtil.getPodOperationsForController(context,
-        rollingOperationContext, statefulSet.getMetadata().getUid(),
-        getStatefulSetSelectorLabels(statefulSet));
+    return PodOperationUtil.getPodOperationsForController(context, statefulSet.getMetadata().getUid(),
+        getStatefulSetSelectorLabels(statefulSet), isPretty, rollingOperationContext.getLogWaitTimeout(),
+        rollingOperationContext.getContainerId());
   }
 
   /**
@@ -126,7 +119,7 @@ public class StatefulSetOperationsImpl
    */
   @Override
   public Reader getLogReader() {
-    return PodOperationUtil.getLogReader(doGetLog());
+    return PodOperationUtil.getLogReader(doGetLog(false));
   }
 
   /**
@@ -136,12 +129,12 @@ public class StatefulSetOperationsImpl
    */
   @Override
   public InputStream getLogInputStream() {
-    return PodOperationUtil.getLogInputStream(doGetLog());
+    return PodOperationUtil.getLogInputStream(doGetLog(false));
   }
 
   @Override
   public LogWatch watchLog(OutputStream out) {
-    return PodOperationUtil.watchLog(doGetLog(), out);
+    return PodOperationUtil.watchLog(doGetLog(false), out);
   }
 
   @Override
@@ -205,38 +198,4 @@ public class StatefulSetOperationsImpl
     return value.getSpec().getTemplate().getSpec().getContainers();
   }
 
-  @Override
-  public TimeTailPrettyLoggable limitBytes(int limitBytes) {
-    return new StatefulSetOperationsImpl(rollingOperationContext.withLimitBytes(limitBytes), context);
-  }
-
-  @Override
-  public TimeTailPrettyLoggable terminated() {
-    return new StatefulSetOperationsImpl(rollingOperationContext.withTerminatedStatus(true), context);
-  }
-
-  @Override
-  public Loggable withPrettyOutput() {
-    return new StatefulSetOperationsImpl(rollingOperationContext.withPrettyOutput(true), context);
-  }
-
-  @Override
-  public PrettyLoggable tailingLines(int lines) {
-    return new StatefulSetOperationsImpl(rollingOperationContext.withTailingLines(lines), context);
-  }
-
-  @Override
-  public TailPrettyLoggable sinceTime(String timestamp) {
-    return new StatefulSetOperationsImpl(rollingOperationContext.withSinceTimestamp(timestamp), context);
-  }
-
-  @Override
-  public TailPrettyLoggable sinceSeconds(int seconds) {
-    return new StatefulSetOperationsImpl(rollingOperationContext.withSinceSeconds(seconds), context);
-  }
-
-  @Override
-  public BytesLimitTerminateTimeTailPrettyLoggable usingTimestamps() {
-    return new StatefulSetOperationsImpl(rollingOperationContext.withTimestamps(true), context);
-  }
 }

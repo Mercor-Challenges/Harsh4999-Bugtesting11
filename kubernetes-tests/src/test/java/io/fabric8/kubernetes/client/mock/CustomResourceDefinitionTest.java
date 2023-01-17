@@ -78,7 +78,7 @@ class CustomResourceDefinitionTest {
   @Test
   void testLoadWithJsonSchemaPropsOrBool() {
     CustomResourceDefinition customResourceDefinition = client.apiextensions().v1beta1().customResourceDefinitions()
-        .load(getClass().getResourceAsStream("/kafka-crd.yml")).item();
+        .load(getClass().getResourceAsStream("/kafka-crd.yml")).get();
     assertNotNull(customResourceDefinition);
     assertEquals("kafkatopics.kafka.test", customResourceDefinition.getMetadata().getName());
   }

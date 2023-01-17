@@ -20,6 +20,7 @@ import io.fabric8.kubernetes.api.model.ListOptionsBuilder;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.PodBuilder;
 import io.fabric8.kubernetes.api.model.PodList;
+import io.fabric8.kubernetes.client.BaseClient;
 import io.fabric8.kubernetes.client.Config;
 import io.fabric8.kubernetes.client.ConfigBuilder;
 import io.fabric8.kubernetes.client.KubernetesClientException;
@@ -30,9 +31,8 @@ import io.fabric8.kubernetes.client.extension.ExtensibleResource;
 import io.fabric8.kubernetes.client.http.HttpClient;
 import io.fabric8.kubernetes.client.http.HttpRequest;
 import io.fabric8.kubernetes.client.http.HttpResponse;
-import io.fabric8.kubernetes.client.http.StandardHttpRequest;
+import io.fabric8.kubernetes.client.http.TestHttpRequest;
 import io.fabric8.kubernetes.client.http.TestHttpResponse;
-import io.fabric8.kubernetes.client.impl.BaseClient;
 import io.fabric8.kubernetes.client.utils.CommonThreadPool;
 import io.fabric8.kubernetes.client.utils.Serialization;
 import io.fabric8.kubernetes.client.utils.URLUtils;
@@ -249,7 +249,7 @@ class BaseOperationTest {
     HttpClient mockClient = mock(HttpClient.class, Mockito.RETURNS_DEEP_STUBS);
     HttpRequest.Builder mockRequestBuilder = mock(HttpRequest.Builder.class, Mockito.RETURNS_SELF);
     when(mockClient.newHttpRequestBuilder()).thenReturn(mockRequestBuilder);
-    when(mockRequestBuilder.build()).thenReturn(new StandardHttpRequest.Builder().uri("https://k8s.example.com").build());
+    when(mockRequestBuilder.build()).thenReturn(new TestHttpRequest().withUri("https://k8s.example.com"));
     when(mockClient.sendAsync(Mockito.any(), Mockito.eq(byte[].class))).thenAnswer(
         invocation -> {
           int count = httpExecutionCounter.getAndIncrement();
@@ -296,7 +296,6 @@ class BaseOperationTest {
   void testHttpRetryWithMoreFailuresThanRetries() {
     final AtomicInteger httpExecutionCounter = new AtomicInteger(0);
     HttpClient mockClient = newHttpClientWithSomeFailures(httpExecutionCounter, 1000);
-    long start = System.currentTimeMillis();
     BaseOperation<Pod, PodList, Resource<Pod>> baseOp = new BaseOperation(new OperationContext()
         .withClient(mockClient(mockClient,
             new ConfigBuilder().withMasterUrl("https://172.17.0.2:8443").withNamespace("default")
@@ -310,10 +309,7 @@ class BaseOperationTest {
       Pod result = baseOp.get();
     });
 
-    long stop = System.currentTimeMillis();
-
     // Then
-    assertTrue(stop - start >= 700); //100+200+400
     assertTrue(exception.getMessage().contains("Internal Server Error"),
         "As the last failure, the 3rd one, is not an IOException the message expected to contain: 'Internal Server Error'!");
     assertEquals(4, httpExecutionCounter.get(), "Expected 4 calls: one normal try and 3 backoff retries!");

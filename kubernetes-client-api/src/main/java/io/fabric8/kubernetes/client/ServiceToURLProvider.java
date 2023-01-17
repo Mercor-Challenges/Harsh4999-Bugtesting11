@@ -20,11 +20,7 @@ import io.fabric8.kubernetes.api.model.Service;
 
 public interface ServiceToURLProvider {
   enum ServiceToUrlImplPriority {
-    FIRST(0),
-    SECOND(1),
-    THIRD(2),
-    FOURTH(3),
-    FIFTH(4);
+    FIRST(0), SECOND(1), THIRD(2), FOURTH(3), FIFTH(4);
 
     private final int value;
 
@@ -32,9 +28,7 @@ public interface ServiceToURLProvider {
       value = newVal;
     }
 
-    public int getValue() {
-      return value;
-    }
+    public int getValue() { return value; }
   }
 
   int getPriority();

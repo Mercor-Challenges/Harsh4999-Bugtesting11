@@ -41,16 +41,10 @@ class ReflectorTest {
     PodList list = new PodListBuilder().withNewMetadata().withResourceVersion("1").endMetadata().build();
     Mockito.when(mock.submitList(Mockito.any())).thenReturn(CompletableFuture.completedFuture(list));
 
-    Reflector<Pod, PodList> reflector = new Reflector<Pod, PodList>(mock, Mockito.mock(SyncableStore.class)) {
-      @Override
-      protected void reconnect() {
-        // do nothing
-      }
-    };
-    reflector.setExceptionHandler((b, t) -> true);
+    Reflector<Pod, PodList> reflector = new Reflector<>(Pod.class, mock, Mockito.mock(SyncableStore.class));
 
     assertFalse(reflector.isWatching());
-    assertFalse(reflector.isStopped());
+    assertFalse(reflector.isRunning());
 
     // throw an exception, then watch normally
     Mockito.when(mock.submitWatch(Mockito.any(), Mockito.any()))
@@ -59,46 +53,21 @@ class ReflectorTest {
 
     CompletableFuture<Void> future = reflector.start();
 
-    // since we're reconnecting, but have overridden reconnect, this won't be done
-    assertFalse(future.isDone());
+    assertThrows(CompletionException.class, future::join);
 
     // running but watch failed
     assertFalse(reflector.isWatching());
-    assertFalse(reflector.isStopped());
+    assertTrue(reflector.isRunning());
 
     reflector.listSyncAndWatch().join();
 
     assertTrue(reflector.isWatching());
-    assertFalse(reflector.isStopped());
-    assertFalse(reflector.getStopFuture().isDone());
-    assertTrue(future.isDone());
-    assertTrue(!future.isCompletedExceptionally());
+    assertTrue(reflector.isRunning());
 
     reflector.stop();
 
     assertFalse(reflector.isWatching());
-    assertTrue(reflector.isStopped());
-    assertTrue(reflector.getStopFuture().isDone());
-  }
-
-  @Test
-  void testNotRunningAfterStartError() {
-    ListerWatcher<Pod, PodList> mock = Mockito.mock(ListerWatcher.class);
-    PodList list = new PodListBuilder().withNewMetadata().withResourceVersion("1").endMetadata().build();
-    Mockito.when(mock.submitList(Mockito.any())).thenReturn(CompletableFuture.completedFuture(list));
-
-    Reflector<Pod, PodList> reflector = new Reflector<Pod, PodList>(mock, Mockito.mock(SyncableStore.class));
-
-    // throw an exception, then watch normally
-    Mockito.when(mock.submitWatch(Mockito.any(), Mockito.any()))
-        .thenThrow(new KubernetesClientException("error"));
-
-    // single start
-    CompletableFuture<Void> future = reflector.start();
-
-    assertThrows(CompletionException.class, future::join);
-
-    assertTrue(reflector.isStopped());
+    assertFalse(reflector.isRunning());
   }
 
   @Test
@@ -107,7 +76,7 @@ class ReflectorTest {
     PodList list = new PodListBuilder().withNewMetadata().withResourceVersion("1").endMetadata().build();
     Mockito.when(mock.submitList(Mockito.any())).thenReturn(CompletableFuture.completedFuture(list));
 
-    Reflector<Pod, PodList> reflector = new Reflector<>(mock, Mockito.mock(SyncableStore.class));
+    Reflector<Pod, PodList> reflector = new Reflector<>(Pod.class, mock, Mockito.mock(SyncableStore.class));
 
     Mockito.when(mock.submitWatch(Mockito.any(), Mockito.any()))
         .thenReturn(CompletableFuture.completedFuture(Mockito.mock(Watch.class)));
@@ -115,12 +84,12 @@ class ReflectorTest {
     reflector.start();
 
     assertTrue(reflector.isWatching());
-    assertFalse(reflector.isStopped());
+    assertTrue(reflector.isRunning());
 
     reflector.getWatcher().onClose(new WatcherException(null));
 
     assertFalse(reflector.isWatching());
-    assertTrue(reflector.isStopped());
+    assertFalse(reflector.isRunning());
   }
 
 }

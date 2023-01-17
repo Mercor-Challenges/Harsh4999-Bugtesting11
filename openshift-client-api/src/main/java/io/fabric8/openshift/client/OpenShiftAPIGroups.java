@@ -22,7 +22,6 @@ public class OpenShiftAPIGroups {
   private OpenShiftAPIGroups() {
     throw new IllegalStateException("Utility class");
   }
-
   public static final String AUTHORIZATION = "authorization.openshift.io";
   public static final String BUILD = "build.openshift.io";
   public static final String APPS = "apps.openshift.io";

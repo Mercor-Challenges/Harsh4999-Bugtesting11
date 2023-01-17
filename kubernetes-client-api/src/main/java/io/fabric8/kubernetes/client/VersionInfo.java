@@ -22,9 +22,7 @@ import java.util.Date;
 
 public class VersionInfo {
   public static final class VersionKeys {
-    private VersionKeys() {
-    }
-
+    private VersionKeys() {}
     public static final String BUILD_DATE = "buildDate";
     public static final String GIT_COMMIT = "gitCommit";
     public static final String GIT_VERSION = "gitVersion";
@@ -36,7 +34,6 @@ public class VersionInfo {
     public static final String COMPILER = "compiler";
     public static final String BUILD_DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ssX";
   }
-
   private Date buildDate;
   private String gitCommit;
   private String gitVersion;
@@ -83,14 +80,12 @@ public class VersionInfo {
     return compiler;
   }
 
-  private VersionInfo() {
-  }
+  private VersionInfo() { }
 
   public static class Builder {
     private VersionInfo versionInfo = new VersionInfo();
 
-    public Builder() {
-    }
+    public Builder() { }
 
     public Builder(VersionInfo versionInfo) {
       if (versionInfo != null) {

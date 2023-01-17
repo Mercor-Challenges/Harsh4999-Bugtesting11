@@ -70,9 +70,9 @@ public class IstioCondition implements KubernetesResource
 {
 
     @JsonProperty("lastProbeTime")
-    private String lastProbeTime;
+    private Long lastProbeTime;
     @JsonProperty("lastTransitionTime")
-    private String lastTransitionTime;
+    private Long lastTransitionTime;
     @JsonProperty("message")
     private String message;
     @JsonProperty("reason")
@@ -100,7 +100,7 @@ public class IstioCondition implements KubernetesResource
      * @param lastProbeTime
      * @param status
      */
-    public IstioCondition(String lastProbeTime, String lastTransitionTime, String message, String reason, String status, String type) {
+    public IstioCondition(Long lastProbeTime, Long lastTransitionTime, String message, String reason, String status, String type) {
         super();
         this.lastProbeTime = lastProbeTime;
         this.lastTransitionTime = lastTransitionTime;
@@ -111,22 +111,22 @@ public class IstioCondition implements KubernetesResource
     }
 
     @JsonProperty("lastProbeTime")
-    public String getLastProbeTime() {
+    public Long getLastProbeTime() {
         return lastProbeTime;
     }
 
     @JsonProperty("lastProbeTime")
-    public void setLastProbeTime(String lastProbeTime) {
+    public void setLastProbeTime(Long lastProbeTime) {
         this.lastProbeTime = lastProbeTime;
     }
 
     @JsonProperty("lastTransitionTime")
-    public String getLastTransitionTime() {
+    public Long getLastTransitionTime() {
         return lastTransitionTime;
     }
 
     @JsonProperty("lastTransitionTime")
-    public void setLastTransitionTime(String lastTransitionTime) {
+    public void setLastTransitionTime(Long lastTransitionTime) {
         this.lastTransitionTime = lastTransitionTime;
     }
 

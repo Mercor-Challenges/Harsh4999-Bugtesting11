@@ -11,7 +11,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import io.fabric8.kubernetes.api.model.Container;
-import io.fabric8.kubernetes.api.model.GenericKubernetesResource;
+import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.IntOrString;
 import io.fabric8.kubernetes.api.model.KubernetesResource;
 import io.fabric8.kubernetes.api.model.LabelSelector;
@@ -21,7 +21,6 @@ import io.fabric8.kubernetes.api.model.ObjectReference;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.PodTemplateSpec;
 import io.fabric8.kubernetes.api.model.ResourceRequirements;
-import io.fabric8.kubernetes.api.model.runtime.RawExtension;
 import io.sundr.builder.annotations.Buildable;
 import io.sundr.builder.annotations.BuildableReference;
 import lombok.EqualsAndHashCode;
@@ -57,9 +56,7 @@ import lombok.experimental.Accessors;
     @BuildableReference(IntOrString.class),
     @BuildableReference(ObjectReference.class),
     @BuildableReference(LocalObjectReference.class),
-    @BuildableReference(PersistentVolumeClaim.class),
-    @BuildableReference(GenericKubernetesResource.class),
-    @BuildableReference(RawExtension.class)
+    @BuildableReference(PersistentVolumeClaim.class)
 })
 public class StorageSpec implements KubernetesResource
 {
@@ -69,11 +66,11 @@ public class StorageSpec implements KubernetesResource
     @JsonProperty("managementState")
     private String managementState;
     @JsonProperty("observedConfig")
-    private KubernetesResource observedConfig;
+    private HasMetadata observedConfig;
     @JsonProperty("operatorLogLevel")
     private String operatorLogLevel;
     @JsonProperty("unsupportedConfigOverrides")
-    private KubernetesResource unsupportedConfigOverrides;
+    private HasMetadata unsupportedConfigOverrides;
     @JsonIgnore
     private Map<String, Object> additionalProperties = new HashMap<String, Object>();
 
@@ -92,7 +89,7 @@ public class StorageSpec implements KubernetesResource
      * @param observedConfig
      * @param managementState
      */
-    public StorageSpec(String logLevel, String managementState, KubernetesResource observedConfig, String operatorLogLevel, KubernetesResource unsupportedConfigOverrides) {
+    public StorageSpec(String logLevel, String managementState, HasMetadata observedConfig, String operatorLogLevel, HasMetadata unsupportedConfigOverrides) {
         super();
         this.logLevel = logLevel;
         this.managementState = managementState;
@@ -122,12 +119,12 @@ public class StorageSpec implements KubernetesResource
     }
 
     @JsonProperty("observedConfig")
-    public KubernetesResource getObservedConfig() {
+    public HasMetadata getObservedConfig() {
         return observedConfig;
     }
 
     @JsonProperty("observedConfig")
-    public void setObservedConfig(KubernetesResource observedConfig) {
+    public void setObservedConfig(HasMetadata observedConfig) {
         this.observedConfig = observedConfig;
     }
 
@@ -142,12 +139,12 @@ public class StorageSpec implements KubernetesResource
     }
 
     @JsonProperty("unsupportedConfigOverrides")
-    public KubernetesResource getUnsupportedConfigOverrides() {
+    public HasMetadata getUnsupportedConfigOverrides() {
         return unsupportedConfigOverrides;
     }
 
     @JsonProperty("unsupportedConfigOverrides")
-    public void setUnsupportedConfigOverrides(KubernetesResource unsupportedConfigOverrides) {
+    public void setUnsupportedConfigOverrides(HasMetadata unsupportedConfigOverrides) {
         this.unsupportedConfigOverrides = unsupportedConfigOverrides;
     }
 

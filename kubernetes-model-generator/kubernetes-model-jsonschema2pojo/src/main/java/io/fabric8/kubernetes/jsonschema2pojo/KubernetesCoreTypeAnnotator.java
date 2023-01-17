@@ -23,9 +23,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.sun.codemodel.JAnnotationArrayMember;
-import com.sun.codemodel.JAnnotationUse;
-import com.sun.codemodel.JClassAlreadyExistsException;
-import com.sun.codemodel.JCodeModel;
 import com.sun.codemodel.JDefinedClass;
 import com.sun.codemodel.JExpressionImpl;
 import com.sun.codemodel.JFieldVar;
@@ -34,7 +31,6 @@ import io.fabric8.kubernetes.model.annotation.Group;
 import io.fabric8.kubernetes.model.annotation.Version;
 import io.fabric8.kubernetes.model.jackson.JsonUnwrappedDeserializer;
 import io.sundr.builder.annotations.Buildable;
-import io.sundr.builder.annotations.BuildableReference;
 import io.sundr.transform.annotations.TemplateTransformation;
 import io.sundr.transform.annotations.TemplateTransformations;
 import lombok.EqualsAndHashCode;
@@ -45,18 +41,13 @@ import org.jsonschema2pojo.GenerationConfig;
 import org.jsonschema2pojo.Jackson2Annotator;
 
 import java.lang.annotation.Annotation;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 public class KubernetesCoreTypeAnnotator extends Jackson2Annotator {
-
-  public static final String BUILDABLE_REFERENCE_VALUE = "value";
-
   protected static final String ANNOTATION_VALUE = "value";
   protected static final String API_VERSION = "apiVersion";
   protected static final String METADATA = "metadata";
@@ -67,6 +58,7 @@ public class KubernetesCoreTypeAnnotator extends Jackson2Annotator {
   public static final String OPENSHIFT_PACKAGE = "openshift";
   protected final Map<String, JDefinedClass> pendingResources = new HashMap<>();
   protected final Map<String, JDefinedClass> pendingLists = new HashMap<>();
+  protected String moduleName = null;
 
   private final Set<String> handledClasses = new HashSet<>();
 
@@ -109,17 +101,13 @@ public class KubernetesCoreTypeAnnotator extends Jackson2Annotator {
         apiVersion = apiVersion.substring(apiGroup.length() + 1);
       }
 
-      JAnnotationArrayMember arrayMember = clazz.annotate(TemplateTransformations.class)
-          .paramArray(ANNOTATION_VALUE);
-      arrayMember.annotate(TemplateTransformation.class).param(ANNOTATION_VALUE, "/manifest.vm")
-          .param("outputPath", "META-INF/services/io.fabric8.kubernetes.api.model.KubernetesResource").param("gather", true);
-
       String resourceName = clazz.fullName();
       if (resourceName.endsWith("List")) {
         resourceName = resourceName.substring(0, resourceName.length() - 4);
         final JDefinedClass resourceClass = pendingResources.remove(resourceName);
         if (resourceClass != null) {
           annotate(clazz, apiVersion, apiGroup);
+          addClassesToPropertyFiles(resourceClass);
         } else {
           pendingLists.put(resourceName, clazz);
         }
@@ -127,6 +115,7 @@ public class KubernetesCoreTypeAnnotator extends Jackson2Annotator {
         final JDefinedClass resourceListClass = pendingLists.remove(resourceName);
         if (resourceListClass != null) {
           annotate(resourceListClass, apiVersion, apiGroup);
+          addClassesToPropertyFiles(clazz);
         } else {
           annotate(clazz, apiVersion, apiGroup);
           pendingResources.put(resourceName, clazz);
@@ -142,6 +131,10 @@ public class KubernetesCoreTypeAnnotator extends Jackson2Annotator {
 
   @Override
   public void propertyInclusion(JDefinedClass clazz, JsonNode schema) {
+    if (moduleName == null && schema.has("$module")) {
+      moduleName = schema.get("$module").textValue();
+    }
+
     if (schema.has("serializer")) {
       annotateSerde(clazz, JsonSerialize.class, schema.get("serializer").asText());
     }
@@ -194,34 +187,44 @@ public class KubernetesCoreTypeAnnotator extends Jackson2Annotator {
   }
 
   protected void processBuildable(JDefinedClass clazz) {
-    JAnnotationUse buildable = clazz.annotate(Buildable.class)
+    clazz.annotate(Buildable.class)
         .param("editableEnabled", false)
         .param("validationEnabled", false)
-        .param("generateBuilderPackage", generateBuilderPackage())
+        .param("generateBuilderPackage", true)
         .param("lazyCollectionInitEnabled", false)
         .param("builderPackage", "io.fabric8.kubernetes.api.builder");
+  }
 
-    List<String> types = new ArrayList<>();
-    addBuildableTypes(clazz, types);
-    if (!types.isEmpty()) {
-      JAnnotationArrayMember arrayMember = buildable.paramArray("refs");
-      types.stream().forEach(s -> {
-        try {
-          arrayMember.annotate(BuildableReference.class).param(BUILDABLE_REFERENCE_VALUE,
-              new JCodeModel()._class(s));
-        } catch (JClassAlreadyExistsException e) {
-          e.printStackTrace();
-        }
-      });
+  protected void addClassesToPropertyFiles(JDefinedClass clazz) {
+    if (moduleName == null || moduleName.equals(getPackageCategory(clazz.getPackage().name())) /*
+                                                                                                * &&
+                                                                                                * shouldIncludeClass(clazz.name(
+                                                                                                * ))
+                                                                                                */) {
+      JAnnotationArrayMember arrayMember = clazz.annotate(TemplateTransformations.class)
+          .paramArray(ANNOTATION_VALUE);
+      arrayMember.annotate(TemplateTransformation.class).param(ANNOTATION_VALUE, "/manifest.vm")
+          .param("outputPath", (moduleName == null ? "model" : moduleName) + ".properties").param("gather", true);
     }
   }
 
-  protected boolean generateBuilderPackage() {
-    return true;
-  }
-
-  protected void addBuildableTypes(JDefinedClass clazz, List<String> types) {
-
+  private String getPackageCategory(String packageName) {
+    if (packageName.isEmpty()) {
+      return null;
+    }
+    if (packageName.equals("io.fabric8.kubernetes.api.model")) {
+      return CORE_PACKAGE;
+    } else if (packageName.equals("io.fabric8.openshift.api.model")) {
+      return OPENSHIFT_PACKAGE;
+    }
+    // append whatever is after io.fabric8.kubernetes.api.model whether it's
+    // io.fabric8.kubernetes.api.model.apps or
+    // io.fabric8.kubernetes.api.model.batch.v1
+    String[] parts = packageName.split("\\.");
+    if (parts.length < 6) {
+      throw new IllegalArgumentException("Invalid package name encountered: " + packageName);
+    }
+    return parts[5];
   }
 
   private boolean hasInterfaceFields(JsonNode propertiesNode) {

@@ -15,23 +15,15 @@
  */
 package io.fabric8.java.generator.maven.plugin;
 
+import io.fabric8.java.generator.CRGeneratorRunner;
 import io.fabric8.java.generator.Config;
-import io.fabric8.java.generator.FileJavaGenerator;
-import io.fabric8.java.generator.JavaGenerator;
-import io.fabric8.java.generator.URLJavaGenerator;
 import org.apache.maven.plugin.AbstractMojo;
-import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
 
 import java.io.File;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 
 @Mojo(name = "generate", defaultPhase = LifecyclePhase.GENERATE_SOURCES)
 public class JavaGeneratorMojo extends AbstractMojo {
@@ -39,125 +31,41 @@ public class JavaGeneratorMojo extends AbstractMojo {
   @Parameter(defaultValue = "${project}")
   private MavenProject project;
 
-  /**
-   * The input file or directory to be used for generating sources
-   *
-   */
-  @Parameter(property = "fabric8.java-generator.source")
+  @Parameter(property = "fabric8.java-generator.source", required = true)
   File source;
 
-  /**
-   * The URLs to be used to download CRDs from remote locations
-   */
-  @Parameter(property = "fabric8.java-generator.urls", required = false)
-  String[] urls;
-
-  /**
-   * The Download target folder for CRDs downloaded from remote URLs
-   *
-   */
-  @Parameter(property = "fabric8.java-generator.download-target", defaultValue = "${basedir}/target/manifests")
-  File downloadTarget;
-
-  /**
-   * The target folder to generate the Java sources
-   *
-   */
   @Parameter(property = "fabric8.java-generator.target", defaultValue = "${basedir}/target/generated-sources/java")
   File target;
 
-  /**
-   * Generate uppercase Enums
-   *
-   */
   @Parameter(property = "fabric8.java-generator.enum-uppercase", required = false)
   Boolean enumUppercase = null;
 
-  /**
-   * *advanced* The prefix strategy for name mangling
-   *
-   */
-  @Parameter(property = "fabric8.java-generator.prefix-strategy", required = false)
+  @Parameter(property = "fabric8.java-generator.prefix-strategy", required = false, readonly = true)
   Config.Prefix prefixStrategy = null;
 
-  /**
-   * *advanced* The suffix strategy for name mangling
-   *
-   */
   @Parameter(property = "fabric8.java-generator.suffix-strategy", required = false)
   Config.Suffix suffixStrategy = null;
 
-  /**
-   * *advanced* Always inject additional properties in the generated classes
-   *
-   */
-  @Parameter(property = "fabric8.java-generator.always-preserve-unknown", required = false)
+  @Parameter(property = "fabric8.java-generator.always-preserve-unknown", required = false, readonly = true)
   Boolean alwaysPreserveUnknown = null;
 
-  /**
-   * Generate Extra annotation for lombok and sundrio integration
-   *
-   */
   @Parameter(property = "fabric8.java-generator.extra-annotations", required = false)
   Boolean extraAnnotations = null;
 
-  /**
-   * *advanced* The code structure to be used when generating java sources
-   *
-   */
-  @Parameter(property = "fabric8.java-generator.code-structure", required = false)
+  @Parameter(property = "fabric8.java-generator.code-structure", required = false, readonly = true)
   protected Config.CodeStructure codeStructure = null;
 
-  /**
-   * *advanced* Emit the @javax.annotation.processing.Generated annotation on the generated sources
-   *
-   */
-  @Parameter(property = "fabric8.java-generator.generated-annotations", required = false)
-  Boolean generatedAnnotations = null;
-
-  /**
-   * Package names to be substituted
-   *
-   */
-  @Parameter(property = "fabric8.java-generator.package-overrides", required = false)
-  Map<String, String> packageOverrides = null;
-
   @Override
-  public void execute() throws MojoExecutionException {
-    final Config config = Config.builder()
-        .uppercaseEnums(enumUppercase)
-        .prefixStrategy(prefixStrategy)
-        .suffixStrategy(suffixStrategy)
-        .alwaysPreserveUnknownFields(alwaysPreserveUnknown)
-        .objectExtraAnnotations(extraAnnotations)
-        .structure(codeStructure)
-        .generatedAnnotations(generatedAnnotations)
-        .packageOverrides(packageOverrides)
-        .build();
-
-    List<JavaGenerator> runners = new ArrayList<>();
-
-    if (urls != null && urls.length > 0) {
-      final List<URL> urlList = new ArrayList<>();
-      for (String url : urls) {
-        try {
-          urlList.add(new URL(url));
-        } catch (MalformedURLException e) {
-          throw new MojoExecutionException("URL '" + url + "' is not valid", e);
-        }
-      }
-      runners.add(new URLJavaGenerator(config, urlList, downloadTarget));
-    }
-
-    if (source != null) {
-      runners.add(new FileJavaGenerator(config, source));
-    }
-
-    if (runners.isEmpty()) {
-      throw new MojoExecutionException("No source or urls specified");
-    }
-
-    runners.forEach(r -> r.run(target));
+  public void execute() {
+    final Config config = new Config(
+        enumUppercase,
+        prefixStrategy,
+        suffixStrategy,
+        alwaysPreserveUnknown,
+        extraAnnotations,
+        codeStructure);
+    final CRGeneratorRunner runner = new CRGeneratorRunner(config);
+    runner.run(source, target);
     project.addCompileSourceRoot(target.getAbsolutePath());
   }
 }

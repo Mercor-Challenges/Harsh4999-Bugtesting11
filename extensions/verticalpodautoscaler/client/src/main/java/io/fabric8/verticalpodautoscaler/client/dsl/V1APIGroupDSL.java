@@ -15,6 +15,8 @@
  */
 package io.fabric8.verticalpodautoscaler.client.dsl;
 
+
+
 import io.fabric8.kubernetes.client.Client;
 import io.fabric8.kubernetes.client.dsl.MixedOperation;
 import io.fabric8.kubernetes.client.dsl.Resource;

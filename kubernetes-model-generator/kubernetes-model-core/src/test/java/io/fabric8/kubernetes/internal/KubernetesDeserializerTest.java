@@ -15,17 +15,20 @@
  */
 package io.fabric8.kubernetes.internal;
 
+import io.fabric8.kubernetes.api.KubernetesResourceMappingProvider;
 import io.fabric8.kubernetes.api.model.KubernetesResource;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Quantity;
 import io.fabric8.kubernetes.internal.KubernetesDeserializer.TypeKey;
-import io.fabric8.kubernetes.model.annotation.Group;
-import io.fabric8.kubernetes.model.annotation.Kind;
-import io.fabric8.kubernetes.model.annotation.Version;
+import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class KubernetesDeserializerTest {
 
@@ -33,7 +36,7 @@ class KubernetesDeserializerTest {
 
   @BeforeEach
   public void beforeEach() {
-    this.mapping = new KubernetesDeserializer.Mapping();
+    this.mapping = new TestableMapping(createProvider());
   }
 
   @Test
@@ -51,7 +54,17 @@ class KubernetesDeserializerTest {
   }
 
   @Test
-  void shouldNotRegisterKindWithoutVersionIfNullVersion() {
+  void shouldNPEIfRegisterNullKind() {
+    // given
+    // when
+    assertThrows(NullPointerException.class, () -> {
+      mapping.registerKind("version1", null, SmurfResource.class);
+    });
+    // then throws
+  }
+
+  @Test
+  void shouldRegisterKindWithoutVersionIfNullVersion() {
     // given
     String version = null;
     String kind = "kind1";
@@ -60,7 +73,21 @@ class KubernetesDeserializerTest {
     mapping.registerKind(version, kind, SmurfResource.class);
     // then
     Class<? extends KubernetesResource> clazz = mapping.getForKey(key);
-    assertThat(clazz).isNull();
+    assertThat(clazz).isEqualTo(SmurfResource.class);
+  }
+
+  @Test
+  void shouldRegisterProvider() {
+    // given
+    TypeKey key = mapping.createKey("42", "Hitchhiker");
+    assertThat(mapping.getForKey(key)).isNull();
+    KubernetesResourceMappingProvider provider = createProvider(
+        Pair.of("42#Hitchhiker", SmurfResource.class));
+    // when
+    mapping.registerProvider(provider);
+    // then
+    Class<? extends KubernetesResource> clazz = mapping.getForKey(key);
+    assertThat(clazz).isEqualTo(SmurfResource.class);
   }
 
   @Test
@@ -126,9 +153,26 @@ class KubernetesDeserializerTest {
     assertThat(clazz).isNull();
   }
 
-  @Group("")
-  @Kind("Hitchhiker")
-  @Version("42")
+  private KubernetesResourceMappingProvider createProvider(Pair<String, Class<? extends KubernetesResource>>... mappings) {
+    return () -> Stream.of(mappings)
+        .collect(Collectors.toMap(Pair::getKey, Pair::getValue));
+  }
+
+  public static final class TestableMapping extends KubernetesDeserializer.Mapping {
+
+    private final KubernetesResourceMappingProvider provider;
+
+    public TestableMapping(KubernetesResourceMappingProvider provider) {
+      this.provider = provider;
+    }
+
+    @Override
+    protected Stream<KubernetesResourceMappingProvider> getAllMappingProviders() {
+      return Stream.of(provider);
+    }
+
+  }
+
   private static final class SmurfResource implements KubernetesResource {
   }
 }

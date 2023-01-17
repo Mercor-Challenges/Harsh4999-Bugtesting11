@@ -16,9 +16,6 @@
 
 package io.fabric8.kubernetes.client.dsl;
 
-import io.fabric8.kubernetes.api.model.HasMetadata;
-
-import java.util.List;
 import java.util.stream.Stream;
 
 public interface NamespaceListVisitFromServerGetDeleteRecreateWaitApplicable<T> extends
@@ -28,10 +25,5 @@ public interface NamespaceListVisitFromServerGetDeleteRecreateWaitApplicable<T> 
 
   @Override
   Stream<NamespaceableResource<T>> resources();
-
-  /**
-   * Return the items used to create this list context - these values are not from the server.
-   */
-  List<HasMetadata> items();
 
 }

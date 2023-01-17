@@ -23,7 +23,7 @@
   <parent>
     <groupId>io.fabric8</groupId>
     <artifactId>kubernetes-client-project</artifactId>
-    <version>6.4-SNAPSHOT</version>
+    <version>6.0-SNAPSHOT</version>
   </parent>
 
   <artifactId>kubernetes-model-generator</artifactId>
@@ -35,7 +35,6 @@
     <module>kubernetes-model-common</module>
     <module>kubernetes-model-jsonschema2pojo</module>
     <module>kubernetes-model-core</module>
-    <module>kubernetes-model-gatewayapi</module>
     <module>kubernetes-model-rbac</module>
     <module>kubernetes-model-admissionregistration</module>
     <module>kubernetes-model-apiextensions</module>
@@ -56,7 +55,6 @@
     <module>kubernetes-model-storageclass</module>
     <module>openshift-model</module>
     <module>openshift-model-clusterautoscaling</module>
-    <module>openshift-model-config</module>
     <module>openshift-model-hive</module>
     <module>openshift-model-installer</module>
     <module>openshift-model-operator</module>
@@ -77,14 +75,6 @@
 
     <skipTests>false</skipTests>
     <testExclusionPattern>**/*KubernetesTest.java</testExclusionPattern>
-    <osgi.require-capability>
-      osgi.extender;
-      filter:="(osgi.extender=osgi.serviceloader.registrar)"
-    </osgi.require-capability>
-    <osgi.provide-capability>
-      osgi.serviceloader;
-      osgi.serviceloader=io.fabric8.kubernetes.api.model.KubernetesResource
-    </osgi.provide-capability>
   </properties>
 
   <dependencies>
@@ -195,6 +185,7 @@
             </manifest>
             <manifestEntries>
               <Implementation-URL>${project.url}</Implementation-URL>
+              <Java-Version>${java.version}</Java-Version>
               <Scm-Url>${project.scm.url}</Scm-Url>
               <Scm-Connection>${project.scm.connection}</Scm-Connection>
               <Scm-Revision>${buildNumber}</Scm-Revision>

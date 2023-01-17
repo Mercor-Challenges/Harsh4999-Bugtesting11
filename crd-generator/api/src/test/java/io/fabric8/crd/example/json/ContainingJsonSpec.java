@@ -21,9 +21,7 @@ public class ContainingJsonSpec {
 
   private int field;
 
-  public int getField() {
-    return field;
-  }
+  public int getField() { return field; }
 
   private JsonNode free;
 
@@ -33,8 +31,6 @@ public class ContainingJsonSpec {
 
   private Foo foo;
 
-  public Foo getFoo() {
-    return foo;
-  }
+  public Foo getFoo() { return foo; }
 
 }

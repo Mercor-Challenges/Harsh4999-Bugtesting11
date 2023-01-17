@@ -1,10 +1,7 @@
 
 package io.fabric8.chaosmesh.v1alpha1;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
@@ -40,9 +37,9 @@ import lombok.experimental.Accessors;
     "apiVersion",
     "kind",
     "metadata",
-    "conditions",
     "experiment",
-    "instances"
+    "failedMessage",
+    "scheduler"
 })
 @ToString
 @EqualsAndHashCode
@@ -69,16 +66,14 @@ import lombok.experimental.Accessors;
 public class NetworkChaosStatus implements KubernetesResource
 {
 
-    @JsonProperty("conditions")
-    @JsonInclude(JsonInclude.Include.NON_EMPTY)
-    private List<ChaosCondition> conditions = new ArrayList<ChaosCondition>();
     @JsonProperty("experiment")
     private ExperimentStatus experiment;
-    @JsonProperty("instances")
-    @JsonInclude(JsonInclude.Include.NON_EMPTY)
-    private Map<String, Long> instances = new LinkedHashMap<String, Long>();
+    @JsonProperty("failedMessage")
+    private String failedMessage;
+    @JsonProperty("scheduler")
+    private ScheduleStatus scheduler;
     @JsonIgnore
-    private Map<java.lang.String, Object> additionalProperties = new HashMap<java.lang.String, Object>();
+    private Map<String, Object> additionalProperties = new HashMap<String, Object>();
 
     /**
      * No args constructor for use in serialization
@@ -89,25 +84,15 @@ public class NetworkChaosStatus implements KubernetesResource
 
     /**
      * 
+     * @param scheduler
      * @param experiment
-     * @param instances
-     * @param conditions
+     * @param failedMessage
      */
-    public NetworkChaosStatus(List<ChaosCondition> conditions, ExperimentStatus experiment, Map<String, Long> instances) {
+    public NetworkChaosStatus(ExperimentStatus experiment, String failedMessage, ScheduleStatus scheduler) {
         super();
-        this.conditions = conditions;
         this.experiment = experiment;
-        this.instances = instances;
-    }
-
-    @JsonProperty("conditions")
-    public List<ChaosCondition> getConditions() {
-        return conditions;
-    }
-
-    @JsonProperty("conditions")
-    public void setConditions(List<ChaosCondition> conditions) {
-        this.conditions = conditions;
+        this.failedMessage = failedMessage;
+        this.scheduler = scheduler;
     }
 
     @JsonProperty("experiment")
@@ -120,23 +105,33 @@ public class NetworkChaosStatus implements KubernetesResource
         this.experiment = experiment;
     }
 
-    @JsonProperty("instances")
-    public Map<String, Long> getInstances() {
-        return instances;
+    @JsonProperty("failedMessage")
+    public String getFailedMessage() {
+        return failedMessage;
     }
 
-    @JsonProperty("instances")
-    public void setInstances(Map<String, Long> instances) {
-        this.instances = instances;
+    @JsonProperty("failedMessage")
+    public void setFailedMessage(String failedMessage) {
+        this.failedMessage = failedMessage;
+    }
+
+    @JsonProperty("scheduler")
+    public ScheduleStatus getScheduler() {
+        return scheduler;
+    }
+
+    @JsonProperty("scheduler")
+    public void setScheduler(ScheduleStatus scheduler) {
+        this.scheduler = scheduler;
     }
 
     @JsonAnyGetter
-    public Map<java.lang.String, Object> getAdditionalProperties() {
+    public Map<String, Object> getAdditionalProperties() {
         return this.additionalProperties;
     }
 
     @JsonAnySetter
-    public void setAdditionalProperty(java.lang.String name, Object value) {
+    public void setAdditionalProperty(String name, Object value) {
         this.additionalProperties.put(name, value);
     }
 

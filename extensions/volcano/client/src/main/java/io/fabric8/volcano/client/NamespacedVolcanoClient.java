@@ -15,6 +15,7 @@
  */
 package io.fabric8.volcano.client;
 
+
 public interface NamespacedVolcanoClient extends VolcanoClient,
-    GenericVolcanoClient<NamespacedVolcanoClient> {
+  GenericVolcanoClient<NamespacedVolcanoClient> {
 }

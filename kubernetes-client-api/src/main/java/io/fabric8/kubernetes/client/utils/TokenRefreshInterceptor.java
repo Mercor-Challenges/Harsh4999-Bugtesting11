@@ -18,13 +18,10 @@ package io.fabric8.kubernetes.client.utils;
 import io.fabric8.kubernetes.client.Config;
 import io.fabric8.kubernetes.client.http.BasicBuilder;
 import io.fabric8.kubernetes.client.http.HttpClient;
-import io.fabric8.kubernetes.client.http.HttpHeaders;
 import io.fabric8.kubernetes.client.http.HttpResponse;
 import io.fabric8.kubernetes.client.http.Interceptor;
 
 import java.net.HttpURLConnection;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -37,71 +34,40 @@ public class TokenRefreshInterceptor implements Interceptor {
   private final Config config;
   private HttpClient.Factory factory;
 
-  private static final int REFRESH_INTERVAL_MINUTE = 1;
-
-  private Instant latestRefreshTimestamp;
-
-  public TokenRefreshInterceptor(Config config, HttpClient.Factory factory, Instant latestRefreshTimestamp) {
+  public TokenRefreshInterceptor(Config config, HttpClient.Factory factory) {
     this.config = config;
-    this.latestRefreshTimestamp = latestRefreshTimestamp;
     this.factory = factory;
-  }
-
-  @Override
-  public Interceptor withConfig(Config config) {
-    return new TokenRefreshInterceptor(config, factory, latestRefreshTimestamp);
-  }
-
-  @Override
-  public void before(BasicBuilder headerBuilder, HttpHeaders headers) {
-    if (isTimeToRefresh()) {
-      refreshToken(headerBuilder);
-    }
-  }
-
-  private boolean isTimeToRefresh() {
-    return latestRefreshTimestamp.plus(REFRESH_INTERVAL_MINUTE, ChronoUnit.MINUTES).isBefore(Instant.now());
   }
 
   @Override
   public CompletableFuture<Boolean> afterFailure(BasicBuilder headerBuilder, HttpResponse<?> response) {
     if (response.code() == HttpURLConnection.HTTP_UNAUTHORIZED) {
-      return refreshToken(headerBuilder);
+      String currentContextName = null;
+      CompletableFuture<String> newAccessToken = null;
+
+      if (config.getCurrentContext() != null) {
+        currentContextName = config.getCurrentContext().getName();
+      }
+      Config newestConfig = Config.autoConfigure(currentContextName);
+      if (newestConfig.getAuthProvider() != null && newestConfig.getAuthProvider().getName().equalsIgnoreCase("oidc")) {
+        newAccessToken = OpenIDConnectionUtils.resolveOIDCTokenFromAuthConfig(newestConfig.getAuthProvider().getConfig(),
+            factory.newBuilder());
+      } else {
+        newAccessToken = CompletableFuture.completedFuture(newestConfig.getOauthToken());
+      }
+
+      return newAccessToken.thenApply(s -> {
+        if (s != null) {
+          // Delete old Authorization header and append new one
+          headerBuilder.setHeader("Authorization", "Bearer " + s);
+          config.setOauthToken(s);
+          return true;
+        }
+        return false;
+      });
+
     }
     return CompletableFuture.completedFuture(false);
-  }
-
-  private CompletableFuture<Boolean> refreshToken(BasicBuilder headerBuilder) {
-    Config newestConfig = config.refresh();
-    final CompletableFuture<String> newAccessToken = extractNewAccessTokenFrom(newestConfig);
-
-    return newAccessToken.thenApply(token -> overrideNewAccessTokenToConfig(token, headerBuilder, config));
-  }
-
-  private CompletableFuture<String> extractNewAccessTokenFrom(Config newestConfig) {
-    if (newestConfig.getAuthProvider() != null && newestConfig.getAuthProvider().getName().equalsIgnoreCase("oidc")) {
-      return OpenIDConnectionUtils.resolveOIDCTokenFromAuthConfig(newestConfig.getAuthProvider().getConfig(),
-          factory.newBuilder());
-    }
-
-    return CompletableFuture.completedFuture(newestConfig.getOauthToken());
-  }
-
-  private boolean overrideNewAccessTokenToConfig(String newAccessToken, BasicBuilder headerBuilder, Config existConfig) {
-    if (Utils.isNotNullOrEmpty(newAccessToken)) {
-      headerBuilder.setHeader("Authorization", "Bearer " + newAccessToken);
-      existConfig.setOauthToken(newAccessToken);
-
-      updateLatestRefreshTimestamp();
-
-      return true;
-    }
-
-    return false;
-  }
-
-  private void updateLatestRefreshTimestamp() {
-    latestRefreshTimestamp = Instant.now();
   }
 
 }

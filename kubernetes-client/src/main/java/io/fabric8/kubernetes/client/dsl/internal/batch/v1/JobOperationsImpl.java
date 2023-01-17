@@ -19,18 +19,14 @@ import io.fabric8.kubernetes.api.model.autoscaling.v1.Scale;
 import io.fabric8.kubernetes.api.model.batch.v1.Job;
 import io.fabric8.kubernetes.api.model.batch.v1.JobList;
 import io.fabric8.kubernetes.client.Client;
-import io.fabric8.kubernetes.client.dsl.BytesLimitTerminateTimeTailPrettyLoggable;
 import io.fabric8.kubernetes.client.dsl.LogWatch;
 import io.fabric8.kubernetes.client.dsl.Loggable;
 import io.fabric8.kubernetes.client.dsl.PodResource;
-import io.fabric8.kubernetes.client.dsl.PrettyLoggable;
 import io.fabric8.kubernetes.client.dsl.ScalableResource;
-import io.fabric8.kubernetes.client.dsl.TailPrettyLoggable;
-import io.fabric8.kubernetes.client.dsl.TimeTailPrettyLoggable;
 import io.fabric8.kubernetes.client.dsl.internal.HasMetadataOperation;
 import io.fabric8.kubernetes.client.dsl.internal.HasMetadataOperationsImpl;
 import io.fabric8.kubernetes.client.dsl.internal.OperationContext;
-import io.fabric8.kubernetes.client.dsl.internal.PodOperationContext;
+import io.fabric8.kubernetes.client.dsl.internal.PodControllerOperationContext;
 import io.fabric8.kubernetes.client.utils.internal.PodOperationUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,13 +46,13 @@ public class JobOperationsImpl extends HasMetadataOperation<Job, JobList, Scalab
     implements ScalableResource<Job> {
 
   static final transient Logger LOG = LoggerFactory.getLogger(JobOperationsImpl.class);
-  private final PodOperationContext podControllerOperationContext;
+  private final PodControllerOperationContext podControllerOperationContext;
 
   public JobOperationsImpl(Client client) {
-    this(new PodOperationContext(), HasMetadataOperationsImpl.defaultContext(client));
+    this(new PodControllerOperationContext(), HasMetadataOperationsImpl.defaultContext(client));
   }
 
-  public JobOperationsImpl(PodOperationContext context, OperationContext superContext) {
+  public JobOperationsImpl(PodControllerOperationContext context, OperationContext superContext) {
     super(superContext.withApiGroupName("batch")
         .withApiGroupVersion("v1")
         .withPlural("jobs"), Job.class, JobList.class);
@@ -88,7 +84,7 @@ public class JobOperationsImpl extends HasMetadataOperation<Job, JobList, Scalab
     Job res = accept(b -> b.getSpec().setParallelism(count));
     if (wait) {
       waitUntilJobIsScaled();
-      res = getItemOrRequireFromServer();
+      res = getMandatory();
     }
     return res;
   }
@@ -116,25 +112,25 @@ public class JobOperationsImpl extends HasMetadataOperation<Job, JobList, Scalab
 
   @Override
   public String getLog() {
-    return getLog(podControllerOperationContext.isPrettyOutput());
+    return getLog(false);
   }
 
   @Override
   public String getLog(boolean isPretty) {
     StringBuilder stringBuilder = new StringBuilder();
-    List<PodResource> podOperationList = doGetLog();
+    List<PodResource> podOperationList = doGetLog(false);
     for (PodResource podOperation : podOperationList) {
       stringBuilder.append(podOperation.getLog(isPretty));
     }
     return stringBuilder.toString();
   }
 
-  private List<PodResource> doGetLog() {
+  private List<PodResource> doGetLog(boolean isPretty) {
     Job job = requireFromServer();
 
-    return PodOperationUtil.getPodOperationsForController(context, podControllerOperationContext,
-        job.getMetadata().getUid(),
-        getJobPodLabels(job));
+    return PodOperationUtil.getPodOperationsForController(context, job.getMetadata().getUid(),
+        getJobPodLabels(job), isPretty, podControllerOperationContext.getLogWaitTimeout(),
+        podControllerOperationContext.getContainerId());
   }
 
   /**
@@ -144,7 +140,7 @@ public class JobOperationsImpl extends HasMetadataOperation<Job, JobList, Scalab
    */
   @Override
   public Reader getLogReader() {
-    return PodOperationUtil.getLogReader(doGetLog());
+    return PodOperationUtil.getLogReader(doGetLog(false));
   }
 
   /**
@@ -154,7 +150,7 @@ public class JobOperationsImpl extends HasMetadataOperation<Job, JobList, Scalab
    */
   @Override
   public InputStream getLogInputStream() {
-    return PodOperationUtil.getLogInputStream(doGetLog());
+    return PodOperationUtil.getLogInputStream(doGetLog(false));
   }
 
   @Override
@@ -164,17 +160,12 @@ public class JobOperationsImpl extends HasMetadataOperation<Job, JobList, Scalab
 
   @Override
   public LogWatch watchLog(OutputStream out) {
-    return PodOperationUtil.watchLog(doGetLog(), out);
+    return PodOperationUtil.watchLog(doGetLog(false), out);
   }
 
   @Override
   public Loggable withLogWaitTimeout(Integer logWaitTimeout) {
-    return withReadyWaitTimeout(logWaitTimeout);
-  }
-
-  @Override
-  public Loggable withReadyWaitTimeout(Integer timeout) {
-    return new JobOperationsImpl(podControllerOperationContext.withReadyWaitTimeout(timeout), context);
+    return new JobOperationsImpl(podControllerOperationContext.withLogWaitTimout(logWaitTimeout), context);
   }
 
   @Override
@@ -202,40 +193,5 @@ public class JobOperationsImpl extends HasMetadataOperation<Job, JobList, Scalab
   @Override
   public Loggable inContainer(String id) {
     return new JobOperationsImpl(podControllerOperationContext.withContainerId(id), context);
-  }
-
-  @Override
-  public TimeTailPrettyLoggable limitBytes(int limitBytes) {
-    return new JobOperationsImpl(podControllerOperationContext.withLimitBytes(limitBytes), context);
-  }
-
-  @Override
-  public TimeTailPrettyLoggable terminated() {
-    return new JobOperationsImpl(podControllerOperationContext.withTerminatedStatus(true), context);
-  }
-
-  @Override
-  public Loggable withPrettyOutput() {
-    return new JobOperationsImpl(podControllerOperationContext.withPrettyOutput(true), context);
-  }
-
-  @Override
-  public PrettyLoggable tailingLines(int lines) {
-    return new JobOperationsImpl(podControllerOperationContext.withTailingLines(lines), context);
-  }
-
-  @Override
-  public TailPrettyLoggable sinceTime(String timestamp) {
-    return new JobOperationsImpl(podControllerOperationContext.withSinceTimestamp(timestamp), context);
-  }
-
-  @Override
-  public TailPrettyLoggable sinceSeconds(int seconds) {
-    return new JobOperationsImpl(podControllerOperationContext.withSinceSeconds(seconds), context);
-  }
-
-  @Override
-  public BytesLimitTerminateTimeTailPrettyLoggable usingTimestamps() {
-    return new JobOperationsImpl(podControllerOperationContext.withTimestamps(true), context);
   }
 }
