@@ -22,11 +22,13 @@ import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.KubernetesResourceList;
 import io.fabric8.kubernetes.api.model.ObjectMeta;
 import io.fabric8.kubernetes.client.KubernetesClientException;
+import io.fabric8.kubernetes.client.ResourceNotFoundException;
 import io.fabric8.kubernetes.client.dsl.Resource;
 import io.fabric8.kubernetes.client.dsl.base.PatchContext;
 import io.fabric8.kubernetes.client.dsl.base.PatchType;
 import io.fabric8.kubernetes.client.utils.KubernetesResourceUtil;
 import io.fabric8.kubernetes.client.utils.Serialization;
+import io.fabric8.kubernetes.client.utils.Utils;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
@@ -51,7 +53,7 @@ public class HasMetadataOperation<T extends HasMetadata, L extends KubernetesRes
 
   @Override
   public T edit(UnaryOperator<T> function) {
-    T item = getItemOrRequireFromServer();
+    T item = getMandatory();
     T clone = clone(item);
     return patch(null, clone, function.apply(item), false);
   }
@@ -62,14 +64,14 @@ public class HasMetadataOperation<T extends HasMetadata, L extends KubernetesRes
 
   @Override
   public T editStatus(UnaryOperator<T> function) {
-    T item = getItemOrRequireFromServer();
+    T item = getMandatory();
     T clone = clone(item);
     return patch(null, clone, function.apply(item), true);
   }
 
   @Override
   public T accept(Consumer<T> consumer) {
-    T item = getItemOrRequireFromServer();
+    T item = getMandatory();
     T clone = clone(item);
     consumer.accept(item);
     return patch(null, clone, item, false);
@@ -77,9 +79,33 @@ public class HasMetadataOperation<T extends HasMetadata, L extends KubernetesRes
 
   @Override
   public T edit(Visitor... visitors) {
-    T item = getItemOrRequireFromServer();
+    T item = getMandatory();
     T clone = clone(item);
     return patch(null, clone, context.getHandler(item).edit(item).accept(visitors).build(), false);
+  }
+
+  /**
+   * Get the current item from the server
+   * <br>
+   * Will always return non-null or throw an exception.
+   */
+  protected T requireFromServer() {
+    try {
+      if (Utils.isNotNullOrEmpty(getName())) {
+        return newInstance(context.withItem(null)).require();
+      }
+      if (getItem() != null) {
+        String name = KubernetesResourceUtil.getName(getItem());
+        if (Utils.isNotNullOrEmpty(name)) {
+          return newInstance(context.withItem(null)).withName(name).require();
+        }
+      }
+    } catch (ResourceNotFoundException e) {
+      if (e.getCause() instanceof KubernetesClientException) {
+        throw (KubernetesClientException) e.getCause();
+      }
+    }
+    throw new KubernetesClientException("name not specified for an operation requiring one.");
   }
 
   @Override
@@ -166,15 +192,9 @@ public class HasMetadataOperation<T extends HasMetadata, L extends KubernetesRes
     throw KubernetesClientException.launderThrowable(forOperationType(REPLACE_OPERATION), caught);
   }
 
-  /**
-   * Perform a patch. If the base is not provided and one is required, it will
-   * be fetched from the server.
-   */
   protected T patch(PatchContext context, T base, T item, boolean status) {
-    if (context == null || context.getPatchType() == PatchType.JSON) {
-      if (base == null) {
-        base = requireFromServer();
-      }
+    if (base == null && context != null && context.getPatchType() == PatchType.JSON) {
+      base = getMandatory();
       if (base.getMetadata() != null) {
         // prevent the resourceVersion from being modified in the patch
         if (item.getMetadata() == null) {
@@ -201,34 +221,19 @@ public class HasMetadataOperation<T extends HasMetadata, L extends KubernetesRes
   }
 
   @Override
-  public T patchStatus() {
-    return patch(PatchContext.of(PatchType.JSON_MERGE), null, getNonNullItem(), true);
-  }
-
-  @Override
-  public T patch() {
-    return patch(null, null, getNonNullItem(), false);
-  }
-
-  @Override
-  public T patch(PatchContext patchContext) {
-    return patch(patchContext, null, getNonNullItem(), false);
-  }
-
-  @Override
   public T patchStatus(T item) {
-    return patch(PatchContext.of(PatchType.JSON_MERGE), getItem(), clone(item), true);
+    return patch(PatchContext.of(PatchType.JSON_MERGE), null, clone(item), true);
   }
 
   @Override
   public T patch(PatchContext patchContext, T item) {
-    return patch(patchContext, getItem(), clone(item), false);
+    return patch(patchContext, null, clone(item), false);
   }
 
   @Override
   public T patch(PatchContext patchContext, String patch) {
     try {
-      final T got = getItemOrRequireFromServer();
+      final T got = getMandatory();
       return handlePatch(patchContext, got, convertToJson(patch), getType(), false);
     } catch (InterruptedException interruptedException) {
       Thread.currentThread().interrupt();

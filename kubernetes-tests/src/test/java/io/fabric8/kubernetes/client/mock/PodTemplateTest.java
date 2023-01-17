@@ -38,7 +38,7 @@ public class PodTemplateTest {
   @Test
   @DisplayName("Should load a PodTemplate from yaml")
   public void testLoad() {
-    PodTemplate podTemplate = client.v1().podTemplates().load(getClass().getResourceAsStream("/test-podtemplate.yml")).item();
+    PodTemplate podTemplate = client.v1().podTemplates().load(getClass().getResourceAsStream("/test-podtemplate.yml")).get();
     assertNotNull(podTemplate);
     assertEquals("hello", podTemplate.getMetadata().getName());
     assertEquals(1, podTemplate.getTemplate().getSpec().getContainers().size());

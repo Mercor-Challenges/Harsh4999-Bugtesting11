@@ -168,8 +168,7 @@ public class JObject extends AbstractJSONSchema2Pojo implements JObjectExtraAnno
       GeneratorResult gr = prop.generateJava();
 
       // For now the inner types are only for enums
-      boolean isEnum = !gr.getInnerClasses().isEmpty();
-      if (isEnum) {
+      if (!gr.getInnerClasses().isEmpty()) {
         for (GeneratorResult.ClassResult enumCR : gr.getInnerClasses()) {
           Optional<EnumDeclaration> ed = enumCR.getCompilationUnit().getEnumByName(enumCR.getName());
           if (ed.isPresent()) {
@@ -223,7 +222,7 @@ public class JObject extends AbstractJSONSchema2Pojo implements JObjectExtraAnno
                   new Name(
                       "com.fasterxml.jackson.annotation.JsonPropertyDescription"),
                   new StringLiteralExpr(
-                      StringEscapeUtils.escapeJava(prop.getDescription()))));
+                      prop.getDescription().replace("\"", "\\\""))));
         }
 
         if (!prop.isNullable) {
@@ -245,7 +244,7 @@ public class JObject extends AbstractJSONSchema2Pojo implements JObjectExtraAnno
         }
 
         if (prop.getDefaultValue() != null) {
-          Expression primitiveDefault = (isEnum) ? null : generatePrimitiveDefaultInitializerExpression(prop);
+          Expression primitiveDefault = generatePrimitiveDefaultInitializerExpression(prop);
 
           if (primitiveDefault != null) {
             objField.getVariable(0).setInitializer(primitiveDefault);
@@ -290,7 +289,7 @@ public class JObject extends AbstractJSONSchema2Pojo implements JObjectExtraAnno
       additionalSetter.addParameter("String", "key");
       additionalSetter.addParameter("Object", "value");
       additionalSetter
-          .setBody(new BlockStmt().addStatement(new NameExpr("this." + Keywords.ADDITIONAL_PROPERTIES + ".put(key, value)")));
+          .setBody(new BlockStmt().addStatement(new NameExpr("this." + Keywords.ADDITIONAL_PROPERTIES + ".put(key, value);")));
     }
 
     buffer.add(new GeneratorResult.ClassResult(this.className, cu));

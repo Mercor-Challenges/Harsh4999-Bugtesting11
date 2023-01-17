@@ -3,41 +3,14 @@
 ### 6.4-SNAPSHOT
 
 #### Bugs
-* Fix #4729: ensuring completablefuture cancel will close / cancel the underlying resource
-* Fix #4249 #4726: prevent the over-logging of errors after the websocket has been closed
-* Fix #4650: allowing for comments at the end of certificate files
-* Fix #4668: use acme.cert-manager.io ApiGroup for Orders and Challenges
-* Fix #4735: StandardHttpClient sends Expect 100-continue header value
 
 #### Improvements
-* Fix #4637: all pod operations that require a ready / succeeded pod may use withReadyWaitTimeout, which supersedes withLogWaitTimeout.
-* Fix #4633: provided inline access to all RunConfig builder methods via run().withNewRunConfig()
-* Fix #4654: Fix GatewayClass to not implement Namespaced interface
-* Fix #4670: the initial informer listing will use a resourceVersion of 0 to utilize the watch cache if possible.  This means that the initial cache state when the informer is returned, or the start future is completed, may not be as fresh as the previous behavior which forced the latest version.  It will of course become more consistent as the watch will already have been established.
-* Fix #4694: [java-generator] Option to override the package name of the generated code.
-* Fix #4720: interceptors close any response body if the response is not a 2xx response.
-* Fix #4734: @KubernetesTest annotation can be used in base test classes
-* Fix #4734: @KubernetesTest creates an ephemeral Namespace optionally (can opt-out)
 
 #### Dependency Upgrade
 
 #### New Features
 
 #### _**Note**_: Breaking changes
-* Fix #3972: deprecated Parameterizable and methods on Serialization accepting parameters - that was only needed as a workaround for non-string parameters.  You should instead include those parameter values in the map passed to processLocally.
-* Fix #3972: OpenShiftClient.load will no longer implicitly process templates.  Use OpenShiftClient.templates().load instead.
-* Fix #3972: WARNING: future client versions will not provide the static yaml and json ObjectMappersSerialization.
-* Fix #4574: fromServer has been deprecated - it no longer needs to be called.  All get() operations will fetch the resource(s) from the api server.  If you need the context item that was passed in from a resource, load, or resourceList methods, use the item or items method.
-* Fix #4633: client.run().withRunConfig was deprecated.  Use withNewRunConfig instead.
-* Fix #4663: Config.maxConcurrentRequests and Config.maxConcurrentRequestsPerHost will no longer be used.  Instead they will default to unlimited for all clients.  Due to the ability of the fabric8 client to start long running requests (either websocket or regular http) and how this is treated by the underlying clients you can easily exhaust these values and enter a state where the client is unresponsive without any additional information on what is occurring.
-* Fix #4769: [java-generator] Fix encoding of empty strings as valid enums
-
-### 6.3.1 (2022-12-15)
-
-#### Bugs
-* Fix #4666: fixed okhttp calls not explicitly closing
-* Fix #4673: fixes a regression in sharing the OpenShiftOAuthInterceptor token
-* Fix #4677: [java-generator] Fix default encoding of enums
 
 ### 6.3.0 (2022-12-12)
 
@@ -188,7 +161,6 @@ fix #4373: NO_PROXY should allow URIs with hyphens ("circleci-internal-outer-bui
   - `io.fabric8.chaosmesh.v1alpha1.AwsChaos` => `io.fabric8.chaosmesh.v1alpha1.AWSChaos`
   - `io.fabric8.chaosmesh.v1alpha1.IoChaos` => `io.fabric8.chaosmesh.v1alpha1.IOChaos`
   - `io.fabric8.chaosmesh.v1alpha1.PodIoChaos` => `io.fabric8.chaosmesh.v1alpha1.PodIOChaos`
-* Fix #4247: Proxy matching no longer supports having wildcard characters in `NO_PROXY`. The behavior has been changed to match [GNU WGet Spec](https://www.gnu.org/software/wget/manual/html_node/Proxies.html)
 
 ### 5.12.3 (2022-07-27)
 

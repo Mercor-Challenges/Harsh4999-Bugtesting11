@@ -37,7 +37,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 
 public class PodOperationUtil {
   private static final Logger LOG = LoggerFactory.getLogger(PodOperationUtil.class);
@@ -115,19 +114,14 @@ public class PodOperationUtil {
     return PodOperationUtil.getFilteredPodsForLogs(podOperations, controllerPodList, controllerUid);
   }
 
-  public static Pod waitUntilReadyOrSucceded(PodResource podOperation, Integer logWaitTimeout) {
-    AtomicReference<Pod> podRef = new AtomicReference<>();
+  public static void waitUntilReadyBeforeFetchingLogs(PodResource podOperation, Integer logWaitTimeout) {
     try {
       // Wait for Pod to become ready or succeeded
-      podOperation.waitUntilCondition(p -> {
-        podRef.set(p);
-        return p != null && (Readiness.isPodReady(p) || Readiness.isPodSucceeded(p));
-      },
+      podOperation.waitUntilCondition(p -> p != null && (Readiness.isPodReady(p) || Readiness.isPodSucceeded(p)),
           logWaitTimeout,
           TimeUnit.SECONDS);
     } catch (Exception otherException) {
       LOG.debug("Error while waiting for Pod to become Ready: {}", otherException.getMessage());
     }
-    return podRef.get();
   }
 }

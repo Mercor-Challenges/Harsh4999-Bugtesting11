@@ -64,10 +64,6 @@ public interface HttpClient extends AutoCloseable {
 
     HttpClient build();
 
-    /**
-     * Sets the read timeout for normal http requests. Will also
-     * be used as the connection timeout for {@link WebSocket}s
-     */
     DerivedClientBuilder readTimeout(long readTimeout, TimeUnit unit);
 
     DerivedClientBuilder writeTimeout(long writeTimeout, TimeUnit unit);
@@ -178,7 +174,9 @@ public interface HttpClient extends AutoCloseable {
    * @param type one of InputStream, Reader, String, byte[]
    * @return a CompletableFuture that returns the resulting HttpResponse when complete
    */
-  <T> CompletableFuture<HttpResponse<T>> sendAsync(HttpRequest request, Class<T> type);
+  default <T> CompletableFuture<HttpResponse<T>> sendAsync(HttpRequest request, Class<T> type) {
+    return HttpResponse.SupportedResponses.from(type).sendAsync(request, this);
+  }
 
   /**
    * Send a request and consume the bytes of the resulting response body

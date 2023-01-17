@@ -187,7 +187,7 @@ public class PortForwarderWebsocket implements PortForwarder {
         socket.cancel(true);
         socket.whenComplete((w, t) -> {
           if (w != null) {
-            listener.closeBothWays(w, 1001, "User closing");
+            w.sendClose(1001, "User closing");
           }
         });
       }

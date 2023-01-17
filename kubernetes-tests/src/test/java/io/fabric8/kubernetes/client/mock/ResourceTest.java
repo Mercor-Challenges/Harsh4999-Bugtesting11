@@ -321,20 +321,15 @@ class ResourceTest {
     Assert.assertTrue(Readiness.isPodReady(p));
   }
 
-  /**
-   * List the pod for the initial request from an informer
-   * 
-   * @param pod
-   */
   private void list(Pod pod) {
-    list(server, pod, "0");
+    list(server, pod);
   }
 
-  static void list(KubernetesMockServer server, Pod pod, String resourceVersion) {
+  static void list(KubernetesMockServer server, Pod pod) {
     server.expect()
         .get()
         .withPath("/api/v1/namespaces/" + pod.getMetadata().getNamespace() + "/pods?fieldSelector=metadata.name%3D"
-            + pod.getMetadata().getName() + (resourceVersion != null ? ("&resourceVersion=" + resourceVersion) : ""))
+            + pod.getMetadata().getName())
         .andReturn(200,
             new PodListBuilder().withItems(pod).withNewMetadata().withResourceVersion("1").endMetadata().build())
         .once();
@@ -355,7 +350,7 @@ class ResourceTest {
     // and again so that "periodicWatchUntilReady" successfully begins
     server.expect()
         .get()
-        .withPath("/api/v1/namespaces/test/pods?fieldSelector=metadata.name%3Dpod1&resourceVersion=0")
+        .withPath("/api/v1/namespaces/test/pods?fieldSelector=metadata.name%3Dpod1")
         .andReturn(200, noReady)
         .times(2);
 
@@ -587,7 +582,7 @@ class ResourceTest {
         .done()
         .once();
 
-    list(server, ready, null);
+    list(ready);
 
     client.resource(noReady).waitUntilReady(10, SECONDS);
   }
@@ -667,7 +662,7 @@ class ResourceTest {
 
     server.expect().get().withPath("/api/v1/namespaces/test/pods/pod1").andReturn(200, pod).once();
 
-    HasMetadata response = client.resource(pod).get();
+    HasMetadata response = client.resource(pod).fromServer().get();
     assertEquals(pod, response);
   }
 
@@ -715,7 +710,7 @@ class ResourceTest {
   void testWaitNullDoesntExist() throws InterruptedException {
     server.expect()
         .get()
-        .withPath("/api/v1/namespaces/test/pods?fieldSelector=metadata.name%3Dpod1&resourceVersion=0")
+        .withPath("/api/v1/namespaces/test/pods?fieldSelector=metadata.name%3Dpod1")
         .andReturn(200,
             new PodListBuilder().withNewMetadata().withResourceVersion("1").endMetadata().build())
         .once();

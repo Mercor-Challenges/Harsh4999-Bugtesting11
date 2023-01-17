@@ -90,7 +90,7 @@ public class DeploymentOperationsImpl
     Deployment res = accept(d -> d.getSpec().setReplicas(count));
     if (wait) {
       waitUntilDeploymentIsScaled(count);
-      res = getItemOrRequireFromServer();
+      res = getMandatory();
     }
     return res;
   }

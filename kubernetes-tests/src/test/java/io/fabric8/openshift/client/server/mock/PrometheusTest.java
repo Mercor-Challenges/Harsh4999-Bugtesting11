@@ -17,13 +17,7 @@ package io.fabric8.openshift.client.server.mock;
 
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.IntOrString;
-import io.fabric8.openshift.api.model.monitoring.v1.AlertingSpec;
-import io.fabric8.openshift.api.model.monitoring.v1.AlertmanagerEndpoints;
-import io.fabric8.openshift.api.model.monitoring.v1.AlertmanagerEndpointsBuilder;
-import io.fabric8.openshift.api.model.monitoring.v1.Prometheus;
-import io.fabric8.openshift.api.model.monitoring.v1.PrometheusBuilder;
-import io.fabric8.openshift.api.model.monitoring.v1.PrometheusList;
-import io.fabric8.openshift.api.model.monitoring.v1.PrometheusListBuilder;
+import io.fabric8.openshift.api.model.monitoring.v1.*;
 import io.fabric8.openshift.client.OpenShiftClient;
 import org.junit.jupiter.api.Test;
 
@@ -31,9 +25,7 @@ import java.net.HttpURLConnection;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 @EnableOpenShiftMockClient
 class PrometheusTest {
@@ -43,7 +35,7 @@ class PrometheusTest {
 
   @Test
   void load() {
-    List<HasMetadata> items = client.load(getClass().getResourceAsStream("/test-prometheus.yml")).items();
+    List<HasMetadata> items = client.load(getClass().getResourceAsStream("/test-prometheus.yml")).get();
     assertEquals(1, items.size());
     assertTrue(items.get(0) instanceof Prometheus);
     Prometheus prometheus = (Prometheus) items.get(0);

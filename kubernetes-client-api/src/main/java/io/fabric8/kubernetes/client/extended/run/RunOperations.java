@@ -22,32 +22,12 @@ import io.fabric8.kubernetes.client.NamespacedKubernetesClient;
 
 public class RunOperations {
 
-  public interface RunConfigNested extends RunConfigFluent<RunConfigNested> {
-
-    Pod done();
-
-  }
-
-  private class RunConfigNestedImpl extends RunConfigFluentImpl<RunConfigNested> implements RunConfigNested {
-
-    RunConfigNestedImpl() {
-      super(runConfig); // copy the existing properties
-    }
-
-    @Override
-    public Pod done() {
-      RunConfig runConfig = new RunConfigBuilder(this).build();
-      return withRunConfig(runConfig).done();
-    }
-
-  }
-
   private final KubernetesClient client;
-  private final RunConfig runConfig;
+  private final RunConfigBuilder runConfigBuilder;
 
-  public RunOperations(KubernetesClient client, RunConfig runConfig) {
+  public RunOperations(KubernetesClient client, RunConfigBuilder runConfigBuilder) {
     this.client = client;
-    this.runConfig = runConfig;
+    this.runConfigBuilder = runConfigBuilder;
   }
 
   /**
@@ -57,7 +37,7 @@ public class RunOperations {
    * @return {@link RunOperations} with injected namespace
    */
   public RunOperations inNamespace(String namespace) {
-    return new RunOperations(client.adapt(NamespacedKubernetesClient.class).inNamespace(namespace), runConfig);
+    return new RunOperations(client.adapt(NamespacedKubernetesClient.class).inNamespace(namespace), runConfigBuilder);
   }
 
   /**
@@ -67,7 +47,7 @@ public class RunOperations {
    * @return {@link RunOperations} with image injected into {@link RunConfig}
    */
   public RunOperations withImage(String image) {
-    return new RunOperations(client, new RunConfigBuilder(runConfig).withImage(image).build());
+    return new RunOperations(client, runConfigBuilder.withImage(image));
   }
 
   /**
@@ -77,32 +57,18 @@ public class RunOperations {
    * @return {@link RunOperations} with name injected into {@link RunConfig}
    */
   public RunOperations withName(String name) {
-    return new RunOperations(client, new RunConfigBuilder(runConfig).withName(name).build());
+    return new RunOperations(client, runConfigBuilder.withName(name));
   }
 
   /**
-   * Specify complex configuration for Pod creating using {@link RunConfig}.
-   * <br>
-   * WARNING: this will overwrite any of the previous calls, such as withName to this context
+   * Specify complex configuration for Pod creating using {@link RunConfig}
    *
    * @param generatorRunConfig {@link RunConfig} which allows to provide configuring environment variables, labels, resources,
    *        ports etc
    * @return {@link RunOperations} with specified configuration
-   * @deprecated use {@link #withNewRunConfig()} instead
    */
-  @Deprecated
   public RunOperations withRunConfig(RunConfig generatorRunConfig) {
-    return new RunOperations(client, new RunConfigBuilder(generatorRunConfig).build());
-  }
-
-  /**
-   * Provides access to a nested {@link RunConfig} builder that inherits the current
-   * values for name and image if they are already set. Call the {@link RunConfigNested#done()} method to create the {@link Pod}
-   *
-   * @return
-   */
-  public RunConfigNested withNewRunConfig() {
-    return new RunConfigNestedImpl();
+    return new RunOperations(client, new RunConfigBuilder(generatorRunConfig));
   }
 
   /**
@@ -115,9 +81,10 @@ public class RunOperations {
   }
 
   Pod convertRunConfigIntoPod() {
+    RunConfig finalGeneratorConfig = runConfigBuilder.build();
     return new PodBuilder()
-        .withMetadata(RunConfigUtil.getObjectMetadataFromRunConfig(runConfig))
-        .withSpec(RunConfigUtil.getPodSpecFromRunConfig(runConfig))
+        .withMetadata(RunConfigUtil.getObjectMetadataFromRunConfig(finalGeneratorConfig))
+        .withSpec(RunConfigUtil.getPodSpecFromRunConfig(finalGeneratorConfig))
         .build();
   }
 

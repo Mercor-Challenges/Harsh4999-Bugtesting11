@@ -45,7 +45,7 @@ class V1IngressClassTest {
   @Test
   void testLoad() {
     // When
-    List<HasMetadata> itemList = client.load(getClass().getResourceAsStream("/test-v1-ingressclass.yml")).items();
+    List<HasMetadata> itemList = client.load(getClass().getResourceAsStream("/test-v1-ingressclass.yml")).get();
 
     // Then
     assertEquals(1, itemList.size());

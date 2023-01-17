@@ -19,10 +19,9 @@ kind: CertificateRequest
 metadata:
   name: my-ca-cr
 spec:
-  request: dGVzdAo=
+  request: LS0tL
   isCA: false
   usages:
-    - ""
     - signing
     - digital signature
     - server auth

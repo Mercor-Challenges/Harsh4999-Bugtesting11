@@ -73,11 +73,7 @@ public abstract class AbstractJSONSchema2Pojo {
 
   /** Takes a string and return the corresponding package name */
   public static String packageName(String str) {
-    String pkg = str.toLowerCase(Locale.ROOT);
-    if (pkg.equals(str)) { // avoid package/class name clash
-      pkg = "_" + pkg;
-    }
-    return pkg;
+    return str.toLowerCase(Locale.ROOT);
   }
 
   public String getDescription() {
@@ -109,8 +105,7 @@ public abstract class AbstractJSONSchema2Pojo {
   public static String sanitizeString(String str) {
     str = str.trim();
     String sanitized = "";
-    // https://docs.oracle.com/javase/specs/jls/se7/html/jls-3.html#jls-3.8
-    if (JAVA_KEYWORDS.contains(str) || (!str.isEmpty() && !Character.isJavaIdentifierStart(str.charAt(0)))) {
+    if (JAVA_KEYWORDS.contains(str)) {
       sanitized = "_" + str;
     } else {
       sanitized = str;

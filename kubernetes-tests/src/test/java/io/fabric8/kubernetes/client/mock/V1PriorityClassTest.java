@@ -168,8 +168,7 @@ class V1PriorityClassTest {
 
   @Test
   void testLoadFromFile() {
-    assertNotNull(
-        client.scheduling().priorityClass().load(getClass().getResourceAsStream("/test-v1-priorityclass.yml")).item());
+    assertNotNull(client.scheduling().priorityClass().load(getClass().getResourceAsStream("/test-v1-priorityclass.yml")).get());
   }
 
 }

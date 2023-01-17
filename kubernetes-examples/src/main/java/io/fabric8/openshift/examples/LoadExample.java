@@ -60,7 +60,7 @@ public class LoadExample {
       visitedList.stream().map(LoadExample::display).forEach(logger::info);
 
       final List<HasMetadata> fromServerList = client.load(TemplateExample.class.getResourceAsStream(LOADED_RESOURCE))
-          .get();
+          .fromServer().get();
       logger.info("Found on server: {} items.", fromServerList.size());
       fromServerList.stream().map(LoadExample::display).forEach(logger::info);
 

@@ -132,7 +132,7 @@ public class BuildOperationsImpl extends HasMetadataOperation<Build, BuildList, 
   public LogWatch watchLog(OutputStream out) {
     try {
       // In case of Build we directly get logs at Build Url, but we need to wait for Pods
-      waitUntilBuildPodBecomesReady(get());
+      waitUntilBuildPodBecomesReady(fromServer().get());
       URL url = new URL(URLUtils.join(getResourceUrl().toString(), getLogParameters() + "&follow=true"));
       final LogWatchCallback callback = new LogWatchCallback(out, this.context.getExecutor());
       return callback.callAndWait(this.httpClient, url);
@@ -143,12 +143,7 @@ public class BuildOperationsImpl extends HasMetadataOperation<Build, BuildList, 
 
   @Override
   public Loggable withLogWaitTimeout(Integer logWaitTimeout) {
-    return withReadyWaitTimeout(logWaitTimeout);
-  }
-
-  @Override
-  public Loggable withReadyWaitTimeout(Integer timeout) {
-    return new BuildOperationsImpl(getContext().withReadyWaitTimeout(timeout), context, version);
+    return new BuildOperationsImpl(getContext().withLogWaitTimeout(logWaitTimeout), context, version);
   }
 
   @Override
@@ -197,12 +192,12 @@ public class BuildOperationsImpl extends HasMetadataOperation<Build, BuildList, 
         getBuildPodLabels(build));
 
     waitForBuildPodToBecomeReady(podOps,
-        operationContext.getReadyWaitTimeout() != null ? operationContext.getReadyWaitTimeout() : DEFAULT_POD_LOG_WAIT_TIMEOUT);
+        operationContext.getLogWaitTimeout() != null ? operationContext.getLogWaitTimeout() : DEFAULT_POD_LOG_WAIT_TIMEOUT);
   }
 
   private static void waitForBuildPodToBecomeReady(List<PodResource> podOps, Integer podLogWaitTimeout) {
     for (PodResource podOp : podOps) {
-      PodOperationUtil.waitUntilReadyOrSucceded(podOp, podLogWaitTimeout);
+      PodOperationUtil.waitUntilReadyBeforeFetchingLogs(podOp, podLogWaitTimeout);
     }
   }
 

@@ -98,12 +98,12 @@ public class KubernetesClientBuilder {
   }
 
   public KubernetesClientBuilder withConfig(String config) {
-    this.config = Serialization.unmarshal(config, Config.class);
+    this.config = Serialization.unmarshal(config);
     return this;
   }
 
   public KubernetesClientBuilder withConfig(InputStream config) {
-    this.config = Serialization.unmarshal(config, Config.class);
+    this.config = Serialization.unmarshal(config);
     return this;
   }
 

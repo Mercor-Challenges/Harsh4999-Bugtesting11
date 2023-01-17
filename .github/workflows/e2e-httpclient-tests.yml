@@ -39,14 +39,14 @@ jobs:
       fail-fast: false
       matrix:
         kubernetes: [v1.24.0,v1.23.3]
-        httpclient: [jdk,jetty,vertx]
+        httpclient: [jdk,jetty]
     steps:
       - name: Checkout
         uses: actions/checkout@v3
       - name: Setup Minikube-Kubernetes
-        uses: manusa/actions-setup-minikube@v2.7.2
+        uses: manusa/actions-setup-minikube@v2.7.1
         with:
-          minikube version: v1.28.0
+          minikube version: v1.25.1
           kubernetes version: ${{ matrix.kubernetes }}
           github token: ${{ secrets.GITHUB_TOKEN }}
           start args: '--force'
@@ -67,7 +67,7 @@ jobs:
       fail-fast: false
       matrix:
         openshift: [v3.11.0, v3.10.0]
-        httpclient: [jdk,jetty,vertx]
+        httpclient: [jdk,jetty]
     steps:
       - name: Checkout
         uses: actions/checkout@v3
