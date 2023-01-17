@@ -15,15 +15,33 @@
  */
 package io.fabric8.volumesnapshot.client.internal;
 
-import io.fabric8.kubernetes.client.extension.ExtensibleResourceAdapter;
+import io.fabric8.kubernetes.client.Config;
+import io.fabric8.kubernetes.client.dsl.base.BaseOperation;
+import io.fabric8.kubernetes.client.dsl.base.HasMetadataOperation;
+import io.fabric8.kubernetes.client.dsl.base.OperationContext;
 import io.fabric8.volumesnapshot.api.model.VolumeSnapshot;
-import io.fabric8.volumesnapshot.client.VolumeSnapshotResource;
+import io.fabric8.volumesnapshot.api.model.VolumeSnapshotList;
+import okhttp3.OkHttpClient;
 
-public class VolumeSnapshotOperationsImpl extends ExtensibleResourceAdapter<VolumeSnapshot> implements VolumeSnapshotResource {
+public class VolumeSnapshotOperationsImpl extends HasMetadataOperation<VolumeSnapshot, VolumeSnapshotList, VolumeSnapshotResource> implements VolumeSnapshotResource {
 
-  @Override
-  public ExtensibleResourceAdapter<VolumeSnapshot> newInstance() {
-    return new VolumeSnapshotOperationsImpl();
+  public VolumeSnapshotOperationsImpl(OkHttpClient client, Config config) {
+    this(new OperationContext().withOkhttpClient(client).withConfig(config));
   }
 
+  public VolumeSnapshotOperationsImpl(OperationContext ctx) {
+    super(ctx.withApiGroupName("snapshot.storage.k8s.io").withApiGroupVersion("v1").withPlural("volumesnapshots"));
+    this.type = VolumeSnapshot.class;
+    this.listType = VolumeSnapshotList.class;
+  }
+
+  @Override
+  public BaseOperation<VolumeSnapshot, VolumeSnapshotList, VolumeSnapshotResource> newInstance(OperationContext context) {
+    return new VolumeSnapshotOperationsImpl(context);
+  }
+
+  @Override
+  public boolean isResourceNamespaced() {
+    return true;
+  }
 }

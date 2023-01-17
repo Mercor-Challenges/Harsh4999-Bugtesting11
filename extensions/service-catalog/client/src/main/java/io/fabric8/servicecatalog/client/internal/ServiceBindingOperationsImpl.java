@@ -15,22 +15,48 @@
  */
 package io.fabric8.servicecatalog.client.internal;
 
+import io.fabric8.kubernetes.api.builder.Visitor;
 import io.fabric8.kubernetes.api.model.Secret;
-import io.fabric8.kubernetes.client.KubernetesClient;
-import io.fabric8.kubernetes.client.extension.ExtensibleResourceAdapter;
-import io.fabric8.servicecatalog.api.model.ServiceBinding;
-import io.fabric8.servicecatalog.client.dsl.ServiceBindingResource;
+import io.fabric8.kubernetes.client.Config;
+import io.fabric8.kubernetes.client.dsl.base.BaseOperation;
+import io.fabric8.kubernetes.client.dsl.base.HasMetadataOperation;
+import io.fabric8.kubernetes.client.dsl.base.OperationContext;
+import io.fabric8.kubernetes.client.dsl.internal.core.v1.SecretOperationsImpl;
+import io.fabric8.servicecatalog.api.model.*;
 
-public class ServiceBindingOperationsImpl extends ExtensibleResourceAdapter<ServiceBinding> implements ServiceBindingResource {
+import okhttp3.OkHttpClient;
+
+
+public class ServiceBindingOperationsImpl extends HasMetadataOperation<ServiceBinding, ServiceBindingList, ServiceBindingResource> implements ServiceBindingResource {
+
+  public ServiceBindingOperationsImpl(OkHttpClient client, Config config) {
+      this(new OperationContext().withOkhttpClient(client).withConfig(config));
+  }
+
+    public ServiceBindingOperationsImpl(OperationContext ctx) {
+        super(ctx.withApiGroupName("servicecatalog.k8s.io").withApiGroupVersion("v1beta1").withPlural("servicebindings"));
+        this.type=ServiceBinding.class;
+        this.listType=ServiceBindingList.class;
+    }
+
+    @Override
+    public BaseOperation<ServiceBinding, ServiceBindingList, ServiceBindingResource> newInstance(OperationContext context) {
+        return new ServiceBindingOperationsImpl(context);
+    }
 
   @Override
-  public ExtensibleResourceAdapter<ServiceBinding> newInstance() {
-    return new ServiceBindingOperationsImpl();
+  public boolean isResourceNamespaced() {
+    return true;
+  }
+
+  @Override
+  public ServiceBinding edit(Visitor... visitors) {
+    return patch(new ServiceBindingBuilder(getMandatory()).accept(visitors).build());
   }
 
   @Override
   public Secret getSecret() {
-    ServiceBinding instance = get();
-    return client.adapt(KubernetesClient.class).secrets().withName(instance.getSpec().getSecretName()).get();
+      ServiceBinding instance = get();
+      return new SecretOperationsImpl(context.withItem(null).withName(instance.getSpec().getSecretName())).get();
   }
 }

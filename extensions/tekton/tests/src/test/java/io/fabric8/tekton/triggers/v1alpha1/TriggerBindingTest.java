@@ -15,32 +15,32 @@
  */
 package io.fabric8.tekton.triggers.v1alpha1;
 
-import io.fabric8.kubernetes.client.server.mock.EnableKubernetesMockClient;
-import io.fabric8.kubernetes.client.server.mock.KubernetesMockServer;
 import io.fabric8.tekton.client.TektonClient;
+import io.fabric8.tekton.mock.TektonServer;
+import org.junit.Rule;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.migrationsupport.rules.EnableRuleMigrationSupport;
 
 import java.net.HttpURLConnection;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-@EnableKubernetesMockClient
+@EnableRuleMigrationSupport
 class TriggerBindingTest {
-
-  TektonClient client;
-  KubernetesMockServer server;
+  @Rule
+  public TektonServer server = new TektonServer();
 
   @Test
   @DisplayName("Should get a triggerbinding")
   void testGet() {
     server.expect().get().withPath("/apis/triggers.tekton.dev/v1alpha1/namespaces/ns1/triggerbindings/tb")
-        .andReturn(HttpURLConnection.HTTP_OK, new io.fabric8.tekton.triggers.v1alpha1.TriggerBindingBuilder()
-            .withNewMetadata()
-            .withName("tb")
-            .endMetadata()
-            .build())
-        .once();
+      .andReturn(HttpURLConnection.HTTP_OK, new io.fabric8.tekton.triggers.v1alpha1.TriggerBindingBuilder()
+        .withNewMetadata()
+        .withName("tb")
+        .endMetadata()
+        .build()).once();
+    TektonClient client = server.getTektonClient();
 
     TriggerBinding tb = client.v1alpha1().triggerBindings().inNamespace("ns1").withName("tb").get();
     assertNotNull(tb);

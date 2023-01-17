@@ -16,7 +16,6 @@
 
 ---
 kind: ReplicationController
-apiVersion: v1
 metadata:
   name: rc-get
 spec:
@@ -36,7 +35,6 @@ spec:
             - containerPort: 80
 ---
 kind: ReplicationController
-apiVersion: v1
 metadata:
   name: rc-list
 spec:
@@ -56,7 +54,6 @@ spec:
             - containerPort: 80
 ---
 kind: ReplicationController
-apiVersion: v1
 metadata:
   name: rc-update
 spec:
@@ -76,7 +73,6 @@ spec:
             - containerPort: 80
 ---
 kind: ReplicationController
-apiVersion: v1
 metadata:
   name: rc-delete
 spec:

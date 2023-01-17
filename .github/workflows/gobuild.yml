@@ -22,32 +22,23 @@ on:
       - master
   pull_request:
 
-concurrency:
-  # Only run once for latest commit per ref and cancel other (previous) runs.
-  group: ci-go-kubernetes-client-${{ github.ref }}
-  cancel-in-progress: true
-
-permissions:
-  contents: read
-
 jobs:
   build:
     name: Kubernetes Model Generator Build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
       - name: Build Project
         run: |
           ./kubernetes-model-generator/generateModelDocker.sh
       - name: Check No Schema file modified
         run: |
-          git add .
-          MODIFIED_KUBE_SCHEMA=`git status | grep -v 'validation-schema.json' | grep 'kube-schema.json\|src/generated/java' | wc -l`
+          git status
+          MODIFIED_KUBE_SCHEMA=`git status | grep kube-schema.json | wc -l`
           if [ $MODIFIED_KUBE_SCHEMA -eq "0" ]; then
             echo "No Schema files modified. Build Success.";
           else
-            git status | grep -v 'validation-schema.json' | grep 'kube-schema.json\|src/generated/java'
             echo "Schema files modified. Build Failure";
             exit 1;
           fi;

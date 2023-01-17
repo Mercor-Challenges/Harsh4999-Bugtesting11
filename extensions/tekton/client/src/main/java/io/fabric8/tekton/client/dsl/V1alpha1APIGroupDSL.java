@@ -19,10 +19,10 @@ import io.fabric8.kubernetes.client.Client;
 import io.fabric8.kubernetes.client.dsl.MixedOperation;
 import io.fabric8.kubernetes.client.dsl.NonNamespaceOperation;
 import io.fabric8.kubernetes.client.dsl.Resource;
-import io.fabric8.tekton.pipeline.v1alpha1.ClusterTask;
-import io.fabric8.tekton.pipeline.v1alpha1.ClusterTaskList;
 import io.fabric8.tekton.pipeline.v1alpha1.Condition;
 import io.fabric8.tekton.pipeline.v1alpha1.ConditionList;
+import io.fabric8.tekton.pipeline.v1alpha1.ClusterTask;
+import io.fabric8.tekton.pipeline.v1alpha1.ClusterTaskList;
 import io.fabric8.tekton.pipeline.v1alpha1.Pipeline;
 import io.fabric8.tekton.pipeline.v1alpha1.PipelineList;
 import io.fabric8.tekton.pipeline.v1alpha1.PipelineRun;
@@ -119,11 +119,4 @@ public interface V1alpha1APIGroupDSL extends Client {
    * @return MixedOperation for ClusterTriggerBinding class
    */
   NonNamespaceOperation<ClusterTriggerBinding, ClusterTriggerBindingList, Resource<ClusterTriggerBinding>> clusterTriggerBindings();
-
-  /**
-   * API entrypoint for ClusterInterceptor(triggers.tekton.dev/v1alpha1)
-   *
-   * @return MixedOperation for ClusterInterceptor class
-   */
-  NonNamespaceOperation<ClusterInterceptor, ClusterInterceptorList, Resource<ClusterInterceptor>> clusterInterceptors();
 }

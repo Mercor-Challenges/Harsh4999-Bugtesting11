@@ -1,8 +1,0 @@
-apiVersion: test.fabric8.io/v1alpha1
-kind: Hello
-metadata:
-  name: custom-resource-example
-spec:
-  field: value
-status:
-  reconciled: true

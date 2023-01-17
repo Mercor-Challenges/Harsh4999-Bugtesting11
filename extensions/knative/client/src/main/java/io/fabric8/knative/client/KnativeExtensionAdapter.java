@@ -15,26 +15,32 @@
  */
 package io.fabric8.knative.client;
 
-import io.fabric8.knative.client.serving.v1.DefaultServingV1Client;
-import io.fabric8.knative.client.serving.v1.ServingV1Client;
+import io.fabric8.kubernetes.client.ExtensionAdapterSupport;
 import io.fabric8.kubernetes.client.Client;
-import io.fabric8.kubernetes.client.extension.ExtensionAdapter;
+import io.fabric8.kubernetes.client.ExtensionAdapter;
+import okhttp3.OkHttpClient;
 
-public class KnativeExtensionAdapter implements ExtensionAdapter<KnativeClient> {
+import java.net.URL;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
-  @Override
-  public Class<KnativeClient> getExtensionType() {
-    return KnativeClient.class;
-  }
+public class KnativeExtensionAdapter extends ExtensionAdapterSupport implements ExtensionAdapter<KnativeClient> {
 
-  @Override
-  public KnativeClient adapt(Client client) {
-    return new DefaultKnativeClient(client);
-  }
+    static final ConcurrentMap<URL, Boolean> IS_TEKTON = new ConcurrentHashMap<>();
+    static final ConcurrentMap<URL, Boolean> USES_TEKTON_APIGROUPS = new ConcurrentHashMap<>();
+    
+	@Override
+	public Class<KnativeClient> getExtensionType() {
+		return KnativeClient.class;
+	}
 
-  @Override
-  public void registerClients(ClientFactory factory) {
-    factory.register(ServingV1Client.class, new DefaultServingV1Client());
-  }
+	@Override
+	public Boolean isAdaptable(Client client) {
+		return isAdaptable(client, IS_TEKTON, USES_TEKTON_APIGROUPS, "knative.dev");
+	}
 
+	@Override
+	public KnativeClient adapt(Client client) {
+            return new DefaultKnativeClient(client.adapt(OkHttpClient.class), client.getConfiguration());
+	}
 }

@@ -15,49 +15,55 @@
  */
 package io.fabric8.volumesnapshot.test.crud;
 
-import io.fabric8.kubernetes.client.server.mock.EnableKubernetesMockClient;
+
 import io.fabric8.volumesnapshot.api.model.VolumeSnapshotClass;
 import io.fabric8.volumesnapshot.api.model.VolumeSnapshotClassBuilder;
 import io.fabric8.volumesnapshot.api.model.VolumeSnapshotClassList;
-import io.fabric8.volumesnapshot.client.VolumeSnapshotClassResource;
 import io.fabric8.volumesnapshot.client.VolumeSnapshotClient;
+import io.fabric8.volumesnapshot.client.internal.VolumeSnapshotClassResource;
+import io.fabric8.volumesnapshot.server.mock.VolumeSnapshotServer;
+import org.junit.Rule;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.migrationsupport.rules.EnableRuleMigrationSupport;
 
+import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
-@EnableKubernetesMockClient(crud = true)
+@EnableRuleMigrationSupport
 class VolumeSnapshotClassTest {
-  VolumeSnapshotClient client;
+
+  @Rule
+  public VolumeSnapshotServer server = new VolumeSnapshotServer(true, true);
 
   @Test
   void testCrud() {
-
+    VolumeSnapshotClient client = server.get();
     VolumeSnapshotClass vsc1 = new VolumeSnapshotClassBuilder()
-        .withNewMetadata()
-        .withName("csi-snapclass1")
-        .addToLabels("key1", "value1")
-        .endMetadata()
-        .withDriver("foo.csi.k8s.io")
-        .withDeletionPolicy("Delete")
-        .build();
+      .withNewMetadata()
+      .withName("csi-snapclass1")
+      .addToLabels("key1", "value1")
+      .endMetadata()
+      .withDriver("foo.csi.k8s.io")
+      .withDeletionPolicy("Delete")
+      .build();
     VolumeSnapshotClass vsc2 = new VolumeSnapshotClassBuilder()
-        .withNewMetadata()
-        .withName("csi-snapclass2")
-        .addToLabels("key2", "value2")
-        .endMetadata()
-        .withDriver("foo.csi.k8s.io")
-        .withDeletionPolicy("Delete")
-        .build();
+      .withNewMetadata()
+      .withName("csi-snapclass2")
+      .addToLabels("key2", "value2")
+      .endMetadata()
+      .withDriver("foo.csi.k8s.io")
+      .withDeletionPolicy("Delete")
+      .build();
     VolumeSnapshotClass vsc3 = new VolumeSnapshotClassBuilder()
-        .withNewMetadata()
-        .withName("csi-snapclass3")
-        .addToLabels("key3", "value3")
-        .endMetadata()
-        .withDriver("foo.csi.k8s.io")
-        .withDeletionPolicy("Delete")
-        .build();
+      .withNewMetadata()
+      .withName("csi-snapclass3")
+      .addToLabels("key3", "value3")
+      .endMetadata()
+      .withDriver("foo.csi.k8s.io")
+      .withDeletionPolicy("Delete")
+      .build();
 
     //Create
     client.volumeSnapshotClasses().create(vsc1);
@@ -74,18 +80,17 @@ class VolumeSnapshotClassTest {
     assertNotNull(sc1);
 
     //Update
-    VolumeSnapshotClass u1 = client.volumeSnapshotClasses().withName("csi-snapclass2")
-        .edit(v -> new VolumeSnapshotClassBuilder(v)
-            .editMetadata()
-            .addToLabels("updated", "true")
-            .endMetadata()
-            .build());
+    VolumeSnapshotClass u1 = client.volumeSnapshotClasses().withName("csi-snapclass2").edit(v -> new VolumeSnapshotClassBuilder(v)
+      .editMetadata()
+      .addToLabels("updated", "true")
+      .endMetadata()
+      .build());
 
     assertNotNull(u1);
     assertEquals("true", u1.getMetadata().getLabels().get("updated"));
 
     //Delete
-    assertEquals(1, scr1.delete().size());
+    assertTrue(scr1.delete());
     assertNull(scr1.get());
   }
 }

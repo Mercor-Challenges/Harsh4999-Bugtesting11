@@ -16,74 +16,87 @@
 
 package io.fabric8.kubernetes;
 
-import io.fabric8.junit.jupiter.api.LoadKubernetesManifests;
+import io.fabric8.commons.ClusterEntity;
+import io.fabric8.commons.ReadyEntity;
 import io.fabric8.kubernetes.api.model.HasMetadata;
-import io.fabric8.kubernetes.api.model.Namespace;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.api.model.apps.DeploymentBuilder;
 import io.fabric8.kubernetes.api.model.apps.DeploymentList;
 import io.fabric8.kubernetes.client.KubernetesClient;
-import io.fabric8.kubernetes.client.readiness.Readiness;
-import org.junit.jupiter.api.Test;
+import io.fabric8.kubernetes.client.internal.readiness.Readiness;
+import org.arquillian.cube.kubernetes.api.Session;
+import org.arquillian.cube.kubernetes.impl.requirement.RequiresKubernetes;
+import org.arquillian.cube.requirement.ArquillianConditionalRunner;
+import org.jboss.arquillian.test.api.ArquillianResource;
+import org.junit.*;
+import org.junit.runner.RunWith;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import static junit.framework.TestCase.assertNotNull;
+import static junit.framework.TestCase.assertTrue;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.awaitility.Awaitility.await;
+import static org.junit.Assert.assertEquals;
 
-@LoadKubernetesManifests("/deployment-it.yml")
-class DeploymentIT {
-
+@RunWith(ArquillianConditionalRunner.class)
+@RequiresKubernetes
+public class DeploymentIT {
+  @ArquillianResource
   KubernetesClient client;
 
-  Namespace namespace;
+  @ArquillianResource
+  Session session;
+
+  @BeforeClass
+  public static void init() {
+    ClusterEntity.apply(DeploymentIT.class.getResourceAsStream("/deployment-it.yml"));
+  }
 
   @Test
-  void load() {
-    Deployment aDeployment = client.apps().deployments().load(getClass().getResourceAsStream("/test-deployments.yml")).item();
+  public void load() {
+    Deployment aDeployment = client.apps().deployments().inNamespace(session.getNamespace()).load(getClass().getResourceAsStream("/test-deployments.yml")).get();
     assertThat(aDeployment).isNotNull();
     assertEquals("nginx-deployment", aDeployment.getMetadata().getName());
   }
 
   @Test
-  void get() {
-    Deployment deployment1 = client.apps().deployments()
-        .withName("deployment-standard").get();
+  public void get() {
+    Deployment deployment1 = client.apps().deployments().inNamespace(session.getNamespace())
+      .withName("deployment-standard").get();
     assertNotNull(deployment1);
   }
 
   @Test
-  void list() {
-    DeploymentList aDeploymentList = client.apps().deployments().list();
+  public void list() {
+    DeploymentList aDeploymentList = client.apps().deployments().inNamespace(session.getNamespace()).list();
     assertThat(aDeploymentList).isNotNull();
     assertTrue(aDeploymentList.getItems().size() >= 1);
   }
 
   @Test
-  void update() {
-    Deployment deployment1 = client.apps().deployments().withName("deployment-standard")
-        .edit(d -> new DeploymentBuilder(d).editMetadata().addToAnnotations("updated", "true").endMetadata().build());
+  public void update() {
+    Deployment deployment1 = client.apps().deployments().inNamespace(session.getNamespace()).withName("deployment-standard")
+      .edit(d -> new DeploymentBuilder(d).editMetadata().addToAnnotations("updated", "true").endMetadata().build());
     assertThat(deployment1).isNotNull();
     assertEquals("true", deployment1.getMetadata().getAnnotations().get("updated"));
   }
 
   @Test
-  void waitTest() {
+  public void waitTest() {
     // Wait for resources to get ready
-    client.apps().deployments().withName("deployment-wait")
-        .waitUntilReady(120, TimeUnit.SECONDS);
+    ReadyEntity<Deployment> deploymentReady = new ReadyEntity<>(Deployment.class, client, "deployment-wait", session.getNamespace());
+    await().atMost(120, TimeUnit.SECONDS).until(deploymentReady);
     Deployment deploymentOne = client.apps().deployments()
-        .withName("deployment-wait").get();
-    assertTrue(Readiness.isDeploymentReady(deploymentOne));
+      .inNamespace(session.getNamespace()).withName("deployment-wait").get();
+    assertTrue(Readiness.getInstance().isDeploymentReady(deploymentOne));
   }
 
   @Test
-  void listFromServer() {
-    Deployment deployment1 = client.apps().deployments().withName("deployment-standard").get();
-    List<HasMetadata> resources = client.resourceList(deployment1).get();
+  public void listFromServer() {
+    Deployment deployment1 = client.apps().deployments().inNamespace(session.getNamespace()).withName("deployment-standard").get();
+    List<HasMetadata> resources = client.resourceList(deployment1).inNamespace(session.getNamespace()).fromServer().get();
 
     assertNotNull(resources);
     assertEquals(1, resources.size());
@@ -92,12 +105,17 @@ class DeploymentIT {
     HasMetadata fromServerPod = resources.get(0);
 
     assertEquals(deployment1.getKind(), fromServerPod.getKind());
-    assertEquals(namespace.getMetadata().getName(), fromServerPod.getMetadata().getNamespace());
+    assertEquals(session.getNamespace(), fromServerPod.getMetadata().getNamespace());
     assertEquals(deployment1.getMetadata().getName(), fromServerPod.getMetadata().getName());
   }
 
   @Test
-  void delete() {
-    assertTrue(client.apps().deployments().withName("deployment-delete").delete().size() == 1);
+  public void delete() {
+    assertTrue(client.apps().deployments().inNamespace(session.getNamespace()).withName("deployment-delete").delete());
+  }
+
+  @AfterClass
+  public static void cleanup() {
+    ClusterEntity.remove(ClusterRoleBindingIT.class.getResourceAsStream("/deployment-it.yml"));
   }
 }

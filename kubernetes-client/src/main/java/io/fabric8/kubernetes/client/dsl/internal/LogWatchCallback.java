@@ -15,129 +15,151 @@
  */
 package io.fabric8.kubernetes.client.dsl.internal;
 
+import io.fabric8.kubernetes.client.Config;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.dsl.LogWatch;
-import io.fabric8.kubernetes.client.http.AsyncBody;
-import io.fabric8.kubernetes.client.http.HttpClient;
-import io.fabric8.kubernetes.client.http.HttpRequest;
-import io.fabric8.kubernetes.client.utils.internal.SerialExecutor;
+import io.fabric8.kubernetes.client.utils.BlockingInputStreamPumper;
+import io.fabric8.kubernetes.client.utils.InputStreamPumper;
+import io.fabric8.kubernetes.client.utils.Utils;
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.URL;
-import java.nio.ByteBuffer;
-import java.nio.channels.Channels;
-import java.nio.channels.WritableByteChannel;
-import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
+import java.util.LinkedHashSet;
+import java.util.Set;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class LogWatchCallback implements LogWatch, AutoCloseable {
+import static io.fabric8.kubernetes.client.utils.Utils.closeQuietly;
+import static io.fabric8.kubernetes.client.utils.Utils.shutdownExecutorService;
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(LogWatchCallback.class);
+public class LogWatchCallback implements LogWatch, Callback, AutoCloseable {
 
-  private OutputStream out;
-  private WritableByteChannel outChannel;
-  private volatile InputStream output;
+    private static final Logger LOGGER = LoggerFactory.getLogger(LogWatchCallback.class);
 
-  private final AtomicBoolean closed = new AtomicBoolean(false);
-  private volatile Optional<AsyncBody> asyncBody = Optional.empty();
-  private final SerialExecutor serialExecutor;
+    private final Config config;
+    private final OutputStream out;
+    private final PipedInputStream output;
+    private final Set<Closeable> toClose = new LinkedHashSet<>();
 
-  public LogWatchCallback(OutputStream out, Executor executor) {
-    this.out = out;
-    if (out != null) {
-      outChannel = Channels.newChannel(out);
+    private final AtomicBoolean started = new AtomicBoolean(false);
+    private final ArrayBlockingQueue<Object> queue = new ArrayBlockingQueue<>(1);
+    private final ExecutorService executorService = Executors.newSingleThreadExecutor();
+    private final AtomicBoolean closed = new AtomicBoolean(false);
+
+    private InputStreamPumper pumper;
+
+    @Deprecated
+    public LogWatchCallback(OutputStream out) {
+        this(new Config(), out);
     }
-    this.serialExecutor = new SerialExecutor(executor);
-  }
 
-  @Override
-  public void close() {
-    cleanUp();
-  }
-
-  private void cleanUp() {
-    if (!closed.compareAndSet(false, true)) {
-      return;
-    }
-    asyncBody.ifPresent(AsyncBody::cancel);
-    serialExecutor.shutdownNow();
-  }
-
-  public LogWatchCallback callAndWait(HttpClient client, URL url) {
-    HttpRequest request = client.newHttpRequestBuilder().url(url).build();
-    HttpClient clone = client.newBuilder().readTimeout(0, TimeUnit.MILLISECONDS).build();
-
+  public LogWatchCallback(Config config, OutputStream out) {
+    this.config = config;
     if (out == null) {
-      // we can pass the input stream directly to the consumer
-      clone.sendAsync(request, InputStream.class).whenComplete((r, e) -> {
-        if (e != null) {
-          onFailure(e);
-        }
-        if (r != null) {
-          this.output = r.body();
-        }
-      }).join();
+      this.out = new PipedOutputStream();
+      this.output = new PipedInputStream();
+      toClose.add(this.out);
+      toClose.add(this.output);
     } else {
-      // we need to write the bytes to the given output
-      // we don't know if the write will be blocking, so hand it off to another thread
-      clone.consumeBytes(request, (buffers, a) -> CompletableFuture.runAsync(() -> {
-        for (ByteBuffer byteBuffer : buffers) {
-          try {
-            outChannel.write(byteBuffer);
-          } catch (IOException e1) {
-            throw KubernetesClientException.launderThrowable(e1);
-          }
-        }
-      }, serialExecutor).whenComplete((v, t) -> {
-        if (t != null) {
-          a.cancel();
-          onFailure(t);
-        } else if (!closed.get()) {
-          a.consume();
-        } else {
-          a.cancel();
-        }
-      })).whenComplete((a, e) -> {
-        if (e != null) {
-          onFailure(e);
-        }
-        if (a != null) {
-          asyncBody = Optional.of(a.body());
-          a.body().consume();
-          a.body().done().whenComplete((v, t) -> {
-            if (t != null) {
-              onFailure(t);
-            } else {
-              cleanUp();
-            }
-          });
-        }
-      });
+      this.out = out;
+      this.output = null;
     }
 
-    return this;
+    //We need to connect the pipe here, because onResponse might not be called in time (if log is empty)
+    //This will cause a `Pipe not connected` exception for everyone that tries to read. By always opening
+    //the pipe the user will get a ready to use inputstream, which will block until there is actually something to read.
+    if (this.out instanceof PipedOutputStream && this.output != null) {
+      try {
+        this.output.connect((PipedOutputStream) this.out);
+      } catch (IOException e) {
+        throw KubernetesClientException.launderThrowable(e);
+      }
+    }
   }
 
-  @Override
-  public InputStream getOutput() {
-    return output;
-  }
-
-  public void onFailure(Throwable u) {
-    //If we have closed the watch ignore everything
-    if (closed.get()) {
-      return;
+    @Override
+    public void close() {
+        cleanUp();
     }
 
-    LOGGER.error("Log Callback Failure.", u);
-    cleanUp();
-  }
+    /**
+     * Performs the cleanup tasks:
+     * 1. closes the InputStream pumper
+     * 2. closes all internally managed closeables (piped streams).
+     *
+     * The order of these tasks can't change or its likely that the pumper will through errors,
+     * if the stream it uses closes before the pumper it self.
+     */
+    private void cleanUp() {
+      try {
+        if (!closed.compareAndSet(false, true)) {
+          return;
+        }
 
+        closeQuietly(pumper);
+        shutdownExecutorService(executorService);
+      } finally {
+        closeQuietly(toClose);
+      }
+    }
+
+    public void waitUntilReady() {
+      if (!Utils.waitUntilReady(queue, config.getRequestTimeout(), TimeUnit.MILLISECONDS)) {
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.warn("Log watch request has not been opened within: " + config.getRequestTimeout() + " millis.");
+        }
+      }
+    }
+
+    public InputStream getOutput() {
+        return output;
+    }
+
+    @Override
+    public void onFailure(Call call, IOException ioe) {
+        //If we have closed the watch ignore everything
+        if (closed.get())  {
+            return;
+        }
+
+        LOGGER.error("Log Callback Failure.", ioe);
+        cleanUp();
+        //We only need to queue startup failures.
+        if (!started.get()) {
+            queue.add(ioe);
+        }
+    }
+
+    @Override
+    public void onResponse(Call call, final Response response) throws IOException {
+       pumper = new BlockingInputStreamPumper(response.body().byteStream(), input -> {
+           try {
+               out.write(input);
+           } catch (IOException e) {
+               throw KubernetesClientException.launderThrowable(e);
+           }
+       }, () -> {
+         cleanUp();
+         response.close();
+       });
+
+      if (!executorService.isShutdown()) {
+        executorService.submit(pumper);
+        started.set(true);
+        queue.add(true);
+      }
+
+    }
 }

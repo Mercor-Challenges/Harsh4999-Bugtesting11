@@ -19,10 +19,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import io.fabric8.crd.generator.AbstractJsonSchema;
 import io.fabric8.kubernetes.api.model.apiextensions.v1.JSONSchemaProps;
 import io.fabric8.kubernetes.api.model.apiextensions.v1.JSONSchemaPropsBuilder;
-import io.sundr.model.Property;
-import io.sundr.model.TypeDef;
-import io.sundr.model.TypeRef;
-
+import io.sundr.codegen.model.Property;
+import io.sundr.codegen.model.TypeDef;
+import io.sundr.codegen.model.TypeRef;
 import java.util.List;
 
 public class JsonSchema extends AbstractJsonSchema<JSONSchemaProps, JSONSchemaPropsBuilder> {
@@ -30,11 +29,11 @@ public class JsonSchema extends AbstractJsonSchema<JSONSchemaProps, JSONSchemaPr
   private static final JsonSchema instance = new JsonSchema();
 
   private static final JSONSchemaProps JSON_SCHEMA_INT_OR_STRING = new JSONSchemaPropsBuilder()
-      .withXKubernetesIntOrString(true)
-      .withAnyOf(
-          new JSONSchemaPropsBuilder().withType("integer").build(),
-          new JSONSchemaPropsBuilder().withType("string").build())
-      .build();
+    .withXKubernetesIntOrString(true)
+    .withAnyOf(
+      new JSONSchemaPropsBuilder().withType("integer").build(),
+      new JSONSchemaPropsBuilder().withType("string").build())
+    .build();
 
   /**
    * Creates the JSON schema for the particular {@link TypeDef}.
@@ -49,63 +48,32 @@ public class JsonSchema extends AbstractJsonSchema<JSONSchemaProps, JSONSchemaPr
 
   @Override
   public JSONSchemaPropsBuilder newBuilder() {
-    return newBuilder("object");
-  }
-
-  @Override
-  public JSONSchemaPropsBuilder newBuilder(String type) {
     final JSONSchemaPropsBuilder builder = new JSONSchemaPropsBuilder();
-    builder.withType(type);
+    builder.withType("object");
     return builder;
   }
 
   @Override
   public void addProperty(Property property, JSONSchemaPropsBuilder builder,
-      JSONSchemaProps schema, SchemaPropsOptions options) {
+    JSONSchemaProps schema) {
     if (schema != null) {
-      options.getMin().ifPresent(schema::setMinimum);
-      options.getMax().ifPresent(schema::setMaximum);
-      options.getPattern().ifPresent(schema::setPattern);
-
-      if (options.isNullable()) {
-        schema.setNullable(true);
-      }
-
-      if (options.isPreserveUnknownFields()) {
-        schema.setXKubernetesPreserveUnknownFields(true);
-      }
-
       builder.addToProperties(property.getName(), schema);
     }
   }
 
   @Override
-  public JSONSchemaProps build(JSONSchemaPropsBuilder builder, List<String> required, boolean preserveUnknownFields) {
-    builder = builder.withRequired(required);
-    if (preserveUnknownFields) {
-      builder.withXKubernetesPreserveUnknownFields(preserveUnknownFields);
-    }
-    return builder.build();
+  public JSONSchemaProps build(JSONSchemaPropsBuilder builder, List<String> required) {
+    return builder.withRequired(required).build();
   }
 
   @Override
-  protected JSONSchemaProps arrayLikeProperty(JSONSchemaProps schema) {
+  protected JSONSchemaProps collectionProperty(JSONSchemaProps schema) {
     return new JSONSchemaPropsBuilder()
-        .withType("array")
-        .withNewItems()
-        .withSchema(schema)
-        .and()
-        .build();
-  }
-
-  @Override
-  protected JSONSchemaProps mapLikeProperty(JSONSchemaProps schema) {
-    return new JSONSchemaPropsBuilder()
-        .withType("object")
-        .withNewAdditionalProperties()
-        .withSchema(schema)
-        .endAdditionalProperties()
-        .build();
+      .withType("array")
+      .withNewItems()
+      .withSchema(schema)
+      .and()
+      .build();
   }
 
   @Override
@@ -121,12 +89,5 @@ public class JsonSchema extends AbstractJsonSchema<JSONSchemaProps, JSONSchemaPr
   @Override
   protected JSONSchemaProps enumProperty(JsonNode... enumValues) {
     return new JSONSchemaPropsBuilder().withType("string").withEnum(enumValues).build();
-  }
-
-  @Override
-  protected JSONSchemaProps addDescription(JSONSchemaProps schema, String description) {
-    return new JSONSchemaPropsBuilder(schema)
-        .withDescription(description)
-        .build();
   }
 }

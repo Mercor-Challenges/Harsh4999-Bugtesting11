@@ -20,54 +20,43 @@ import com.sun.codemodel.JType;
 import org.jsonschema2pojo.GenerationConfig;
 import org.jsonschema2pojo.util.NameHelper;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Renames reserved fields name to predefined values (PROTECTED_WORD_MAP)
- * <p>
  * Overrides default provided NameHelper to overcome getter/setter naming convention mismatch between Sundr.io
  * and jsonschema2pojo.
- * <p>
- * There are issues with properties such as x-kubernetes-foo or xKubernetesFoo, sundrio expects a getter as
- * getXKubernetesFoo while jsonschema2pojo produces getxKubernetesFoo.
+ *
+ * There are issues with properties such as x-kubernetes-foo, sundrio expects a getter as getXKubernetesFoo while
+ * jsonschema2pojo produces getxKubernetesFoo.
  */
 public class Fabric8NameHelper extends NameHelper {
 
-  private static final Map<String, String> PROTECTED_WORD_MAP = new HashMap<>();
-  static {
-    PROTECTED_WORD_MAP.put("class", "className");
-  }
-  private static final Pattern SINGLE_LETTER_PREFIX_WORD_PROPERTY = Pattern.compile("^[a-z]((-[a-zA-Z])|[A-Z])(.*)$");
+  private static final Pattern SINGLE_LETTER_DASH_NAME = Pattern.compile("^([a-z])-([a-zA-Z])(.*)$");
 
   public Fabric8NameHelper(GenerationConfig generationConfig) {
     super(generationConfig);
   }
 
   @Override
-  public String getFieldName(String propertyName, JsonNode node) {
-    final String fieldName = super.getFieldName(propertyName, node);
-    return PROTECTED_WORD_MAP.getOrDefault(fieldName, fieldName);
-  }
-
-  @Override
   public String getGetterName(String propertyName, JType type, JsonNode node) {
-    return correctCamelCaseWithPrefix(propertyName, super.getGetterName(propertyName, type, node));
+    final Matcher m = SINGLE_LETTER_DASH_NAME.matcher(propertyName);
+    final String getterName = super.getGetterName(propertyName, type, node);
+    if (m.matches()) {
+      // https://github.com/joelittlejohn/jsonschema2pojo/issues/1028 + Sundr.io expecting the opposite (getXKubernetes... instead of getxKubernetes)
+      return "get" + getterName.substring(3, 4).toUpperCase() + getterName.substring(4);
+    }
+    return getterName;
   }
 
   @Override
   public String getSetterName(String propertyName, JsonNode node) {
-    return correctCamelCaseWithPrefix(propertyName, super.getSetterName(propertyName, node));
-  }
-
-  static String correctCamelCaseWithPrefix(String propertyName, String functionName) {
-    final Matcher m = SINGLE_LETTER_PREFIX_WORD_PROPERTY.matcher(propertyName);
+    final Matcher m = SINGLE_LETTER_DASH_NAME.matcher(propertyName);
+    final String setterName = super.getSetterName(propertyName, node);
     if (m.matches()) {
       // https://github.com/joelittlejohn/jsonschema2pojo/issues/1028 + Sundr.io expecting the opposite (setXKubernetes... instead of setxKubernetes)
-      return functionName.substring(0, 3) + functionName.substring(3, 4).toUpperCase() + functionName.substring(4);
+      return "set" + setterName.substring(3, 4).toUpperCase() + setterName.substring(4);
     }
-    return functionName;
+    return setterName;
   }
 }

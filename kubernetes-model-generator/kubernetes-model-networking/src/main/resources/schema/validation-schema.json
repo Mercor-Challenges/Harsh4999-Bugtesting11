@@ -85,36 +85,6 @@
         "io.fabric8.kubernetes.api.model.KubernetesResource"
       ]
     },
-    "kubernetes_apimachinery_Condition": {
-      "type": "object",
-      "properties": {
-        "lastTransitionTime": {
-          "$ref": "#/definitions/kubernetes_apimachinery_Time",
-          "existingJavaType": "String"
-        },
-        "message": {
-          "type": "string"
-        },
-        "observedGeneration": {
-          "type": "integer",
-          "existingJavaType": "Long"
-        },
-        "reason": {
-          "type": "string"
-        },
-        "status": {
-          "type": "string"
-        },
-        "type": {
-          "type": "string"
-        }
-      },
-      "additionalProperties": true,
-      "existingJavaType": "io.fabric8.kubernetes.api.model.Condition",
-      "javaInterfaces": [
-        "io.fabric8.kubernetes.api.model.KubernetesResource"
-      ]
-    },
     "kubernetes_apimachinery_CreateOptions": {
       "type": "object",
       "properties": {
@@ -131,9 +101,6 @@
           }
         },
         "fieldManager": {
-          "type": "string"
-        },
-        "fieldValidation": {
           "type": "string"
         },
         "kind": {
@@ -296,7 +263,7 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/kubernetes_apimachinery_pkg_runtime_RawExtension",
-            "existingJavaType": "io.fabric8.kubernetes.api.model.KubernetesResource"
+            "existingJavaType": "io.fabric8.kubernetes.api.model.HasMetadata"
           }
         },
         "kind": {
@@ -310,10 +277,10 @@
         }
       },
       "additionalProperties": true,
-      "existingJavaType": "io.fabric8.kubernetes.api.model.KubernetesList",
+      "existingJavaType": "io.fabric8.kubernetes.api.model.BaseKubernetesList",
       "javaInterfaces": [
         "io.fabric8.kubernetes.api.model.KubernetesResource",
-        "io.fabric8.kubernetes.api.model.KubernetesResourceList\u003cio.fabric8.kubernetes.api.model.KubernetesResource\u003e"
+        "io.fabric8.kubernetes.api.model.KubernetesResourceList\u003cio.fabric8.kubernetes.api.model.HasMetadata\u003e"
       ]
     },
     "kubernetes_apimachinery_ListMeta": {
@@ -407,9 +374,6 @@
         "operation": {
           "type": "string"
         },
-        "subresource": {
-          "type": "string"
-        },
         "time": {
           "$ref": "#/definitions/kubernetes_apimachinery_Time",
           "existingJavaType": "String"
@@ -430,6 +394,9 @@
             "type": "string"
           },
           "existingJavaType": "java.util.Map\u003cString, String\u003e"
+        },
+        "clusterName": {
+          "type": "string"
         },
         "creationTimestamp": {
           "$ref": "#/definitions/kubernetes_apimachinery_Time",
@@ -556,9 +523,6 @@
           }
         },
         "fieldManager": {
-          "type": "string"
-        },
-        "fieldValidation": {
           "type": "string"
         },
         "force": {
@@ -763,9 +727,6 @@
         "fieldManager": {
           "type": "string"
         },
-        "fieldValidation": {
-          "type": "string"
-        },
         "kind": {
           "type": "string",
           "default": "UpdateOptions",
@@ -778,10 +739,18 @@
         "io.fabric8.kubernetes.api.model.KubernetesResource"
       ]
     },
+    "kubernetes_apimachinery_pkg_runtime_ImageRawExtension": {
+      "type": "object",
+      "additionalProperties": true,
+      "javaType": "io.fabric8.kubernetes.api.model.runtime.RawExtension",
+      "javaInterfaces": [
+        "io.fabric8.kubernetes.api.model.KubernetesResource"
+      ]
+    },
     "kubernetes_apimachinery_pkg_runtime_RawExtension": {
       "type": "object",
       "additionalProperties": true,
-      "existingJavaType": "io.fabric8.kubernetes.api.model.KubernetesResource",
+      "existingJavaType": "io.fabric8.kubernetes.api.model.HasMetadata",
       "javaInterfaces": [
         "io.fabric8.kubernetes.api.model.KubernetesResource"
       ]
@@ -881,72 +850,6 @@
       },
       "additionalProperties": true,
       "existingJavaType": "io.fabric8.kubernetes.api.model.LoadBalancerStatus",
-      "javaInterfaces": [
-        "io.fabric8.kubernetes.api.model.KubernetesResource"
-      ]
-    },
-    "kubernetes_core_NodeSelector": {
-      "type": "object",
-      "properties": {
-        "nodeSelectorTerms": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/kubernetes_core_NodeSelectorTerm",
-            "existingJavaType": "io.fabric8.kubernetes.api.model.NodeSelectorTerm"
-          }
-        }
-      },
-      "additionalProperties": true,
-      "existingJavaType": "io.fabric8.kubernetes.api.model.NodeSelector",
-      "javaInterfaces": [
-        "io.fabric8.kubernetes.api.model.KubernetesResource"
-      ]
-    },
-    "kubernetes_core_NodeSelectorRequirement": {
-      "type": "object",
-      "properties": {
-        "key": {
-          "type": "string"
-        },
-        "operator": {
-          "type": "string"
-        },
-        "values": {
-          "type": "array",
-          "javaOmitEmpty": true,
-          "items": {
-            "type": "string"
-          }
-        }
-      },
-      "additionalProperties": true,
-      "existingJavaType": "io.fabric8.kubernetes.api.model.NodeSelectorRequirement",
-      "javaInterfaces": [
-        "io.fabric8.kubernetes.api.model.KubernetesResource"
-      ]
-    },
-    "kubernetes_core_NodeSelectorTerm": {
-      "type": "object",
-      "properties": {
-        "matchExpressions": {
-          "type": "array",
-          "javaOmitEmpty": true,
-          "items": {
-            "$ref": "#/definitions/kubernetes_core_NodeSelectorRequirement",
-            "existingJavaType": "io.fabric8.kubernetes.api.model.NodeSelectorRequirement"
-          }
-        },
-        "matchFields": {
-          "type": "array",
-          "javaOmitEmpty": true,
-          "items": {
-            "$ref": "#/definitions/kubernetes_core_NodeSelectorRequirement",
-            "existingJavaType": "io.fabric8.kubernetes.api.model.NodeSelectorRequirement"
-          }
-        }
-      },
-      "additionalProperties": true,
-      "existingJavaType": "io.fabric8.kubernetes.api.model.NodeSelectorTerm",
       "javaInterfaces": [
         "io.fabric8.kubernetes.api.model.KubernetesResource"
       ]
@@ -1397,10 +1300,6 @@
         "spec": {
           "$ref": "#/definitions/kubernetes_networking_v1_NetworkPolicySpec",
           "existingJavaType": "io.fabric8.kubernetes.api.model.networking.v1.NetworkPolicySpec"
-        },
-        "status": {
-          "$ref": "#/definitions/kubernetes_networking_v1_NetworkPolicyStatus",
-          "existingJavaType": "io.fabric8.kubernetes.api.model.networking.v1.NetworkPolicyStatus"
         }
       },
       "additionalProperties": true,
@@ -1573,24 +1472,6 @@
         "io.fabric8.kubernetes.api.model.KubernetesResource"
       ]
     },
-    "kubernetes_networking_v1_NetworkPolicyStatus": {
-      "type": "object",
-      "properties": {
-        "conditions": {
-          "type": "array",
-          "javaOmitEmpty": true,
-          "items": {
-            "$ref": "#/definitions/kubernetes_apimachinery_Condition",
-            "existingJavaType": "io.fabric8.kubernetes.api.model.Condition"
-          }
-        }
-      },
-      "additionalProperties": true,
-      "javaType": "io.fabric8.kubernetes.api.model.networking.v1.NetworkPolicyStatus",
-      "javaInterfaces": [
-        "io.fabric8.kubernetes.api.model.KubernetesResource"
-      ]
-    },
     "kubernetes_networking_v1_ServiceBackendPort": {
       "type": "object",
       "properties": {
@@ -1603,90 +1484,6 @@
       },
       "additionalProperties": true,
       "javaType": "io.fabric8.kubernetes.api.model.networking.v1.ServiceBackendPort",
-      "javaInterfaces": [
-        "io.fabric8.kubernetes.api.model.KubernetesResource"
-      ]
-    },
-    "kubernetes_networking_v1alpha1_ClusterCIDR": {
-      "type": "object",
-      "properties": {
-        "apiVersion": {
-          "type": "string",
-          "default": "networking.k8s.io/v1alpha1",
-          "required": true
-        },
-        "kind": {
-          "type": "string",
-          "default": "ClusterCIDR",
-          "required": true
-        },
-        "metadata": {
-          "$ref": "#/definitions/kubernetes_apimachinery_ObjectMeta",
-          "existingJavaType": "io.fabric8.kubernetes.api.model.ObjectMeta"
-        },
-        "spec": {
-          "$ref": "#/definitions/kubernetes_networking_v1alpha1_ClusterCIDRSpec",
-          "existingJavaType": "io.fabric8.kubernetes.api.model.networking.v1alpha1.ClusterCIDRSpec"
-        }
-      },
-      "additionalProperties": true,
-      "javaType": "io.fabric8.kubernetes.api.model.networking.v1alpha1.ClusterCIDR",
-      "javaInterfaces": [
-        "io.fabric8.kubernetes.api.model.HasMetadata",
-        "io.fabric8.kubernetes.api.model.Namespaced"
-      ]
-    },
-    "kubernetes_networking_v1alpha1_ClusterCIDRList": {
-      "type": "object",
-      "properties": {
-        "apiVersion": {
-          "type": "string",
-          "default": "networking.k8s.io/v1alpha1",
-          "required": true
-        },
-        "items": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/kubernetes_networking_v1alpha1_ClusterCIDR",
-            "existingJavaType": "io.fabric8.kubernetes.api.model.networking.v1alpha1.ClusterCIDR"
-          }
-        },
-        "kind": {
-          "type": "string",
-          "default": "ClusterCIDRList",
-          "required": true
-        },
-        "metadata": {
-          "$ref": "#/definitions/kubernetes_apimachinery_ListMeta",
-          "existingJavaType": "io.fabric8.kubernetes.api.model.ListMeta"
-        }
-      },
-      "additionalProperties": true,
-      "javaType": "io.fabric8.kubernetes.api.model.networking.v1alpha1.ClusterCIDRList",
-      "javaInterfaces": [
-        "io.fabric8.kubernetes.api.model.KubernetesResource",
-        "io.fabric8.kubernetes.api.model.KubernetesResourceList\u003cio.fabric8.kubernetes.api.model.networking.v1alpha1.ClusterCIDR\u003e"
-      ]
-    },
-    "kubernetes_networking_v1alpha1_ClusterCIDRSpec": {
-      "type": "object",
-      "properties": {
-        "ipv4": {
-          "type": "string"
-        },
-        "ipv6": {
-          "type": "string"
-        },
-        "nodeSelector": {
-          "$ref": "#/definitions/kubernetes_core_NodeSelector",
-          "existingJavaType": "io.fabric8.kubernetes.api.model.NodeSelector"
-        },
-        "perNodeHostBits": {
-          "type": "integer"
-        }
-      },
-      "additionalProperties": true,
-      "javaType": "io.fabric8.kubernetes.api.model.networking.v1alpha1.ClusterCIDRSpec",
       "javaInterfaces": [
         "io.fabric8.kubernetes.api.model.KubernetesResource"
       ]
@@ -2027,7 +1824,7 @@
     },
     "BaseKubernetesList": {
       "$ref": "#/definitions/kubernetes_apimachinery_List",
-      "existingJavaType": "io.fabric8.kubernetes.api.model.KubernetesList"
+      "existingJavaType": "io.fabric8.kubernetes.api.model.BaseKubernetesList"
     },
     "CreateOptions": {
       "$ref": "#/definitions/kubernetes_apimachinery_CreateOptions",
@@ -2113,14 +1910,6 @@
       "$ref": "#/definitions/kubernetes_apimachinery_UpdateOptions",
       "existingJavaType": "io.fabric8.kubernetes.api.model.UpdateOptions"
     },
-    "V1Alpha1ClusterCIDR": {
-      "$ref": "#/definitions/kubernetes_networking_v1alpha1_ClusterCIDR",
-      "existingJavaType": "io.fabric8.kubernetes.api.model.networking.v1alpha1.ClusterCIDR"
-    },
-    "V1Alpha1ClusterCIDRList": {
-      "$ref": "#/definitions/kubernetes_networking_v1alpha1_ClusterCIDRList",
-      "existingJavaType": "io.fabric8.kubernetes.api.model.networking.v1alpha1.ClusterCIDRList"
-    },
     "V1Ingress": {
       "$ref": "#/definitions/kubernetes_networking_v1_Ingress",
       "existingJavaType": "io.fabric8.kubernetes.api.model.networking.v1.Ingress"
@@ -2199,98 +1988,6 @@
       },
       "additionalProperties": true
     },
-    "clustercidr": {
-      "properties": {
-        "apiVersion": {
-          "type": "string",
-          "default": "networking.k8s.io/v1alpha1",
-          "required": true
-        },
-        "kind": {
-          "type": "string",
-          "default": "ClusterCIDR",
-          "required": true
-        },
-        "metadata": {
-          "$ref": "#/definitions/kubernetes_apimachinery_ObjectMeta",
-          "existingJavaType": "io.fabric8.kubernetes.api.model.ObjectMeta"
-        },
-        "spec": {
-          "$ref": "#/definitions/kubernetes_networking_v1alpha1_ClusterCIDRSpec",
-          "existingJavaType": "io.fabric8.kubernetes.api.model.networking.v1alpha1.ClusterCIDRSpec"
-        }
-      },
-      "additionalProperties": true
-    },
-    "clustercidrlist": {
-      "properties": {
-        "apiVersion": {
-          "type": "string",
-          "default": "networking.k8s.io/v1alpha1",
-          "required": true
-        },
-        "items": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/kubernetes_networking_v1alpha1_ClusterCIDR",
-            "existingJavaType": "io.fabric8.kubernetes.api.model.networking.v1alpha1.ClusterCIDR"
-          }
-        },
-        "kind": {
-          "type": "string",
-          "default": "ClusterCIDRList",
-          "required": true
-        },
-        "metadata": {
-          "$ref": "#/definitions/kubernetes_apimachinery_ListMeta",
-          "existingJavaType": "io.fabric8.kubernetes.api.model.ListMeta"
-        }
-      },
-      "additionalProperties": true
-    },
-    "clustercidrspec": {
-      "properties": {
-        "ipv4": {
-          "type": "string"
-        },
-        "ipv6": {
-          "type": "string"
-        },
-        "nodeSelector": {
-          "$ref": "#/definitions/kubernetes_core_NodeSelector",
-          "existingJavaType": "io.fabric8.kubernetes.api.model.NodeSelector"
-        },
-        "perNodeHostBits": {
-          "type": "integer"
-        }
-      },
-      "additionalProperties": true
-    },
-    "condition": {
-      "properties": {
-        "lastTransitionTime": {
-          "$ref": "#/definitions/kubernetes_apimachinery_Time",
-          "existingJavaType": "String"
-        },
-        "message": {
-          "type": "string"
-        },
-        "observedGeneration": {
-          "type": "integer",
-          "existingJavaType": "Long"
-        },
-        "reason": {
-          "type": "string"
-        },
-        "status": {
-          "type": "string"
-        },
-        "type": {
-          "type": "string"
-        }
-      },
-      "additionalProperties": true
-    },
     "createoptions": {
       "properties": {
         "apiVersion": {
@@ -2306,9 +2003,6 @@
           }
         },
         "fieldManager": {
-          "type": "string"
-        },
-        "fieldValidation": {
           "type": "string"
         },
         "kind": {
@@ -2407,11 +2101,14 @@
         "paths": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/kubernetes_networking_v1_HTTPIngressPath",
-            "existingJavaType": "io.fabric8.kubernetes.api.model.networking.v1.HTTPIngressPath"
+            "$ref": "#/definitions/kubernetes_networking_v1beta1_HTTPIngressPath",
+            "existingJavaType": "io.fabric8.kubernetes.api.model.networking.v1beta1.HTTPIngressPath"
           }
         }
       },
+      "additionalProperties": true
+    },
+    "imagerawextension": {
       "additionalProperties": true
     },
     "info": {
@@ -2450,7 +2147,7 @@
       "properties": {
         "apiVersion": {
           "type": "string",
-          "default": "networking.k8s.io/v1",
+          "default": "networking.k8s.io/v1beta1",
           "required": true
         },
         "kind": {
@@ -2463,12 +2160,12 @@
           "existingJavaType": "io.fabric8.kubernetes.api.model.ObjectMeta"
         },
         "spec": {
-          "$ref": "#/definitions/kubernetes_networking_v1_IngressSpec",
-          "existingJavaType": "io.fabric8.kubernetes.api.model.networking.v1.IngressSpec"
+          "$ref": "#/definitions/kubernetes_networking_v1beta1_IngressSpec",
+          "existingJavaType": "io.fabric8.kubernetes.api.model.networking.v1beta1.IngressSpec"
         },
         "status": {
-          "$ref": "#/definitions/kubernetes_networking_v1_IngressStatus",
-          "existingJavaType": "io.fabric8.kubernetes.api.model.networking.v1.IngressStatus"
+          "$ref": "#/definitions/kubernetes_networking_v1beta1_IngressStatus",
+          "existingJavaType": "io.fabric8.kubernetes.api.model.networking.v1beta1.IngressStatus"
         }
       },
       "additionalProperties": true
@@ -2561,8 +2258,8 @@
           "type": "string"
         },
         "parameters": {
-          "$ref": "#/definitions/kubernetes_networking_v1beta1_IngressClassParametersReference",
-          "existingJavaType": "io.fabric8.kubernetes.api.model.networking.v1beta1.IngressClassParametersReference"
+          "$ref": "#/definitions/kubernetes_networking_v1_IngressClassParametersReference",
+          "existingJavaType": "io.fabric8.kubernetes.api.model.networking.v1.IngressClassParametersReference"
         }
       },
       "additionalProperties": true
@@ -2599,8 +2296,8 @@
           "type": "string"
         },
         "http": {
-          "$ref": "#/definitions/kubernetes_networking_v1beta1_HTTPIngressRuleValue",
-          "existingJavaType": "io.fabric8.kubernetes.api.model.networking.v1beta1.HTTPIngressRuleValue"
+          "$ref": "#/definitions/kubernetes_networking_v1_HTTPIngressRuleValue",
+          "existingJavaType": "io.fabric8.kubernetes.api.model.networking.v1.HTTPIngressRuleValue"
         }
       },
       "additionalProperties": true
@@ -2608,8 +2305,8 @@
     "ingressrulevalue": {
       "properties": {
         "http": {
-          "$ref": "#/definitions/kubernetes_networking_v1_HTTPIngressRuleValue",
-          "existingJavaType": "io.fabric8.kubernetes.api.model.networking.v1.HTTPIngressRuleValue"
+          "$ref": "#/definitions/kubernetes_networking_v1beta1_HTTPIngressRuleValue",
+          "existingJavaType": "io.fabric8.kubernetes.api.model.networking.v1beta1.HTTPIngressRuleValue"
         }
       },
       "additionalProperties": true
@@ -2628,9 +2325,9 @@
     },
     "ingressspec": {
       "properties": {
-        "defaultBackend": {
-          "$ref": "#/definitions/kubernetes_networking_v1_IngressBackend",
-          "existingJavaType": "io.fabric8.kubernetes.api.model.networking.v1.IngressBackend"
+        "backend": {
+          "$ref": "#/definitions/kubernetes_networking_v1beta1_IngressBackend",
+          "existingJavaType": "io.fabric8.kubernetes.api.model.networking.v1beta1.IngressBackend"
         },
         "ingressClassName": {
           "type": "string"
@@ -2639,16 +2336,16 @@
           "type": "array",
           "javaOmitEmpty": true,
           "items": {
-            "$ref": "#/definitions/kubernetes_networking_v1_IngressRule",
-            "existingJavaType": "io.fabric8.kubernetes.api.model.networking.v1.IngressRule"
+            "$ref": "#/definitions/kubernetes_networking_v1beta1_IngressRule",
+            "existingJavaType": "io.fabric8.kubernetes.api.model.networking.v1beta1.IngressRule"
           }
         },
         "tls": {
           "type": "array",
           "javaOmitEmpty": true,
           "items": {
-            "$ref": "#/definitions/kubernetes_networking_v1_IngressTLS",
-            "existingJavaType": "io.fabric8.kubernetes.api.model.networking.v1.IngressTLS"
+            "$ref": "#/definitions/kubernetes_networking_v1beta1_IngressTLS",
+            "existingJavaType": "io.fabric8.kubernetes.api.model.networking.v1beta1.IngressTLS"
           }
         }
       },
@@ -2757,7 +2454,7 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/kubernetes_apimachinery_pkg_runtime_RawExtension",
-            "existingJavaType": "io.fabric8.kubernetes.api.model.KubernetesResource"
+            "existingJavaType": "io.fabric8.kubernetes.api.model.HasMetadata"
           }
         },
         "kind": {
@@ -2884,9 +2581,6 @@
         "operation": {
           "type": "string"
         },
-        "subresource": {
-          "type": "string"
-        },
         "time": {
           "$ref": "#/definitions/kubernetes_apimachinery_Time",
           "existingJavaType": "String"
@@ -2913,10 +2607,6 @@
         "spec": {
           "$ref": "#/definitions/kubernetes_networking_v1_NetworkPolicySpec",
           "existingJavaType": "io.fabric8.kubernetes.api.model.networking.v1.NetworkPolicySpec"
-        },
-        "status": {
-          "$ref": "#/definitions/kubernetes_networking_v1_NetworkPolicyStatus",
-          "existingJavaType": "io.fabric8.kubernetes.api.model.networking.v1.NetworkPolicyStatus"
         }
       },
       "additionalProperties": true
@@ -3053,70 +2743,6 @@
       },
       "additionalProperties": true
     },
-    "networkpolicystatus": {
-      "properties": {
-        "conditions": {
-          "type": "array",
-          "javaOmitEmpty": true,
-          "items": {
-            "$ref": "#/definitions/kubernetes_apimachinery_Condition",
-            "existingJavaType": "io.fabric8.kubernetes.api.model.Condition"
-          }
-        }
-      },
-      "additionalProperties": true
-    },
-    "nodeselector": {
-      "properties": {
-        "nodeSelectorTerms": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/kubernetes_core_NodeSelectorTerm",
-            "existingJavaType": "io.fabric8.kubernetes.api.model.NodeSelectorTerm"
-          }
-        }
-      },
-      "additionalProperties": true
-    },
-    "nodeselectorrequirement": {
-      "properties": {
-        "key": {
-          "type": "string"
-        },
-        "operator": {
-          "type": "string"
-        },
-        "values": {
-          "type": "array",
-          "javaOmitEmpty": true,
-          "items": {
-            "type": "string"
-          }
-        }
-      },
-      "additionalProperties": true
-    },
-    "nodeselectorterm": {
-      "properties": {
-        "matchExpressions": {
-          "type": "array",
-          "javaOmitEmpty": true,
-          "items": {
-            "$ref": "#/definitions/kubernetes_core_NodeSelectorRequirement",
-            "existingJavaType": "io.fabric8.kubernetes.api.model.NodeSelectorRequirement"
-          }
-        },
-        "matchFields": {
-          "type": "array",
-          "javaOmitEmpty": true,
-          "items": {
-            "$ref": "#/definitions/kubernetes_core_NodeSelectorRequirement",
-            "existingJavaType": "io.fabric8.kubernetes.api.model.NodeSelectorRequirement"
-          }
-        }
-      },
-      "additionalProperties": true
-    },
     "objectmeta": {
       "properties": {
         "annotations": {
@@ -3125,6 +2751,9 @@
             "type": "string"
           },
           "existingJavaType": "java.util.Map\u003cString, String\u003e"
+        },
+        "clusterName": {
+          "type": "string"
         },
         "creationTimestamp": {
           "$ref": "#/definitions/kubernetes_apimachinery_Time",
@@ -3262,9 +2891,6 @@
           }
         },
         "fieldManager": {
-          "type": "string"
-        },
-        "fieldValidation": {
           "type": "string"
         },
         "force": {
@@ -3472,9 +3098,6 @@
           }
         },
         "fieldManager": {
-          "type": "string"
-        },
-        "fieldValidation": {
           "type": "string"
         },
         "kind": {

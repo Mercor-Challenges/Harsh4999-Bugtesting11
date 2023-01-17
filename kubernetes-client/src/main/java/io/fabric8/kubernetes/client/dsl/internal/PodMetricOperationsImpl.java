@@ -17,44 +17,50 @@ package io.fabric8.kubernetes.client.dsl.internal;
 
 import io.fabric8.kubernetes.api.model.metrics.v1beta1.PodMetrics;
 import io.fabric8.kubernetes.api.model.metrics.v1beta1.PodMetricsList;
-import io.fabric8.kubernetes.client.Client;
-import io.fabric8.kubernetes.client.dsl.PodMetricOperation;
+import io.fabric8.kubernetes.client.Config;
+import io.fabric8.kubernetes.client.KubernetesClientException;
+import io.fabric8.kubernetes.client.dsl.base.OperationContext;
+import io.fabric8.kubernetes.client.dsl.base.OperationSupport;
+import io.fabric8.kubernetes.client.utils.URLUtils;
+import io.fabric8.kubernetes.client.utils.Utils;
+import okhttp3.OkHttpClient;
 
-import java.util.Map;
+public class PodMetricOperationsImpl extends OperationSupport {
+  private static String METRIC_ENDPOINT_URL = "apis/metrics.k8s.io/v1beta1";
 
-public class PodMetricOperationsImpl extends MetricOperationsImpl<PodMetrics, PodMetricsList> implements PodMetricOperation {
-
-  public PodMetricOperationsImpl(Client client) {
-    // default to any namespace
-    this(HasMetadataOperationsImpl.defaultContext(client).withNamespace(null));
+  public PodMetricOperationsImpl(OkHttpClient client, Config config) {
+    super(new OperationContext().withOkhttpClient(client).withConfig(config));
   }
 
-  public PodMetricOperationsImpl(OperationContext context) {
-    super(context.withPlural("pods"), PodMetrics.class, PodMetricsList.class);
-  }
-
-  @Override
   public PodMetrics metrics(String namespace, String podName) {
-    return inNamespace(namespace).withName(podName).metric();
+    try {
+      Utils.checkNotNull(namespace, "Namespace not provided");
+      Utils.checkNotNull(podName, "Name not provided");
+
+      String resourceUrl = URLUtils.join(config.getMasterUrl(), METRIC_ENDPOINT_URL,
+        "namespaces", namespace, "pods", podName);
+      return handleMetric(resourceUrl, PodMetrics.class);
+    } catch(Exception e) {
+      throw KubernetesClientException.launderThrowable(e);
+    }
   }
 
-  @Override
+  public PodMetricsList metrics() {
+    try {
+      String resourceUrl = URLUtils.join(config.getMasterUrl(), METRIC_ENDPOINT_URL, "pods");
+      return handleMetric(resourceUrl, PodMetricsList.class);
+    } catch(Exception e) {
+      throw KubernetesClientException.launderThrowable(e);
+    }
+  }
+
   public PodMetricsList metrics(String namespace) {
-    return inNamespace(namespace).metrics();
-  }
-
-  @Override
-  public PodMetricOperationsImpl inNamespace(String namespace) {
-    return new PodMetricOperationsImpl(context.withNamespace(namespace));
-  }
-
-  @Override
-  public PodMetricOperation withName(String name) {
-    return new PodMetricOperationsImpl(context.withName(name));
-  }
-
-  @Override
-  public PodMetricOperation withLabels(Map<String, String> labels) {
-    return new PodMetricOperationsImpl(context.withLabels(labels));
+    try {
+      String resourceUrl = URLUtils.join(config.getMasterUrl(), METRIC_ENDPOINT_URL,
+        "namespaces", namespace, "pods");
+      return handleMetric(resourceUrl, PodMetricsList.class);
+    } catch(Exception e) {
+      throw KubernetesClientException.launderThrowable(e);
+    }
   }
 }

@@ -36,10 +36,6 @@ public class Generics {
    * @param type the type
    * @return the underlying class
    */
-  private Generics() {
-    throw new IllegalStateException("Utility class");
-  }
-
   public static Class<?> getClass(Type type) {
     if (type instanceof Class) {
       return (Class) type;
@@ -57,7 +53,7 @@ public class Generics {
       return null;
     }
   }
-
+  
   /**
    * Get the actual type arguments a child class has used to extend a generic base class.
    *
@@ -67,8 +63,8 @@ public class Generics {
    * @return a list of the raw classes for the actual type arguments
    */
   public static <T> List<Class> getTypeArguments(Class<T> baseClass,
-      Class<? extends T> childClass) {
-    Map<Type, Type> resolvedTypes = new LinkedHashMap<>();
+    Class<? extends T> childClass) {
+    Map<Type, Type> resolvedTypes = new LinkedHashMap<Type, Type>();
     Type type = childClass;
     // start walking up the inheritance hierarchy until we hit baseClass
     while (true) {
@@ -102,7 +98,7 @@ public class Generics {
     } else {
       actualTypeArguments = ((ParameterizedType) type).getActualTypeArguments();
     }
-    List<Class> typeArgumentsAsClasses = new ArrayList<>();
+    List<Class> typeArgumentsAsClasses = new ArrayList<Class>();
     // resolve types by chasing down type variables.
     for (Type baseType : actualTypeArguments) {
       while (resolvedTypes.containsKey(baseType)) {

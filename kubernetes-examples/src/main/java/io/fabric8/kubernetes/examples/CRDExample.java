@@ -15,14 +15,15 @@
  */
 package io.fabric8.kubernetes.examples;
 
+import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.ObjectMeta;
 import io.fabric8.kubernetes.api.model.RootPaths;
-import io.fabric8.kubernetes.api.model.apiextensions.v1.CustomResourceDefinition;
-import io.fabric8.kubernetes.api.model.apiextensions.v1.CustomResourceDefinitionList;
-import io.fabric8.kubernetes.api.model.apiextensions.v1.JSONSchemaPropsBuilder;
+import io.fabric8.kubernetes.api.model.apiextensions.v1beta1.CustomResourceDefinition;
+import io.fabric8.kubernetes.api.model.apiextensions.v1beta1.CustomResourceDefinitionList;
 import io.fabric8.kubernetes.client.CustomResource;
+import io.fabric8.kubernetes.client.CustomResourceList;
+import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClient;
-import io.fabric8.kubernetes.client.KubernetesClientBuilder;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.Watcher;
 import io.fabric8.kubernetes.client.WatcherException;
@@ -33,6 +34,7 @@ import io.fabric8.kubernetes.client.dsl.base.CustomResourceDefinitionContext;
 import io.fabric8.kubernetes.examples.crds.Dummy;
 import io.fabric8.kubernetes.examples.crds.DummyList;
 import io.fabric8.kubernetes.examples.crds.DummySpec;
+import io.fabric8.kubernetes.internal.KubernetesDeserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,7 +45,7 @@ public class CRDExample {
 
   private static final Logger logger = LoggerFactory.getLogger(CRDExample.class);
 
-  private static final boolean LOG_ROOT_PATHS = false;
+  private static boolean logRootPaths = false;
 
   /**
    * Example of Cluster and Namespaced scoped K8S Custom Resources.
@@ -62,7 +64,7 @@ public class CRDExample {
         namespace = args[0];
       }
     }
-    try (final KubernetesClient client = new KubernetesClientBuilder().build()) {
+    try (final KubernetesClient client = new DefaultKubernetesClient()) {
       if (resourceNamespaced) {
         if (namespace == null) {
           namespace = client.getNamespace();
@@ -77,7 +79,7 @@ public class CRDExample {
         System.out.println("Creating cluster scoped resource");
       }
 
-      if (LOG_ROOT_PATHS) {
+      if (logRootPaths) {
         RootPaths rootPaths = client.rootPaths();
         if (rootPaths != null) {
           List<String> paths = rootPaths.getPaths();
@@ -91,7 +93,7 @@ public class CRDExample {
         }
       }
 
-      CustomResourceDefinitionList crds = client.apiextensions().v1().customResourceDefinitions().list();
+      CustomResourceDefinitionList crds = client.apiextensions().v1beta1().customResourceDefinitions().list();
       List<CustomResourceDefinition> crdsItems = crds.getItems();
       System.out.println("Found " + crdsItems.size() + " CRD(s)");
       CustomResourceDefinition dummyCRD = null;
@@ -109,38 +111,19 @@ public class CRDExample {
       if (dummyCRD != null) {
         System.out.println("Found CRD: " + dummyCRD.getMetadata().getSelfLink());
       } else {
-        dummyCRD = CustomResourceDefinitionContext.v1CRDFromCustomResourceType(Dummy.class)
-            .editSpec()
-            .editVersion(0)
-            .withNewSchema()
-            .withNewOpenAPIV3Schema()
-            .withTitle("dummy")
-            .withType("object")
-            .addToRequired("spec")
-            .addToProperties("spec", new JSONSchemaPropsBuilder()
-                .withType("object")
-                .addToProperties("foo", new JSONSchemaPropsBuilder().withType("string").build())
-                .addToProperties("bar", new JSONSchemaPropsBuilder().withType("string").build())
-                .build())
-            .endOpenAPIV3Schema()
-            .endSchema()
-            .endVersion()
-            .endSpec()
-            .build();
-
-        client.apiextensions().v1().customResourceDefinitions().create(dummyCRD);
+        dummyCRD = CustomResourceDefinitionContext.v1beta1CRDFromCustomResourceType(Dummy.class).build();
+        client.apiextensions().v1beta1().customResourceDefinitions().create(dummyCRD);
         System.out.println("Created CRD " + dummyCRD.getMetadata().getName());
       }
 
-      // wait a beat for the endpoints to be ready
-      Thread.sleep(5000);
+      KubernetesDeserializer.registerCustomKind(HasMetadata.getApiVersion(Dummy.class), dummyCRD.getKind(), Dummy.class);
 
       // lets create a client for the CRD
-      NonNamespaceOperation<Dummy, DummyList, Resource<Dummy>> dummyClient = client.resources(Dummy.class, DummyList.class);
+      NonNamespaceOperation<Dummy, DummyList, Resource<Dummy>> dummyClient = client.customResources(Dummy.class, DummyList.class);
       if (resourceNamespaced) {
         dummyClient = ((MixedOperation<Dummy, DummyList, Resource<Dummy>>) dummyClient).inNamespace(namespace);
       }
-      DummyList dummyList = dummyClient.list();
+      CustomResourceList<Dummy> dummyList = dummyClient.list();
       List<Dummy> items = dummyList.getItems();
       System.out.println("  found " + items.size() + " dummies");
       for (Dummy item : items) {
@@ -171,7 +154,7 @@ public class CRDExample {
         public void eventReceived(Action action, Dummy resource) {
           System.out.println("==> " + action + " for " + resource);
           if (resource.getSpec() == null) {
-            logger.error("No Spec for resource {}", resource);
+            logger.error("No Spec for resource " + resource);
           }
         }
 

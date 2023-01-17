@@ -25,6 +25,7 @@ import io.fabric8.kubernetes.client.RequestConfigBuilder;
 import io.fabric8.kubernetes.client.server.mock.EnableKubernetesMockClient;
 import io.fabric8.kubernetes.client.server.mock.KubernetesMockServer;
 import okhttp3.mockwebserver.RecordedRequest;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.atomic.AtomicReference;
@@ -38,24 +39,27 @@ public class RequestConfigTest {
   KubernetesMockServer server;
   NamespacedKubernetesClient client;
 
+  @BeforeEach
+  void setUp(){ client = server.createClient(); }
+
   TestableOAuthTokenProvider tokenProvider = new TestableOAuthTokenProvider();
 
   @Test
   public void testList() throws InterruptedException {
-    server.expect().withPath("/api/v1/namespaces/test/pods/pod1").andReturn(200, new PodBuilder()
-        .withNewMetadata()
-        .withName("testPod")
-        .endMetadata()
-        .build()).always();
+   server.expect().withPath("/api/v1/namespaces/test/pods/pod1").andReturn(200, new PodBuilder()
+     .withNewMetadata()
+     .withName("testPod")
+     .endMetadata()
+     .build()).always();
 
     server.expect().withPath("/api/v1/namespaces/test/pods/pod2").andReturn(200, new PodBuilder()
-        .withNewMetadata()
-        .withName("testPod")
-        .endMetadata()
-        .build()).always();
+      .withNewMetadata()
+      .withName("testPod")
+      .endMetadata()
+      .build()).always();
 
-    Pod pod1 = client.withRequestConfig(new RequestConfigBuilder().withOauthToken("TOKEN").build())
-        .call(c -> c.pods().inNamespace("test").withName("pod1").get());
+
+    Pod pod1 = client.withRequestConfig(new RequestConfigBuilder().withOauthToken("TOKEN").build()).call(c -> c.pods().inNamespace("test").withName("pod1").get());
 
     //Let's check that request config actually works
     RecordedRequest request1 = server.takeRequest();
@@ -72,13 +76,13 @@ public class RequestConfigTest {
   @Test
   public void testOauthTokenSuppliedByProvider() throws InterruptedException {
     server.expect().withPath("/api/v1/namespaces/test/pods/podName").andReturn(200, new PodBuilder()
-        .withNewMetadata()
-        .withName("testPodX")
-        .endMetadata()
-        .build()).always();
+                   .withNewMetadata()
+                   .withName("testPodX")
+                   .endMetadata()
+                   .build()).always();
 
     RequestConfig requestConfig = new RequestConfigBuilder().withOauthTokenProvider(tokenProvider)
-        .build();
+                                                            .build();
 
     tokenProvider.updateToken("token1");
     sendRequest(requestConfig);
@@ -91,7 +95,7 @@ public class RequestConfigTest {
 
   private void sendRequest(RequestConfig requestConfig) {
     client.withRequestConfig(requestConfig)
-        .call(c -> c.pods().inNamespace("test").withName("podName").get());
+          .call(c -> c.pods().inNamespace("test").withName("podName").get());
   }
 
   private void assertAuthorizationHeader(String expectedValue) throws InterruptedException {
@@ -106,7 +110,7 @@ public class RequestConfigTest {
 
     @Override
     public String getToken() {
-      return token.get();
+        return token.get();
     }
 
     public void updateToken(String newToken) {

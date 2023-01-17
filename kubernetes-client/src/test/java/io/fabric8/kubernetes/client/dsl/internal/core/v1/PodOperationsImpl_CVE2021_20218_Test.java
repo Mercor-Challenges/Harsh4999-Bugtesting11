@@ -16,7 +16,6 @@
 package io.fabric8.kubernetes.client.dsl.internal.core.v1;
 
 import io.fabric8.kubernetes.client.KubernetesClientException;
-import io.fabric8.kubernetes.client.dsl.internal.OperationContext;
 import io.fabric8.kubernetes.client.dsl.internal.PodOperationContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,17 +38,17 @@ class PodOperationsImpl_CVE2021_20218_Test {
   }
 
   @Test
-  void testWithForgedTar(@TempDir Path targetDirParent) {
+  void testWithForgedTar(@TempDir Path targetDirParent) throws Exception {
     // Given
     final Path targetDir = targetDirParent.resolve("target");
-    final PodOperationsImpl poi = spy(new PodOperationsImpl(baseContext.withDir("/var/source-dir"), new OperationContext()));
+    final PodOperationsImpl poi = spy(new PodOperationsImpl(baseContext.withDir("/var/source-dir")));
     doReturn(PodOperationsImpl_CVE2021_20218_Test.class.getResourceAsStream("/2021_20218/tar-with-parent-traversal.tar"))
-        .when(poi).readTar("/var/source-dir");
+      .when(poi).readTar("/var/source-dir");
     // When
     final KubernetesClientException exception = assertThrows(KubernetesClientException.class, () -> poi.copy(targetDir));
     // Then
     assertThat(exception).getCause()
-        .hasMessage("Tar entry '../youve-been-hacked' has an invalid name");
+      .hasMessage("Tar entry '../youve-been-hacked' has an invalid name");
     assertThat(targetDirParent).isDirectoryNotContaining("glob:**/youve-been-hacked");
   }
 
@@ -57,15 +56,15 @@ class PodOperationsImpl_CVE2021_20218_Test {
   void testWithValidTar(@TempDir Path targetDirParent) throws Exception {
     // Given
     final Path targetDir = targetDirParent.resolve("target");
-    final PodOperationsImpl poi = spy(new PodOperationsImpl(baseContext.withDir("/var/source-dir"), new OperationContext()));
+    final PodOperationsImpl poi = spy(new PodOperationsImpl(baseContext.withDir("/var/source-dir")));
     doReturn(PodOperationsImpl_CVE2021_20218_Test.class.getResourceAsStream("/2021_20218/valid.tar"))
-        .when(poi).readTar("/var/source-dir");
+      .when(poi).readTar("/var/source-dir");
     // When
     final boolean result = poi.copy(targetDir);
     // Then
     assertThat(result).isTrue();
     assertThat(targetDir)
-        .isDirectoryContaining("glob:**/hello.txt")
-        .isDirectoryRecursivelyContaining("glob:**/very/nested/dir/answer.txt");
+      .isDirectoryContaining("glob:**/hello.txt")
+      .isDirectoryRecursivelyContaining("glob:**/very/nested/dir/answer.txt");
   }
 }

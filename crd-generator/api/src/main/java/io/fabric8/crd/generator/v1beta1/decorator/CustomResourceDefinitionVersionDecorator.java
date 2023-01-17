@@ -15,6 +15,8 @@
  */
 package io.fabric8.crd.generator.v1beta1.decorator;
 
+import static io.fabric8.crd.generator.utils.Metadata.getMetadata;
+
 import io.fabric8.crd.generator.decorator.Decorator;
 import io.fabric8.crd.generator.utils.Generics;
 import io.fabric8.kubernetes.api.builder.TypedVisitor;
@@ -22,13 +24,10 @@ import io.fabric8.kubernetes.api.builder.VisitableBuilder;
 import io.fabric8.kubernetes.api.model.ObjectMeta;
 import io.fabric8.kubernetes.api.model.apiextensions.v1beta1.CustomResourceDefinitionVersionBuilder;
 import io.fabric8.kubernetes.client.utils.Utils;
-
 import java.util.Optional;
 
-import static io.fabric8.crd.generator.utils.Metadata.getMetadata;
-
 public abstract class CustomResourceDefinitionVersionDecorator<T> extends
-    Decorator<VisitableBuilder> {
+  Decorator<VisitableBuilder> {
 
   protected static final String ANY = null;
 
@@ -43,14 +42,6 @@ public abstract class CustomResourceDefinitionVersionDecorator<T> extends
     this.version = version;
   }
 
-  public String getName() {
-    return name;
-  }
-
-  public String getVersion() {
-    return version;
-  }
-
   @Override
   public void visit(VisitableBuilder builder) {
     Optional<ObjectMeta> objectMeta = getMetadata(builder);
@@ -58,7 +49,7 @@ public abstract class CustomResourceDefinitionVersionDecorator<T> extends
       return;
     }
     if (Utils.isNullOrEmpty(name) || objectMeta.map(ObjectMeta::getName).filter(s -> s.equals(name))
-        .isPresent()) {
+      .isPresent()) {
       builder.accept(versionSelector);
     }
   }
@@ -66,7 +57,7 @@ public abstract class CustomResourceDefinitionVersionDecorator<T> extends
   public abstract void andThenVisit(T version);
 
   private class CustomResourceDefinitionVersionVisitor extends
-      TypedVisitor<CustomResourceDefinitionVersionBuilder> {
+    TypedVisitor<CustomResourceDefinitionVersionBuilder> {
 
     @Override
     public void visit(CustomResourceDefinitionVersionBuilder builder) {
@@ -85,22 +76,22 @@ public abstract class CustomResourceDefinitionVersionDecorator<T> extends
 
     public Class<T> getType() {
       return (Class) Generics
-          .getTypeArguments(CustomResourceDefinitionVersionDecorator.class,
-              CustomResourceDefinitionVersionDecorator.this.getClass())
-          .get(0);
+        .getTypeArguments(CustomResourceDefinitionVersionDecorator.class,
+          CustomResourceDefinitionVersionDecorator.this.getClass())
+        .get(0);
     }
   }
 
   @Override
   public Class<? extends Decorator>[] after() {
-    return new Class[] {
-        AddCustomResourceDefinitionResourceDecorator.class,
-        AddCustomResourceDefinitionVersionDecorator.class };
+    return new Class[]{
+      AddCustomResourceDefinitionResourceDecorator.class,
+      AddCustomResourceDefinitionVersionDecorator.class};
   }
 
   @Override
   public Class<? extends Decorator>[] before() {
-    return new Class[] {};
+    return new Class[]{};
   }
 
 }

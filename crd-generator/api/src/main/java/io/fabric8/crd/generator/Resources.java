@@ -19,15 +19,14 @@ import io.fabric8.crd.generator.decorator.Decorator;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.KubernetesList;
 import io.fabric8.kubernetes.api.model.KubernetesListBuilder;
-
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.TreeSet;
 
 public class Resources {
   private final KubernetesListBuilder global = new KubernetesListBuilder();
-  private final Set<Decorator> globalDecorators = new TreeSet<>();
+  private final Set<Decorator> globalDecorators = new HashSet<>();
 
   /**
    * Get the global builder
@@ -39,16 +38,6 @@ public class Resources {
   }
 
   /**
-   * Get the Decorator Set.
-   * The method is visible for testing purposes.
-   * 
-   * @return the Set of registed Decorators.
-   */
-  protected Set<Decorator> getDecorators() {
-    return globalDecorators;
-  }
-
-  /**
    * Add a {@link Decorator}.
    *
    * @param decorator The decorator.
@@ -56,6 +45,7 @@ public class Resources {
   public void decorate(Decorator decorator) {
     globalDecorators.add(decorator);
   }
+
 
   /**
    * Add a resource to all groups.
@@ -65,6 +55,7 @@ public class Resources {
   public void add(HasMetadata metadata) {
     global.addToItems(metadata);
   }
+
 
   /**
    * Generate all resources.
@@ -86,12 +77,7 @@ public class Resources {
     // Because our comparators express constraints on particular pairs and can't express the global order.
     // So, in order to be accurate we need to compare each decorator, with ALL OTHER decorators.
     // In other words we don't ANY sorting algorithm, we need bubble sort.
-    // We also might need it more than once. So, we'll do it as many times as we have to, till there are not more transformations.
-    // But hey, let's have an upper limit of 5 just to prevent infinite loops
-    for (int i = 0; i < 10 && bubbleSort(array); i++) {
-      System.out.println("Sorting again:" + (i + 1));
-    }
-
+    bubbleSort(array);
     for (Decorator d : array) {
       result.add(d);
     }
@@ -100,23 +86,19 @@ public class Resources {
 
   /**
    * Bubble sort for decorators.
-   * 
    * @param decorators the {@link Decorator} array to be sorted
    */
-  private boolean bubbleSort(Decorator[] decorators) {
-    boolean swapped = false;
+  private void bubbleSort(Decorator[] decorators) {
     int n = decorators.length;
     Decorator temp = null;
     for (int i = 0; i < n; i++) {
       for (int j = 1; j < (n - i); j++) {
         if (decorators[j].compareTo(decorators[j - 1]) < 0) {
-          swapped = true;
           temp = decorators[j - 1];
           decorators[j - 1] = decorators[j];
           decorators[j] = temp;
         }
       }
     }
-    return swapped;
   }
 }

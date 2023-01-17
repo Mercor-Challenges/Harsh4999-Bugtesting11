@@ -28,7 +28,6 @@ import org.junit.jupiter.api.Test;
 import java.net.HttpURLConnection;
 import java.util.List;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 
 @EnableKubernetesMockClient
@@ -38,37 +37,37 @@ class FlowSchemaTest {
 
   @Test
   void load() {
-    List<HasMetadata> items = client.load(getClass().getResourceAsStream("/v1beta1-flowschema.yml")).items();
+    List<HasMetadata> items = client.load(getClass().getResourceAsStream("/v1beta1-flowschema.yml")).get();
     assertThat(items).isNotNull().hasSize(1);
     assertThat(items.get(0))
-        .isInstanceOf(FlowSchema.class)
-        .hasFieldOrPropertyWithValue("metadata.name", "health-for-strangers");
+      .isInstanceOf(FlowSchema.class)
+      .hasFieldOrPropertyWithValue("metadata.name", "health-for-strangers");
   }
 
   @Test
   void get() {
     // Given
     server.expect().get().withPath("/apis/flowcontrol.apiserver.k8s.io/v1beta1/flowschemas/exempt")
-        .andReturn(HttpURLConnection.HTTP_OK, createFlowSchema("exempt"))
-        .once();
+      .andReturn(HttpURLConnection.HTTP_OK, createFlowSchema("exempt"))
+      .once();
 
     // When
     FlowSchema flowSchema = client.flowControl().v1beta1().flowSchema().withName("exempt").get();
 
     // Then
     assertThat(flowSchema)
-        .isNotNull()
-        .hasFieldOrPropertyWithValue("metadata.name", "exempt");
+      .isNotNull()
+      .hasFieldOrPropertyWithValue("metadata.name", "exempt");
   }
 
   @Test
   void list() {
     // Given
     server.expect().get().withPath("/apis/flowcontrol.apiserver.k8s.io/v1beta1/flowschemas")
-        .andReturn(HttpURLConnection.HTTP_OK, new FlowSchemaListBuilder()
-            .addToItems(createFlowSchema("exempt"))
-            .build())
-        .once();
+      .andReturn(HttpURLConnection.HTTP_OK, new FlowSchemaListBuilder()
+        .addToItems(createFlowSchema("exempt"))
+        .build())
+      .once();
 
     // When
     FlowSchemaList flowSchemas = client.flowControl().v1beta1().flowSchema().list();
@@ -77,7 +76,7 @@ class FlowSchemaTest {
     assertThat(flowSchemas).isNotNull();
     assertThat(flowSchemas.getItems()).hasSize(1);
     assertThat(flowSchemas.getItems().get(0))
-        .hasFieldOrPropertyWithValue("metadata.name", "exempt");
+      .hasFieldOrPropertyWithValue("metadata.name", "exempt");
   }
 
   @Test
@@ -85,8 +84,8 @@ class FlowSchemaTest {
     // Given
     FlowSchema flowSchema = createFlowSchema("flowschema1");
     server.expect().post().withPath("/apis/flowcontrol.apiserver.k8s.io/v1beta1/flowschemas")
-        .andReturn(HttpURLConnection.HTTP_OK, flowSchema)
-        .once();
+      .andReturn(HttpURLConnection.HTTP_OK, flowSchema)
+      .once();
 
     // When
     FlowSchema createdFlowSchema = client.flowControl().v1beta1().flowSchema().create(flowSchema);
@@ -94,7 +93,7 @@ class FlowSchemaTest {
     // Then
     assertThat(createdFlowSchema).isNotNull();
     assertThat(createdFlowSchema)
-        .hasFieldOrPropertyWithValue("metadata.name", "flowschema1");
+      .hasFieldOrPropertyWithValue("metadata.name", "flowschema1");
   }
 
   @Test
@@ -102,11 +101,11 @@ class FlowSchemaTest {
     // Given
     FlowSchema flowSchema = createFlowSchema("flowschema1");
     server.expect().delete().withPath("/apis/flowcontrol.apiserver.k8s.io/v1beta1/flowschemas/flowschema1")
-        .andReturn(HttpURLConnection.HTTP_OK, flowSchema)
-        .once();
+      .andReturn(HttpURLConnection.HTTP_OK, flowSchema)
+      .once();
 
     // When
-    boolean isDeleted = client.flowControl().v1beta1().flowSchema().withName("flowschema1").delete().size() == 1;
+    Boolean isDeleted = client.flowControl().v1beta1().flowSchema().withName("flowschema1").delete();
 
     // Then
     assertThat(isDeleted).isTrue();
@@ -114,28 +113,28 @@ class FlowSchemaTest {
 
   private FlowSchema createFlowSchema(String name) {
     return new FlowSchemaBuilder()
-        .withNewMetadata().withName(name).endMetadata()
-        .withNewSpec()
-        .withMatchingPrecedence(1)
-        .withNewPriorityLevelConfiguration()
-        .withName(name)
-        .endPriorityLevelConfiguration()
-        .addNewRule()
-        .addNewNonResourceRule()
-        .addToNonResourceURLs("*")
-        .addToVerbs("*")
-        .endNonResourceRule()
-        .addNewResourceRule()
-        .addToApiGroups("*")
-        .endResourceRule()
-        .addNewSubject()
-        .withNewGroup()
-        .withName("system:masters")
-        .endGroup()
-        .withKind("Group")
-        .endSubject()
-        .endRule()
-        .endSpec()
-        .build();
+      .withNewMetadata().withName(name).endMetadata()
+      .withNewSpec()
+      .withMatchingPrecedence(1)
+      .withNewPriorityLevelConfiguration()
+      .withName(name)
+      .endPriorityLevelConfiguration()
+      .addNewRule()
+      .addNewNonResourceRule()
+      .addNewNonResourceURL("*")
+      .addNewVerb("*")
+      .endNonResourceRule()
+      .addNewResourceRule()
+      .addNewApiGroup("*")
+      .endResourceRule()
+      .addNewSubject()
+      .withNewGroup()
+      .withName("system:masters")
+      .endGroup()
+      .withKind("Group")
+      .endSubject()
+      .endRule()
+      .endSpec()
+      .build();
   }
 }

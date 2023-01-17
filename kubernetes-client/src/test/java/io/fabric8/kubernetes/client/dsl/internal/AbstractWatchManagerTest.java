@@ -15,25 +15,20 @@
  */
 package io.fabric8.kubernetes.client.dsl.internal;
 
-import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.ListOptions;
 import io.fabric8.kubernetes.client.Watcher;
 import io.fabric8.kubernetes.client.WatcherException;
-import io.fabric8.kubernetes.client.http.WebSocket;
-import io.fabric8.kubernetes.client.utils.CommonThreadPool;
-import io.fabric8.kubernetes.client.utils.Utils;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.WebSocket;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
-import org.mockito.Mockito;
 
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -43,18 +38,33 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class AbstractWatchManagerTest {
 
+  private MockedStatic<Executors> executors;
+  private ScheduledExecutorService executorService;
+
+  @BeforeEach
+  void setUp() {
+    executorService = mock(ScheduledExecutorService.class, RETURNS_DEEP_STUBS);
+    executors = mockStatic(Executors.class);
+    executors.when(() -> Executors.newSingleThreadScheduledExecutor(any())).thenReturn(executorService);
+  }
+
+  @AfterEach
+  void tearDown() {
+    executors.close();
+  }
+
   @Test
   @DisplayName("closeEvent, is idempotent, multiple calls only close watcher once")
-  void closeEventIsIdempotent() throws MalformedURLException {
+  void closeEventIsIdempotent() {
     // Given
-    final WatcherAdapter<HasMetadata> watcher = new WatcherAdapter<>();
-    final WatchManager<HasMetadata> awm = withDefaultWatchManager(watcher);
+    final WatcherAdapter<Object> watcher = new WatcherAdapter<>();
+    final WatchManager<Object> awm = withDefaultWatchManager(watcher);
     // When
     for (int it = 0; it < 10; it++) {
       awm.closeEvent();
@@ -64,32 +74,14 @@ class AbstractWatchManagerTest {
   }
 
   @Test
-  @DisplayName("closeEvent, with Exception, is idempotent, multiple calls only close watcher once")
-  void closeEventWithExceptionIsIdempotent() throws MalformedURLException {
+  @DisplayName("closeEvent with Exception, is idempotent, multiple calls only close watcher once")
+  void closeEventWithExceptionIsIdempotent() {
     // Given
-    final WatcherAdapter<HasMetadata> watcher = new WatcherAdapter<>();
-    final WatchManager<HasMetadata> awm = withDefaultWatchManager(watcher);
+    final WatcherAdapter<Object> watcher = new WatcherAdapter<>();
+    final WatchManager<Object> awm = withDefaultWatchManager(watcher);
     // When
     for (int it = 0; it < 10; it++) {
-      awm.close(new WatcherException("Mock"));
-    }
-    // Then
-    assertThat(watcher.closeCount.get()).isEqualTo(1);
-  }
-
-  @Test
-  void closeEventWithExceptionIsIdempotentWithReconnecting() throws MalformedURLException {
-    // Given
-    final WatcherAdapter<HasMetadata> watcher = new WatcherAdapter<HasMetadata>() {
-      @Override
-      public boolean reconnecting() {
-        return true;
-      }
-    };
-    final WatchManager<HasMetadata> awm = withDefaultWatchManager(watcher);
-    // When
-    for (int it = 0; it < 10; it++) {
-      awm.close(new WatcherException("Mock"));
+      awm.closeEvent(new WatcherException("Mock"));
     }
     // Then
     assertThat(watcher.closeCount.get()).isEqualTo(1);
@@ -101,17 +93,89 @@ class AbstractWatchManagerTest {
     // Given
     final WebSocket webSocket = mock(WebSocket.class);
     // When
-    WatchConnectionManager.closeWebSocket(webSocket);
+    AbstractWatchManager.closeWebSocket(webSocket);
     // Then
-    verify(webSocket, times(1)).sendClose(1000, null);
+    verify(webSocket, times(1)).close(1000, null);
+  }
+
+  @Test
+  @DisplayName("closeExecutorService, with graceful termination")
+  void closeExecutorServiceGracefully() throws InterruptedException{
+    // Given
+    final WatchManager<Object> awm = withDefaultWatchManager(null);
+    when(executorService.awaitTermination(1, TimeUnit.SECONDS)).thenReturn(true);
+    // When
+    awm.closeExecutorService();
+    // Then
+    verify(executorService, times(1)).shutdown();
+    verify(executorService, times(0)).shutdownNow();
+  }
+
+  @Test
+  @DisplayName("closeExecutorService, with shutdownNow")
+  void closeExecutorServiceNow() throws InterruptedException {
+    // Given
+    final WatchManager<Object> awm = withDefaultWatchManager(null);
+    when(executorService.awaitTermination(1, TimeUnit.SECONDS)).thenReturn(false);
+    // When
+    awm.closeExecutorService();
+    // Then
+    verify(executorService, times(1)).shutdown();
+    verify(executorService, times(1)).shutdownNow();
+  }
+
+  @Test
+  @DisplayName("submit, executor not shutdown, should submit")
+  void submitWhenIsNotShutdown() {
+    // Given
+    final WatchManager<Object> awm = withDefaultWatchManager(null);
+    // When
+    awm.submit(() -> {});
+    // Then
+    verify(executorService, times(1)).submit(any(Runnable.class));
+  }
+
+  @Test
+  @DisplayName("submit, executor shutdown, should NOT submit")
+  void submitWhenIsShutdown() {
+    // Given
+    final WatchManager<Object> awm = withDefaultWatchManager(null);
+    when(executorService.isShutdown()).thenReturn(true);
+    // When
+    awm.submit(() -> {});
+    // Then
+    verify(executorService, times(0)).submit(any(Runnable.class));
+  }
+
+  @Test
+  @DisplayName("schedule, executor not shutdown, should submit")
+  void scheduleWhenIsNotShutdown() {
+    // Given
+    final WatchManager<Object> awm = withDefaultWatchManager(null);
+    // When
+    awm.schedule(() -> {}, 0, TimeUnit.SECONDS);
+    // Then
+    verify(executorService, times(1)).schedule(any(Runnable.class), anyLong(), any());
+  }
+
+  @Test
+  @DisplayName("schedule, executor shutdown, should NOT submit")
+  void scheduleWhenIsShutdown() {
+    // Given
+    final WatchManager<Object> awm = withDefaultWatchManager(null);
+    when(executorService.isShutdown()).thenReturn(true);
+    // When
+    awm.schedule(() -> {}, 0, TimeUnit.SECONDS);
+    // Then
+    verify(executorService, times(0)).schedule(any(Runnable.class), anyLong(), any());
   }
 
   @Test
   @DisplayName("nextReconnectInterval, returns exponential interval values up to the provided limit")
-  void nextReconnectInterval() throws MalformedURLException {
+  void nextReconnectInterval() {
     // Given
-    final WatchManager<HasMetadata> awm = new WatchManager<>(
-        null, mock(ListOptions.class), 0, 10, 5);
+    final WatchManager<Object> awm = new WatchManager<>(
+      null, mock(ListOptions.class), 0, 10, 5, null);
     // When-Then
     assertThat(awm.nextReconnectInterval()).isEqualTo(10);
     assertThat(awm.nextReconnectInterval()).isEqualTo(20);
@@ -122,111 +186,18 @@ class AbstractWatchManagerTest {
     assertThat(awm.nextReconnectInterval()).isEqualTo(320);
   }
 
-  @Test
-  @DisplayName("cancelReconnect, with null attempt, should do nothing")
-  void cancelReconnectNullAttempt() throws MalformedURLException {
-    // Given
-    final ScheduledFuture<?> sf = spy(ScheduledFuture.class);
-    final WatcherAdapter<HasMetadata> watcher = new WatcherAdapter<>();
-    final WatchManager<HasMetadata> awm = withDefaultWatchManager(watcher);
-    // When
-    awm.cancelReconnect();
-    // Then
-    verify(sf, times(0)).cancel(true);
-  }
-
-  @Test
-  @DisplayName("cancelReconnect, with non-null attempt, should cancel")
-  void cancelReconnectNonNullAttempt() throws MalformedURLException {
-    // Given
-    final CompletableFuture<?> cf = mock(CompletableFuture.class);
-    ExecutorService executor = CommonThreadPool.get();
-    final MockedStatic<Utils> utils = mockStatic(Utils.class);
-    utils.when(() -> Utils.schedule(any(), any(), anyLong(), any())).thenReturn(cf);
-    final WatcherAdapter<HasMetadata> watcher = new WatcherAdapter<>();
-    final WatchManager<HasMetadata> awm = withDefaultWatchManager(watcher);
-    awm.baseOperation.context = Mockito.mock(OperationContext.class);
-    Mockito.when(awm.baseOperation.context.getExecutor()).thenReturn(executor);
-
-    awm.scheduleReconnect();
-    // When
-    awm.cancelReconnect();
-    // Then
-    verify(cf, times(1)).cancel(true);
-  }
-
-  @Test
-  void reconnectRace() throws Exception {
-    // Given
-    final WatcherAdapter<HasMetadata> watcher = new WatcherAdapter<>();
-    CompletableFuture<Void> done = new CompletableFuture<Void>();
-    final WatchManager<HasMetadata> awm = new WatchManager<HasMetadata>(
-        watcher, mock(ListOptions.class, RETURNS_DEEP_STUBS), 1, 0, 0) {
-
-      boolean first = true;
-
-      @Override
-      protected void startWatch() {
-        if (first) {
-          first = false;
-          // simulate failing before the call to startWatch finishes
-          ForkJoinPool.commonPool().execute(this::scheduleReconnect);
-          try {
-            Thread.sleep(100);
-          } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new AssertionError(e);
-          }
-        } else {
-          done.complete(null);
-        }
-      }
-    };
-
-    // When
-    awm.cancelReconnect();
-    // Then
-
-    done.get(5, TimeUnit.SECONDS);
-  }
-
-  @Test
-  @DisplayName("isClosed, after close invocation, should return true")
-  void isForceClosedWhenClosed() throws MalformedURLException {
-    // Given
-    final WatcherAdapter<HasMetadata> watcher = new WatcherAdapter<>();
-    final WatchManager<HasMetadata> awm = withDefaultWatchManager(watcher);
-    // When
-    awm.close();
-    // Then
-    assertThat(awm.isForceClosed()).isTrue();
-  }
-
-  @Test
-  @DisplayName("close, after close invocation, should return true")
-  void closeWithNonNullRunnerShouldCancelRunner() throws MalformedURLException {
-    // Given
-    final WatcherAdapter<HasMetadata> watcher = new WatcherAdapter<>();
-    final WatchManager<HasMetadata> awm = withDefaultWatchManager(watcher);
-    // When
-    awm.close();
-    // Then
-    assertThat(awm.closeCount.get()).isEqualTo(1);
-  }
-
-  private static <T extends HasMetadata> WatchManager<T> withDefaultWatchManager(Watcher<T> watcher)
-      throws MalformedURLException {
+  private static <T> WatchManager<T> withDefaultWatchManager(Watcher<T> watcher) {
     return new WatchManager<>(
-        watcher, mock(ListOptions.class, RETURNS_DEEP_STUBS), 1, 0, 0);
+      watcher, mock(ListOptions.class, RETURNS_DEEP_STUBS), 0, 0, 0,
+      mock(OkHttpClient.class));
   }
 
   private static class WatcherAdapter<T> implements Watcher<T> {
     private final AtomicInteger closeCount = new AtomicInteger(0);
 
     @Override
-    public void eventReceived(Action action, T resource) {
-    }
-
+    public void eventReceived(Action action, T resource) {}
+    
     @Override
     public void onClose(WatcherException cause) {
       closeCount.addAndGet(1);
@@ -238,27 +209,22 @@ class AbstractWatchManagerTest {
     }
   }
 
-  private static class WatchManager<T extends HasMetadata> extends AbstractWatchManager<T> {
+  private static final class WatchManager<T> extends AbstractWatchManager<T> {
 
-    private final AtomicInteger closeCount = new AtomicInteger(0);
-
-    public WatchManager(Watcher<T> watcher, ListOptions listOptions, int reconnectLimit, int reconnectInterval,
-        int maxIntervalExponent) throws MalformedURLException {
-      super(watcher, Mockito.mock(BaseOperation.class), listOptions, reconnectLimit, reconnectInterval, maxIntervalExponent,
-          () -> null);
+    public WatchManager(Watcher<T> watcher, ListOptions listOptions, int reconnectLimit, int reconnectInterval, int maxIntervalExponent, OkHttpClient clonedClient) {
+      super(watcher, listOptions, reconnectLimit, reconnectInterval, maxIntervalExponent, resourceVersion -> null);
+      initRunner(new ClientRunner(clonedClient) {
+        @Override
+        void run(Request request) {}
+  
+        @Override
+        OkHttpClient cloneAndCustomize(OkHttpClient client) {
+          return clonedClient;
+        }
+      });
     }
-
     @Override
-    protected void start(URL url, Map<String, String> headers) {
-    }
-
-    @Override
-    protected void closeRequest() {
-      closeCount.addAndGet(1);
-    }
-
-    @Override
-    protected void startWatch() {
+    public void close() {
     }
   }
 }

@@ -16,73 +16,89 @@
 
 package io.fabric8.openshift;
 
-import io.fabric8.junit.jupiter.api.LoadKubernetesManifests;
-import io.fabric8.junit.jupiter.api.RequireK8sSupport;
+import io.fabric8.commons.ClusterEntity;
+import io.fabric8.commons.ReadyEntity;
 import io.fabric8.openshift.api.model.ImageStream;
 import io.fabric8.openshift.api.model.ImageStreamBuilder;
 import io.fabric8.openshift.api.model.ImageStreamList;
 import io.fabric8.openshift.client.OpenShiftClient;
-import org.junit.jupiter.api.Test;
+import org.arquillian.cube.kubernetes.api.Session;
+import org.arquillian.cube.openshift.impl.requirement.RequiresOpenshift;
+import org.arquillian.cube.requirement.ArquillianConditionalRunner;
+import org.jboss.arquillian.test.api.ArquillianResource;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 
-import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
+import static junit.framework.TestCase.assertNotNull;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.awaitility.Awaitility.await;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
-@RequireK8sSupport(ImageStream.class)
-@LoadKubernetesManifests("/imagestream-it.yml")
-class ImageStreamIT {
-
+@RunWith(ArquillianConditionalRunner.class)
+@RequiresOpenshift
+public class ImageStreamIT {
+  @ArquillianResource
   OpenShiftClient client;
 
+  @ArquillianResource
+  Session session;
+
+  @BeforeClass
+  public static void init() {
+    ClusterEntity.apply(ImageStreamIT.class.getResourceAsStream("/imagestream-it.yml"));
+  }
+
   @Test
-  void load() {
-    ImageStream aImageStream = client.imageStreams()
-        .load(getClass().getResourceAsStream("/test-imagestream.yml")).item();
+  public void load() {
+    ImageStream aImageStream = client.imageStreams().inNamespace(session.getNamespace())
+      .load(getClass().getResourceAsStream("/test-imagestream.yml")).get();
     assertThat(aImageStream).isNotNull();
     assertEquals("my-ruby", aImageStream.getMetadata().getName());
   }
 
   @Test
-  void get() {
-    assertNotNull(client.imageStreams().withName("is-get").get());
+  public void get() {
+    assertNotNull(client.imageStreams().inNamespace(session.getNamespace()).withName("is-get").get());
   }
 
   @Test
-  void list() {
-    ImageStreamList aImageStreamList = client.imageStreams().list();
+  public void list() {
+    ImageStreamList aImageStreamList = client.imageStreams().inNamespace(session.getNamespace()).list();
     assertThat(aImageStreamList).isNotNull();
     assertTrue(aImageStreamList.getItems().size() >= 1);
   }
 
   @Test
-  void update() {
-    client.imageStreams().withName("is-update").waitUntilCondition(Objects::nonNull, 30, TimeUnit.SECONDS);
-    ImageStream imageStream1 = client.imageStreams().withName("is-update").edit(i -> new ImageStreamBuilder(i)
-        .editSpec().withDockerImageRepository("fabric8/s2i-java").endSpec()
-        .build());
+  public void update() {
+    ReadyEntity<ImageStream> imageStreamReady = new ReadyEntity<>(ImageStream.class, client, "is-update", this.session.getNamespace());
+    await().atMost(30, TimeUnit.SECONDS).until(imageStreamReady);
+    ImageStream imageStream1 = client.imageStreams().inNamespace(session.getNamespace()).withName("is-update").edit(i -> new ImageStreamBuilder(i)
+      .editSpec().withDockerImageRepository("fabric8/s2i-java").endSpec()
+      .build());
     assertThat(imageStream1).isNotNull();
     assertEquals("fabric8/s2i-java", imageStream1.getSpec().getDockerImageRepository());
   }
 
   @Test
-  void delete() {
-    client.imageStreams().withName("is-delete").waitUntilCondition(Objects::nonNull, 30, TimeUnit.SECONDS);
-    boolean bDeleted = client.imageStreams().withName("is-delete").delete().size() == 1;
+  public void delete() {
+    ReadyEntity<ImageStream> imageStreamReady = new ReadyEntity<>(ImageStream.class, client, "is-delete", this.session.getNamespace());
+    await().atMost(30, TimeUnit.SECONDS).until(imageStreamReady);
+    boolean bDeleted = client.imageStreams().inNamespace(session.getNamespace()).withName("is-delete").delete();
     assertTrue(bDeleted);
   }
 
   @Test
-  void createOrReplace() {
+  public void createOrReplace() {
     // Given
-    ImageStream imageStream = client.imageStreams().withName("is-createorreplace").get();
+    ImageStream imageStream = client.imageStreams().inNamespace(session.getNamespace()).withName("is-createorreplace").get();
 
     // When
     imageStream.getSpec().setDockerImageRepository("docker.io/openshift/ruby-centos-2");
-    imageStream = client.imageStreams().createOrReplace(imageStream);
+    imageStream = client.imageStreams().inNamespace(session.getNamespace()).createOrReplace(imageStream);
 
     // Then
     assertNotNull(imageStream);

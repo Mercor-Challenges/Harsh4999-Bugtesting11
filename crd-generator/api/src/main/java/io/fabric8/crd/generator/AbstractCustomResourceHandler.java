@@ -15,14 +15,17 @@
  */
 package io.fabric8.crd.generator;
 
-import io.fabric8.crd.generator.decorator.Decorator;
-import io.fabric8.crd.generator.visitor.*;
-import io.fabric8.kubernetes.client.utils.Utils;
-import io.sundr.model.AnnotationRef;
-import io.sundr.model.Property;
-import io.sundr.model.TypeDef;
-import io.sundr.model.TypeDefBuilder;
+import static io.fabric8.crd.generator.utils.Types.findStatusProperty;
 
+import io.fabric8.crd.generator.decorator.Decorator;
+import io.fabric8.crd.generator.visitor.AdditionalPrinterColumnDetector;
+import io.fabric8.crd.generator.visitor.LabelSelectorPathDetector;
+import io.fabric8.crd.generator.visitor.SpecReplicasPathDetector;
+import io.fabric8.crd.generator.visitor.StatusReplicasPathDetector;
+import io.fabric8.kubernetes.client.utils.Utils;
+import io.sundr.codegen.model.Property;
+import io.sundr.codegen.model.TypeDef;
+import io.sundr.codegen.model.TypeDefBuilder;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -52,42 +55,60 @@ public abstract class AbstractCustomResourceHandler {
     LabelSelectorPathDetector labelSelectorPathDetector = new LabelSelectorPathDetector();
     AdditionalPrinterColumnDetector additionalPrinterColumnDetector = new AdditionalPrinterColumnDetector();
 
-    ClassDependenciesVisitor traversedClassesVisitor = new ClassDependenciesVisitor(config.crClassName(), name);
+    boolean statusExists = config.statusClassName().isPresent();
+    if (statusExists) {
+      TypeDefBuilder builder = new TypeDefBuilder(def);
+      Optional<Property> statusProperty = findStatusProperty(def);
+      if (statusProperty.isPresent()) {
+        Property p = statusProperty.get();
+        builder.removeFromProperties(p);
+
+        def = builder
+          .addNewProperty()
+          .withName("status")
+          .withTypeRef(p.getTypeRef())
+          .endProperty()
+          .build();
+      } else {
+        statusExists = false;
+      }
+    }
 
     TypeDefBuilder builder = new TypeDefBuilder(def);
     if (config.specClassName().isPresent()) {
       builder.accept(specReplicasPathDetector);
     }
 
-    if (config.statusClassName().isPresent()) {
+    if (statusExists) {
       builder.accept(statusReplicasPathDetector);
     }
 
     def = builder
-        .accept(labelSelectorPathDetector)
-        .accept(additionalPrinterColumnDetector)
-        .accept(traversedClassesVisitor)
-        .build();
+      .accept(labelSelectorPathDetector)
+      .accept(additionalPrinterColumnDetector)
+      .build();
 
     addDecorators(config, def, specReplicasPathDetector.getPath(),
-        statusReplicasPathDetector.getPath(), labelSelectorPathDetector.getPath());
+      statusReplicasPathDetector.getPath(), labelSelectorPathDetector.getPath());
 
-    Map<String, Property> additionalPrinterColumns = new HashMap<>(additionalPrinterColumnDetector.getProperties());
+    Map<String, Property> additionalPrinterColumns = new HashMap<>();
+    additionalPrinterColumns.putAll(additionalPrinterColumnDetector.getProperties());
     additionalPrinterColumns.forEach((path, property) -> {
       Map<String, Object> parameters = property.getAnnotations().stream()
-          .filter(a -> a.getClassRef().getName().equals("PrinterColumn")).map(AnnotationRef::getParameters)
-          .findFirst().orElse(Collections.emptyMap());
-      String type = AbstractJsonSchema.getSchemaTypeFor(property.getTypeRef());
+        .filter(a -> a.getClassRef().getName().equals("PrinterColumn")).map(a -> a.getParameters())
+        .findFirst().orElse(Collections.emptyMap());
+      String type = AbstractJsonSchema.COMMON_MAPPINGS
+        .getOrDefault(property.getTypeRef(), "object");
       String column = (String) parameters.get("name");
       if (Utils.isNullOrEmpty(column)) {
         column = property.getName().toUpperCase();
       }
       String description = property.getComments().stream().filter(l -> !l.trim().startsWith("@"))
-          .collect(Collectors.joining(" ")).trim();
+        .collect(Collectors.joining(" ")).trim();
       String format = (String) parameters.get("format");
 
       resources.decorate(
-          getPrinterColumnDecorator(name, version, path, type, column, description, format));
+        getPrinterColumnDecorator(name, version, path, type, column, description, format));
     });
   }
 
@@ -104,7 +125,7 @@ public abstract class AbstractCustomResourceHandler {
    * @return the concrete decorator implementing the addition of a printer column to the currently built CRD
    */
   protected abstract Decorator getPrinterColumnDecorator(String name, String version, String path,
-      String type, String column, String description, String format);
+    String type, String column, String description, String format);
 
   /**
    * Adds all the necessary decorators to build the specific CRD version. For optional paths, see
@@ -112,13 +133,12 @@ public abstract class AbstractCustomResourceHandler {
    * These paths
    *
    * @param config the gathered {@link CustomResourceInfo} used as basis for the CRD generation
-   * @param def the {@link TypeDef} associated with the {@link io.fabric8.kubernetes.client.CustomResource} from which the CRD
-   *        is generated
+   * @param def the {@link TypeDef} associated with the {@link io.fabric8.kubernetes.client.CustomResource} from which the CRD is generated
    * @param specReplicasPath an optionally detected path of field defining spec replicas
    * @param statusReplicasPath an optionally detected path of field defining status replicas
-   * @param labelSelectorPath an optionally detected path of field defining `status.selector`
+   * @param labelSelectorPath  an optionally detected path of field defining `status.selector`
    */
   protected abstract void addDecorators(CustomResourceInfo config, TypeDef def,
-      Optional<String> specReplicasPath, Optional<String> statusReplicasPath,
-      Optional<String> labelSelectorPath);
+    Optional<String> specReplicasPath, Optional<String> statusReplicasPath,
+    Optional<String> labelSelectorPath);
 }

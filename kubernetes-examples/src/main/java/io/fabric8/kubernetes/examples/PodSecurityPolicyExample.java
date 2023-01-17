@@ -17,8 +17,8 @@ package io.fabric8.kubernetes.examples;
 
 import io.fabric8.kubernetes.api.model.policy.v1beta1.PodSecurityPolicy;
 import io.fabric8.kubernetes.api.model.policy.v1beta1.PodSecurityPolicyBuilder;
+import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClient;
-import io.fabric8.kubernetes.client.KubernetesClientBuilder;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,14 +36,14 @@ public class PodSecurityPolicyExample {
   private static final Logger logger = LoggerFactory.getLogger(PodSecurityPolicyExample.class);
 
   public static void main(String[] args) {
-    try (final KubernetesClient client = new KubernetesClientBuilder().build()) {
+    try (final KubernetesClient client = new DefaultKubernetesClient()) {
       final String localYamlToCreate = "/PodSecurityPolicy.yml";
       logger.info("Creating PodSecurityPolicy from Yaml file: {}", localYamlToCreate);
       try (final InputStream localYamlStream = PodSecurityPolicyExample.class.getResourceAsStream(localYamlToCreate)) {
         final PodSecurityPolicy podSecurityPolicy = client.policy().v1beta1().podSecurityPolicies().load(localYamlStream).get();
         client.policy().v1beta1().podSecurityPolicies().withName(podSecurityPolicy.getMetadata().getName()).delete();
         client.policy().v1beta1().podSecurityPolicies().withName(podSecurityPolicy.getMetadata().getName())
-            .waitUntilCondition(Objects::isNull, 5, TimeUnit.SECONDS);
+          .waitUntilCondition(Objects::isNull, 5, TimeUnit.SECONDS);
         client.policy().v1beta1().podSecurityPolicies().create(podSecurityPolicy);
         logger.info("PodSecurityPolicy created with Name : {}", podSecurityPolicy.getMetadata().getName());
       }
@@ -52,18 +52,18 @@ public class PodSecurityPolicyExample {
       final String podSecurityPolicyName = "example2";
       client.policy().v1beta1().podSecurityPolicies().withName(podSecurityPolicyName).delete();
       client.policy().v1beta1().podSecurityPolicies().withName(podSecurityPolicyName)
-          .waitUntilCondition(Objects::isNull, 5, TimeUnit.SECONDS);
+        .waitUntilCondition(Objects::isNull, 5, TimeUnit.SECONDS);
       final PodSecurityPolicy programmaticPodSecurityPolicy = new PodSecurityPolicyBuilder().withNewMetadata()
-          .withName(podSecurityPolicyName)
-          .endMetadata()
-          .withNewSpec()
-          .withPrivileged(false)
-          .withNewRunAsUser().withRule("RunAsAny").endRunAsUser()
-          .withNewFsGroup().withRule("RunAsAny").endFsGroup()
-          .withNewSeLinux().withRule("RunAsAny").endSeLinux()
-          .withNewSupplementalGroups().withRule("RunAsAny").endSupplementalGroups()
-          .endSpec()
-          .build();
+        .withName(podSecurityPolicyName)
+        .endMetadata()
+        .withNewSpec()
+        .withPrivileged(false)
+        .withNewRunAsUser().withRule("RunAsAny").endRunAsUser()
+        .withNewFsGroup().withRule("RunAsAny").endFsGroup()
+        .withNewSeLinux().withRule("RunAsAny").endSeLinux()
+        .withNewSupplementalGroups().withRule("RunAsAny").endSupplementalGroups()
+        .endSpec()
+        .build();
       client.policy().v1beta1().podSecurityPolicies().create(programmaticPodSecurityPolicy);
       logger.info("PodSecurityPolicy created with Name: {}", programmaticPodSecurityPolicy.getMetadata().getName());
     } catch (KubernetesClientException clientException) {

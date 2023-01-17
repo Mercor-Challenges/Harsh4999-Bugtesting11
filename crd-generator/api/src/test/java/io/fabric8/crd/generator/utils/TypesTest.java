@@ -15,72 +15,52 @@
  */
 package io.fabric8.crd.generator.utils;
 
-import io.fabric8.crd.example.basic.Basic;
-import io.fabric8.crd.example.basic.BasicSpec;
-import io.fabric8.crd.example.basic.BasicStatus;
-import io.fabric8.crd.example.inherited.Child;
-import io.fabric8.crd.example.joke.Joke;
-import io.fabric8.crd.example.person.Person;
-import io.fabric8.crd.example.webserver.WebServerWithStatusProperty;
-import io.fabric8.crd.generator.utils.Types.SpecAndStatus;
-import io.sundr.model.ClassRef;
-import io.sundr.model.Property;
-import io.sundr.model.TypeDef;
-import io.sundr.model.TypeRef;
-import org.junit.jupiter.api.Test;
-
-import java.util.List;
-import java.util.Optional;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import io.fabric8.crd.example.basic.Basic;
+import io.fabric8.crd.example.basic.BasicSpec;
+import io.fabric8.crd.example.basic.BasicStatus;
+import io.fabric8.crd.example.person.Person;
+import io.fabric8.crd.example.webserver.WebServerWithStatusProperty;
+import io.sundr.codegen.functions.ClassTo;
+import io.sundr.codegen.model.ClassRef;
+import io.sundr.codegen.model.Property;
+import io.sundr.codegen.model.TypeDef;
+import io.sundr.codegen.model.TypeRef;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import org.junit.jupiter.api.Test;
 
 public class TypesTest {
 
   @Test
   void shouldFindStatusProperty() {
-    TypeDef def = Types.typeDefFrom(WebServerWithStatusProperty.class);
+    TypeDef def = ClassTo.TYPEDEF.apply(WebServerWithStatusProperty.class);
     Optional<Property> p = Types.findStatusProperty(def);
     assertTrue(p.isPresent());
 
-    def = Types.typeDefFrom(Basic.class);
+    def = ClassTo.TYPEDEF.apply(Basic.class);
     p = Types.findStatusProperty(def);
     assertTrue(p.isPresent());
   }
-
-  @Test
-  void shouldFindInheritedStatusProperty() {
-    final TypeDef def = Types.typeDefFrom(Child.class);
-    final Optional<Property> p = Types.findStatusProperty(def);
-    assertTrue(p.isPresent());
-    final Property property = p.get();
-    final TypeRef typeRef = property.getTypeRef();
-    assertTrue(typeRef instanceof ClassRef);
-    final ClassRef classRef = (ClassRef) typeRef;
-    final SpecAndStatus specAndStatus = Types.resolveSpecAndStatusTypes(def);
-    assertEquals(specAndStatus.getStatusClassName(), classRef.getFullyQualifiedName());
-  }
-
-  @Test
-  void shouldHaveAllTheExpectedProperties() {
-    final TypeDef def = Types.typeDefFrom(Joke.class);
-    final List<Property> properties = def.getProperties();
-    assertEquals(7, properties.size());
-  }
-
+  
   @Test
   void findingSuperClassesShouldWork() {
-    List<ClassRef> superClasses = Types.typeDefFrom(Basic.class).getExtendsList();
+    TypeDef def = ClassTo.TYPEDEF.apply(Basic.class);
+    Set<ClassRef> superClasses = Types.projectSuperClasses(def);
     assertTrue(superClasses.stream().anyMatch(c -> c.getName().contains("CustomResource")));
   }
 
   @Test
   void projectSuperClassesShouldProduceProperlyTypedClasses() {
-    List<ClassRef> superClasses = Types.typeDefFrom(Basic.class).getExtendsList();
+    TypeDef def = ClassTo.TYPEDEF.apply(Basic.class);
+    Set<ClassRef> superClasses = Types.projectSuperClasses(def);
     assertEquals(2, superClasses.size());
     Optional<ClassRef> crOpt = superClasses.stream()
-        .filter(c -> c.getName().contains("CustomResource")).findFirst();
+      .filter(c -> c.getName().contains("CustomResource")).findFirst();
     assertTrue(crOpt.isPresent());
     ClassRef crDef = crOpt.get();
     List<TypeRef> arguments = crDef.getArguments();
@@ -91,9 +71,9 @@ public class TypesTest {
 
   @Test
   void isNamespacedShouldWork() {
-    TypeDef def = Types.typeDefFrom(Basic.class);
+    TypeDef def = ClassTo.TYPEDEF.apply(Basic.class);
     assertTrue(Types.isNamespaced(def));
-    def = Types.typeDefFrom(Person.class);
+    def = ClassTo.TYPEDEF.apply(Person.class);
     assertFalse(Types.isNamespaced(def));
   }
 }

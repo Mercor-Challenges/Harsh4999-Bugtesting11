@@ -21,7 +21,7 @@
   <parent>
     <groupId>io.fabric8</groupId>
     <artifactId>service-catalog</artifactId>
-    <version>6.4-SNAPSHOT</version>
+    <version>5.4-SNAPSHOT</version>
   </parent>
 
   <artifactId>servicecatalog-tests</artifactId>
@@ -31,24 +31,31 @@
   <dependencies>
     <dependency>
       <groupId>io.fabric8</groupId>
-      <artifactId>servicecatalog-client</artifactId>
+      <artifactId>kubernetes-client</artifactId>
     </dependency>
 
     <dependency>
       <groupId>io.fabric8</groupId>
-      <artifactId>kubernetes-server-mock</artifactId>
+      <artifactId>servicecatalog-server-mock</artifactId>
+      <version>${project.version}</version>
       <scope>test</scope>
     </dependency>
 
     <dependency>
       <groupId>io.fabric8</groupId>
       <artifactId>mockwebserver</artifactId>
+      <version>${mockwebserver.version}</version>
       <scope>test</scope>
     </dependency>
 
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-engine</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-migrationsupport</artifactId>
       <scope>test</scope>
     </dependency>
 

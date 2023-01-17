@@ -38,18 +38,19 @@ class ImageStreamTagCrudTest {
   @Test
   void crudTest() {
 
+
     logger.info("Current User " + client.currentUser());
 
     ImageStreamTag istag = new ImageStreamTagBuilder().withNewMetadata().withName("bar1:1.0.12").endMetadata()
-        .withNewTag()
+      .withNewTag()
         .withNewFrom()
-        .withKind("DockerImage")
-        .withName("openshift/wildfly-81-centos7:latest")
+          .withKind("DockerImage")
+          .withName("openshift/wildfly-81-centos7:latest")
         .endFrom()
         .withReference(false)
-        .endTag()
-        .withGeneration(1L)
-        .build();
+      .endTag()
+      .withGeneration(1L)
+      .build();
 
     //test of Creation
     istag = client.imageStreamTags().create(istag);
@@ -66,7 +67,7 @@ class ImageStreamTagCrudTest {
 
     logger.info(istagList.toString());
     assertNotNull(istagList);
-    assertEquals(1, istagList.getItems().size());
+    assertEquals(1,istagList.getItems().size());
     assertEquals("bar1:1.0.12", istagList.getItems().get(0).getMetadata().getName());
     assertEquals("DockerImage", istagList.getItems().get(0).getTag().getFrom().getKind());
     assertEquals("openshift/wildfly-81-centos7:latest", istagList.getItems().get(0).getTag().getFrom().getName());
@@ -75,15 +76,15 @@ class ImageStreamTagCrudTest {
 
     //test of Updation
     ImageStreamTag istag2 = new ImageStreamTagBuilder().withNewMetadata().withName("bar1:1.0.12").endMetadata()
-        .withNewTag()
-        .withNewFrom()
-        .withKind("DockerImage")
-        .withName("openshift/wildfly-81-centos7:latest")
-        .endFrom()
-        .withReference(false)
-        .endTag()
-        .withGeneration(2L)
-        .build();
+      .withNewTag()
+      .withNewFrom()
+      .withKind("DockerImage")
+      .withName("openshift/wildfly-81-centos7:latest")
+      .endFrom()
+      .withReference(false)
+      .endTag()
+      .withGeneration(2L)
+      .build();
 
     istag = client.imageStreamTags().withName("bar1:1.0.12").patch(istag2);
     logger.info(istag.toString());
@@ -95,7 +96,7 @@ class ImageStreamTagCrudTest {
     assertEquals(false, istag.getTag().getReference());
     assertEquals(2, istag.getGeneration().intValue());
 
-    boolean deleted = client.imageStreamTags().withName("bar1:1.0.12").delete().size() == 1;
+    boolean deleted = client.imageStreamTags().withName("bar1:1.0.12").delete();
     assertTrue(deleted);
     istagList = client.imageStreamTags().list();
     assertEquals(0, istagList.getItems().size());

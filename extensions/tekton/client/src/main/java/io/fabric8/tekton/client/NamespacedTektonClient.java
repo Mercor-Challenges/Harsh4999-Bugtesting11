@@ -15,6 +15,7 @@
  */
 package io.fabric8.tekton.client;
 
+
 public interface NamespacedTektonClient extends TektonClient,
-    GenericTektonClient<NamespacedTektonClient> {
+        GenericTektonClient<NamespacedTektonClient> {
 }

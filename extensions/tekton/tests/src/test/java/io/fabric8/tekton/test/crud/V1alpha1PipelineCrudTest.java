@@ -15,13 +15,15 @@
  */
 package io.fabric8.tekton.test.crud;
 
-import io.fabric8.kubernetes.client.server.mock.EnableKubernetesMockClient;
 import io.fabric8.tekton.client.TektonClient;
+import io.fabric8.tekton.mock.TektonServer;
 import io.fabric8.tekton.pipeline.v1alpha1.Pipeline;
 import io.fabric8.tekton.pipeline.v1alpha1.PipelineBuilder;
 import io.fabric8.tekton.pipeline.v1alpha1.PipelineList;
 import io.fabric8.tekton.v1alpha1.internal.pipeline.pkg.apis.pipeline.v1alpha2.Param;
+import org.junit.Rule;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.migrationsupport.rules.EnableRuleMigrationSupport;
 
 import java.io.ByteArrayInputStream;
 import java.util.Arrays;
@@ -31,14 +33,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@EnableKubernetesMockClient(crud = true)
+@EnableRuleMigrationSupport
 class V1alpha1PipelineCrudTest {
 
-  TektonClient client;
+  @Rule
+  public TektonServer server = new TektonServer(true, true);
 
   @Test
   void shouldReturnEmptyList() {
-
+    TektonClient client = server.getTektonClient();
     PipelineList pipelineList = client.v1alpha1().pipelines().inNamespace("ns1").list();
     assertNotNull(pipelineList);
     assertTrue(pipelineList.getItems().isEmpty());
@@ -46,7 +49,7 @@ class V1alpha1PipelineCrudTest {
 
   @Test
   void shouldListAndGetPipeline() {
-
+    TektonClient client = server.getTektonClient();
     Pipeline pipeline2 = new PipelineBuilder().withNewMetadata().withName("pipeline2").endMetadata().build();
 
     client.v1alpha1().pipelines().inNamespace("ns2").create(pipeline2);
@@ -60,31 +63,32 @@ class V1alpha1PipelineCrudTest {
 
   @Test
   void shouldDeleteAPipeline() {
-
+    TektonClient client = server.getTektonClient();
     Pipeline pipeline3 = new PipelineBuilder().withNewMetadata().withName("pipeline3").endMetadata().build();
 
     client.v1alpha1().pipelines().inNamespace("ns3").create(pipeline3);
-    boolean deleted = client.v1alpha1().pipelines().inNamespace("ns3").withName("pipeline3").delete().size() == 1;
+    Boolean deleted = client.v1alpha1().pipelines().inNamespace("ns3").withName("pipeline3").delete();
     assertTrue(deleted);
   }
 
   @Test
   void shouldLoadAPipelineWithParams() {
+    TektonClient client = server.getTektonClient();
 
     String pipelineDefinition = String.join("\n", Arrays.asList(
-        "apiVersion: tekton.dev/v1alpha1",
-        "kind: Pipeline",
-        "metadata:",
-        "  name: pipeline4",
-        "spec:",
-        "  tasks:",
-        "    - name: task-with-params",
-        "      params:",
-        "        - name: name",
-        "          value: param-value"));
+      "apiVersion: tekton.dev/v1alpha1",
+      "kind: Pipeline",
+      "metadata:",
+      "  name: pipeline4",
+      "spec:",
+      "  tasks:",
+      "    - name: task-with-params",
+      "      params:",
+      "        - name: name",
+      "          value: param-value"
+    ));
 
-    Pipeline p = client.v1alpha1().pipelines().inNamespace("ns4").load(new ByteArrayInputStream(pipelineDefinition.getBytes()))
-        .createOrReplace();
+    Pipeline p = client.v1alpha1().pipelines().inNamespace("ns4").load(new ByteArrayInputStream(pipelineDefinition.getBytes())).createOrReplace();
 
     final List<Param> taskParams = p.getSpec().getTasks().get(0).getParams();
     assertEquals(1, taskParams.size());

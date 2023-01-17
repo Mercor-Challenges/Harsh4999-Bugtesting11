@@ -15,100 +15,105 @@
  */
 package io.fabric8.servicecatalog.test.crud;
 
-import io.fabric8.kubernetes.client.server.mock.EnableKubernetesMockClient;
 import io.fabric8.servicecatalog.api.model.ServiceInstance;
 import io.fabric8.servicecatalog.api.model.ServiceInstanceBuilder;
 import io.fabric8.servicecatalog.api.model.ServiceInstanceList;
 import io.fabric8.servicecatalog.client.ServiceCatalogClient;
-import org.junit.jupiter.api.Test;
+import io.fabric8.servicecatalog.server.mock.ServiceCatalogServer;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import org.junit.jupiter.api.Test;
+import org.junit.Rule;
+import org.junit.jupiter.migrationsupport.rules.EnableRuleMigrationSupport;
+
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
-@EnableKubernetesMockClient(crud = true)
+@EnableRuleMigrationSupport
 class ServiceInstanceTest {
 
-  ServiceCatalogClient client;
+    @Rule
+    public ServiceCatalogServer server = new ServiceCatalogServer(true, true);
 
-  @Test
-  void testCrud() {
+    @Test
+    void testCrud() {
+        ServiceCatalogClient client = server.getServiceCatalogClient();
+        ServiceInstance instance1 = new ServiceInstanceBuilder()
+                .withNewMetadata()
+                .withName("instance1")
+                .addToLabels("key1", "value1")
+                .endMetadata()
+                .withNewSpec()
+                .withClusterServiceClassExternalName("class1")
+                .withClusterServicePlanExternalName("default")
+                .endSpec()
+                .build();
 
-    ServiceInstance instance1 = new ServiceInstanceBuilder()
-        .withNewMetadata()
-        .withName("instance1")
-        .addToLabels("key1", "value1")
-        .endMetadata()
-        .withNewSpec()
-        .withClusterServiceClassExternalName("class1")
-        .withClusterServicePlanExternalName("default")
-        .endSpec()
-        .build();
+        ServiceInstance instance2 = new ServiceInstanceBuilder()
+                .withNewMetadata()
+                .withName("instance2")
+                .addToLabels("key2", "value2")
+                .endMetadata()
+                .withNewSpec()
+                .withClusterServiceClassExternalName("class2")
+                .withClusterServicePlanExternalName("default")
+                .endSpec()
+                .build();
 
-    ServiceInstance instance2 = new ServiceInstanceBuilder()
-        .withNewMetadata()
-        .withName("instance2")
-        .addToLabels("key2", "value2")
-        .endMetadata()
-        .withNewSpec()
-        .withClusterServiceClassExternalName("class2")
-        .withClusterServicePlanExternalName("default")
-        .endSpec()
-        .build();
+        ServiceInstance instance3 = new ServiceInstanceBuilder()
+                .withNewMetadata()
+                .withName("instance3")
+                .addToLabels("key3", "value3")
+                .endMetadata()
+                .withNewSpec()
+                .withClusterServiceClassExternalName("class3")
+                .withClusterServicePlanExternalName("default")
+                .endSpec()
+                .build();
 
-    ServiceInstance instance3 = new ServiceInstanceBuilder()
-        .withNewMetadata()
-        .withName("instance3")
-        .addToLabels("key3", "value3")
-        .endMetadata()
-        .withNewSpec()
-        .withClusterServiceClassExternalName("class3")
-        .withClusterServicePlanExternalName("default")
-        .endSpec()
-        .build();
 
-    ServiceInstance instance4 = new ServiceInstanceBuilder()
-        .withNewMetadata()
-        .withName("instance4")
-        .addToLabels("key4", "value4")
-        .endMetadata()
-        .withNewSpec()
-        .withClusterServiceClassExternalName("class4")
-        .withClusterServicePlanExternalName("default")
-        .endSpec()
-        .build();
+        ServiceInstance instance4 = new ServiceInstanceBuilder()
+                .withNewMetadata()
+                .withName("instance4")
+                .addToLabels("key4", "value4")
+                .endMetadata()
+                .withNewSpec()
+                .withClusterServiceClassExternalName("class4")
+                .withClusterServicePlanExternalName("default")
+                .endSpec()
+                .build();
 
-    //Create
-    client.serviceInstances().inNamespace("testns").create(instance1);
-    client.serviceInstances().inNamespace("testns").create(instance2);
-    client.serviceInstances().inNamespace("testns").create(instance3);
-    client.serviceInstances().inNamespace("otherns").create(instance4);
+        //Create
+        client.serviceInstances().inNamespace("testns").create(instance1);
+        client.serviceInstances().inNamespace("testns").create(instance2);
+        client.serviceInstances().inNamespace("testns").create(instance3);
+        client.serviceInstances().inNamespace("otherns").create(instance4);
 
-    //Read
-    ServiceInstanceList instances = client.serviceInstances().inNamespace("testns").list();
-    assertNotNull(instances);
-    assertEquals(3, instances.getItems().size());
+        //Read
+        ServiceInstanceList instances = client.serviceInstances().inNamespace("testns").list();
+        assertNotNull(instances);
+        assertEquals(3, instances.getItems().size());
 
-    instances = client.serviceInstances().inNamespace("otherns").list();
-    assertNotNull(instances);
-    assertEquals(1, instances.getItems().size());
+        instances = client.serviceInstances().inNamespace("otherns").list();
+        assertNotNull(instances);
+        assertEquals(1, instances.getItems().size());
 
-    ServiceInstance r1 = client.serviceInstances().inNamespace("testns").withName("instance1").get();
-    assertNotNull(r1);
+        ServiceInstance r1 = client.serviceInstances().inNamespace("testns").withName("instance1").get();
+        assertNotNull(r1);
 
-    //Update
-    ServiceInstance u1 = client.serviceInstances().inNamespace("testns").withName("instance1")
-        .edit(s -> new ServiceInstanceBuilder(s)
-            .editMetadata()
-            .addToLabels("updated", "true")
-            .endMetadata()
-            .build());
+        //Update
+        ServiceInstance u1 = client.serviceInstances().inNamespace("testns").withName("instance1").edit(s -> new ServiceInstanceBuilder(s)
+                .editMetadata()
+                .addToLabels("updated", "true")
+                .endMetadata()
+                .build());
 
-    assertNotNull(u1);
-    assertEquals("true", u1.getMetadata().getLabels().get("updated"));
+        assertNotNull(u1);
+        assertEquals("true", u1.getMetadata().getLabels().get("updated"));
 
-    //Delete
-    assertEquals(1, client.serviceInstances().inNamespace("testns").withName("instance1").delete().size());
-    assertNull(client.serviceInstances().inNamespace("testns").withName("instance1").get());
-  }
+        //Delete
+        assertTrue(client.serviceInstances().inNamespace("testns").withName("instance1").delete());
+        assertNull(client.serviceInstances().inNamespace("testns").withName("instance1").get());
+    }
 }

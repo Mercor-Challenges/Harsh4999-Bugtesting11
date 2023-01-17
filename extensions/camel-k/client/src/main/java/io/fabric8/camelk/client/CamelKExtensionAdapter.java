@@ -15,27 +15,33 @@
  */
 package io.fabric8.camelk.client;
 
-import io.fabric8.camelk.client.dsl.V1APIGroupDSL;
-import io.fabric8.camelk.client.dsl.V1alpha1APIGroupDSL;
+import io.fabric8.kubernetes.client.ExtensionAdapterSupport;
 import io.fabric8.kubernetes.client.Client;
-import io.fabric8.kubernetes.client.extension.ExtensionAdapter;
+import io.fabric8.kubernetes.client.ExtensionAdapter;
+import okhttp3.OkHttpClient;
 
-public class CamelKExtensionAdapter implements ExtensionAdapter<CamelKClient> {
+import java.net.URL;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ConcurrentHashMap;
 
-  @Override
-  public Class<CamelKClient> getExtensionType() {
-    return CamelKClient.class;
+public class CamelKExtensionAdapter extends ExtensionAdapterSupport implements ExtensionAdapter<CamelKClient> {
+
+    static final ConcurrentMap<URL, Boolean> IS_CAMELK = new ConcurrentHashMap<>();
+    static final ConcurrentMap<URL, Boolean> USES_CAMELK_APIGROUPS = new ConcurrentHashMap<>();
+    
+	@Override
+	public Class<CamelKClient> getExtensionType() {
+		return CamelKClient.class;
+	}
+
+	@Override
+	public Boolean isAdaptable(Client client) {
+		return isAdaptable(client, IS_CAMELK, USES_CAMELK_APIGROUPS, "camel.apache.org");
+	}
+
+	@Override
+	public CamelKClient adapt(Client client) {
+            return new DefaultCamelKClient(client.adapt(OkHttpClient.class), client.getConfiguration());
   }
-
-  @Override
-  public CamelKClient adapt(Client client) {
-    return new DefaultCamelKClient(client);
-  }
-
-  @Override
-  public void registerClients(ClientFactory factory) {
-    factory.register(V1APIGroupDSL.class, new V1APIGroupClient());
-    factory.register(V1alpha1APIGroupDSL.class, new V1alpha1APIGroupClient());
-  }
-
+	
 }

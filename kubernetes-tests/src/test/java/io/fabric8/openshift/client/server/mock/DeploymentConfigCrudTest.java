@@ -25,7 +25,6 @@ import org.junit.jupiter.api.Test;
 import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @EnableOpenShiftMockClient(crud = true)
@@ -35,42 +34,28 @@ class DeploymentConfigCrudTest {
   OpenShiftClient client;
 
   @Test
-  void testReadiness() {
-    DeploymentConfig deploymentConfig1 = new DeploymentConfigBuilder().withNewMetadata()
-        .withName("deploymentConfig1")
-        .withNamespace("ns1")
-        .addToLabels("testKey", "testValue")
-        .endMetadata()
-        .build();
-
-    client.deploymentConfigs().inNamespace("ns1").create(deploymentConfig1);
-
-    assertFalse(client.deploymentConfigs().inNamespace("ns1").withName("deploymentConfig1").isReady());
-  }
-
-  @Test
   void testCrud() {
 
     DeploymentConfig deploymentConfig1 = new DeploymentConfigBuilder().withNewMetadata()
-        .withName("deploymentConfig1")
-        .withNamespace("ns1")
-        .addToLabels("testKey", "testValue")
-        .endMetadata()
-        .build();
+      .withName("deploymentConfig1")
+      .withNamespace("ns1")
+      .addToLabels("testKey", "testValue")
+      .endMetadata()
+      .build();
 
     DeploymentConfig deploymentConfig2 = new DeploymentConfigBuilder().withNewMetadata()
-        .withName("deploymentConfig2")
-        .withNamespace("ns1")
-        .addToLabels("testKey", "testValue")
-        .endMetadata()
-        .build();
+      .withName("deploymentConfig2")
+      .withNamespace("ns1")
+      .addToLabels("testKey", "testValue")
+      .endMetadata()
+      .build();
 
     DeploymentConfig deploymentConfig3 = new DeploymentConfigBuilder().withNewMetadata()
-        .withName("deploymentConfig3")
-        .addToLabels("testKey", "testValue")
-        .withNamespace("ns2")
-        .endMetadata()
-        .build();
+      .withName("deploymentConfig3")
+      .addToLabels("testKey", "testValue")
+      .withNamespace("ns2")
+      .endMetadata()
+      .build();
 
     client.deploymentConfigs().inNamespace("ns1").create(deploymentConfig1);
     client.deploymentConfigs().inNamespace("ns1").create(deploymentConfig2);
@@ -89,19 +74,18 @@ class DeploymentConfigCrudTest {
     assertEquals(2, aDeploymentConfigList.getItems().size());
 
     aDeploymentConfigList = client.deploymentConfigs().inNamespace("ns1")
-        .withLabels(Collections.singletonMap("testKey", "testValue")).list();
+      .withLabels(Collections.singletonMap("testKey", "testValue")).list();
     assertNotNull(aDeploymentConfigList);
     assertEquals(2, aDeploymentConfigList.getItems().size());
 
-    deploymentConfig3 = client.deploymentConfigs().inNamespace("ns2").withName("deploymentConfig3")
-        .edit(d -> new DeploymentConfigBuilder(d)
-            .editMetadata().addToLabels("testkey1", "testvalue2").endMetadata()
-            .build());
+    deploymentConfig3 = client.deploymentConfigs().inNamespace("ns2").withName("deploymentConfig3").edit(d -> new DeploymentConfigBuilder(d)
+      .editMetadata().addToLabels("testkey1","testvalue2").endMetadata()
+      .build());
     assertNotNull(deploymentConfig3);
     assertEquals(2, deploymentConfig3.getMetadata().getLabels().size());
 
     // ! Doesn't work
-    // boolean bDeleted = client.deploymentConfigs().inNamespace("ns1").withName("deploymentConfig2").delete().size() == 1;
+    // boolean bDeleted = client.deploymentConfigs().inNamespace("ns1").withName("deploymentConfig2").delete();
     // assertTrue(bDeleted);
   }
 }

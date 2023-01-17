@@ -22,5 +22,4 @@ import io.fabric8.kubernetes.model.annotation.Version;
 
 @Version("v1alpha1")
 @Group("testing.fabric8.io")
-public class Pet extends CustomResource<PetSpec, PetStatus> implements Namespaced {
-}
+public class Pet extends CustomResource<PetSpec, PetStatus> implements Namespaced  { }

@@ -16,27 +16,29 @@
 package io.fabric8.camelk.test.crud;
 
 import io.fabric8.camelk.client.CamelKClient;
+import io.fabric8.camelk.mock.CamelKServer;
 import io.fabric8.camelk.v1.Integration;
 import io.fabric8.camelk.v1.IntegrationBuilder;
 import io.fabric8.camelk.v1.IntegrationList;
-import io.fabric8.kubernetes.client.server.mock.EnableKubernetesMockClient;
+import org.junit.Rule;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.migrationsupport.rules.EnableRuleMigrationSupport;
 
 import java.io.ByteArrayInputStream;
 import java.util.Arrays;
+import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
-@EnableKubernetesMockClient(crud = true)
+@EnableRuleMigrationSupport
 class IntegrationCrudTest {
 
-  CamelKClient client;
+  @Rule
+  public CamelKServer server = new CamelKServer(true, true);
 
   @Test
   void shouldReturnEmptyList() {
-
+    CamelKClient client = server.getCamelKClient();
     IntegrationList list = client.v1().integrations().inNamespace("ns1").list();
     assertNotNull(list);
     assertTrue(list.getItems().isEmpty());
@@ -44,7 +46,7 @@ class IntegrationCrudTest {
 
   @Test
   void shouldListAndGetIntegration() {
-
+    CamelKClient client = server.getCamelKClient();
     Integration integration2 = new IntegrationBuilder().withNewMetadata().withName("integration2").endMetadata().build();
 
     client.v1().integrations().inNamespace("ns2").create(integration2);
@@ -58,39 +60,40 @@ class IntegrationCrudTest {
 
   @Test
   void shouldDeleteAIntegration() {
-
+    CamelKClient client = server.getCamelKClient();
     Integration integration3 = new IntegrationBuilder().withNewMetadata().withName("integration3").endMetadata().build();
 
     client.v1().integrations().inNamespace("ns3").create(integration3);
-    boolean deleted = client.v1().integrations().inNamespace("ns3").withName("integration3").delete().size() == 1;
+    Boolean deleted = client.v1().integrations().inNamespace("ns3").withName("integration3").delete();
     assertTrue(deleted);
   }
 
   @Test
   void shouldLoadAIntegrationWithParams() {
+    CamelKClient client = server.getCamelKClient();
 
     String definition = String.join("\n", Arrays.asList(
-        "apiVersion: camel.apache.org/v1alpha1",
-        "kind: Integration",
-        "metadata:",
-        "  name: integration4",
-        "spec:",
-        "  flows:",
-        "  - from:",
-        "      parameters:",
-        "        period: \"1000\"",
-        "      steps:",
-        "      - set-body:",
-        "          constant: Hello Camel K from yaml",
-        "      - to: log:info",
-        "      uri: timer:yaml",
-        "  traits:",
-        "    container:",
-        "      configuration:",
-        "        requestCPU: \"1\""));
+      "apiVersion: camel.apache.org/v1alpha1",
+      "kind: Integration",
+      "metadata:",
+      "  name: integration4",
+      "spec:",
+      "  flows:",
+      "  - from:",
+      "      parameters:",
+      "        period: \"1000\"",
+      "      steps:",
+      "      - set-body:",
+      "          constant: Hello Camel K from yaml",
+      "      - to: log:info",
+      "      uri: timer:yaml",
+      "  traits:",
+      "    container:",
+      "      configuration:",
+      "        requestCPU: \"1\""
+    ));
 
-    Integration i = client.v1().integrations().inNamespace("ns4").load(new ByteArrayInputStream(definition.getBytes()))
-        .createOrReplace();
+    Integration i = client.v1().integrations().inNamespace("ns4").load(new ByteArrayInputStream(definition.getBytes())).createOrReplace();
     assertNotNull(i);
   }
 

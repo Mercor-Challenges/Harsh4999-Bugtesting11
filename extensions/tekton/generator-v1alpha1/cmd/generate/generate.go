@@ -78,7 +78,7 @@ func main() {
 		reflect.TypeOf(machinery.Time{}): "java.lang.String",
 	}
 
-	json := schemagen.GenerateSchema("http://fabric8.io/tekton/v1alpha1/TektonSchema#", crdLists, providedPackages, manualTypeMap, packageMapping, mappingSchema, providedTypes, constraints, "io.fabric8")
+	json := schemagen.GenerateSchema("http://fabric8.io/tekton/v1alpha1/TektonSchema#", crdLists, providedPackages, manualTypeMap, packageMapping, mappingSchema, providedTypes, constraints)
 
 	fmt.Println(json)
 }

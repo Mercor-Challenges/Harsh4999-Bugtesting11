@@ -20,15 +20,13 @@ import io.fabric8.crd.generator.utils.Types.SpecAndStatus;
 import io.fabric8.kubernetes.client.CustomResource;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.model.Scope;
-import io.sundr.model.TypeDef;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import io.sundr.codegen.functions.ClassTo;
+import io.sundr.codegen.model.TypeDef;
 import java.lang.reflect.InvocationTargetException;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class CustomResourceInfo {
 
@@ -50,13 +48,10 @@ public class CustomResourceInfo {
   private final String id;
   private final int hash;
 
-  private final String[] annotations;
-  private final String[] labels;
-
   public CustomResourceInfo(String group, String version, String kind, String singular,
-      String plural, String[] shortNames, boolean storage, boolean served,
-      Scope scope, TypeDef definition, String crClassName,
-      String specClassName, String statusClassName, String[] annotations, String[] labels) {
+    String plural, String[] shortNames, boolean storage, boolean served,
+    Scope scope, TypeDef definition, String crClassName,
+    String specClassName, String statusClassName) {
     this.group = group;
     this.version = version;
     this.kind = kind;
@@ -72,8 +67,6 @@ public class CustomResourceInfo {
     this.statusClassName = Optional.ofNullable(statusClassName);
     this.id = crdName() + "/" + version;
     this.hash = id.hashCode();
-    this.annotations = annotations;
-    this.labels = labels;
   }
 
   public boolean storage() {
@@ -136,21 +129,13 @@ public class CustomResourceInfo {
     return definition;
   }
 
-  public String[] annotations() {
-    return annotations;
-  }
-
-  public String[] labels() {
-    return labels;
-  }
-
   public static CustomResourceInfo fromClass(Class<? extends CustomResource> customResource) {
     try {
       final CustomResource instance = customResource.getDeclaredConstructor().newInstance();
 
       final String[] shortNames = CustomResource.getShortNames(customResource);
 
-      final TypeDef definition = Types.typeDefFrom(customResource);
+      final TypeDef definition = ClassTo.TYPEDEF.apply(customResource);
       if (DESCRIBE_TYPE_DEFS) {
         Types.output(definition);
       }
@@ -159,31 +144,17 @@ public class CustomResourceInfo {
 
       SpecAndStatus specAndStatus = Types.resolveSpecAndStatusTypes(definition);
       if (specAndStatus.isUnreliable()) {
-        LOGGER.warn(
-            "Cannot reliably determine status types for {} because it isn't parameterized with only spec and status types. Status replicas detection will be deactivated.",
-            customResource.getCanonicalName());
+        LOGGER.warn("Cannot reliably determine status types for {} because it isn't parameterized with only spec and status types. Status replicas detection will be deactivated.",
+          customResource.getCanonicalName());
       }
 
       return new CustomResourceInfo(instance.getGroup(), instance.getVersion(), instance.getKind(),
-          instance.getSingular(), instance.getPlural(), shortNames, instance.isStorage(), instance.isServed(), scope,
-          definition,
-          customResource.getCanonicalName(), specAndStatus.getSpecClassName(),
-          specAndStatus.getStatusClassName(), toStringArray(instance.getMetadata().getAnnotations()),
-          toStringArray(instance.getMetadata().getLabels()));
+        instance.getSingular(), instance.getPlural(), shortNames, instance.isStorage(), instance.isServed(), scope, definition,
+        customResource.getCanonicalName(), specAndStatus.getSpecClassName(),
+        specAndStatus.getStatusClassName());
     } catch (InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
       throw KubernetesClientException.launderThrowable(e);
     }
-  }
-
-  public static String[] toStringArray(Map<String, String> map) {
-    String[] res = new String[map.size()];
-    Set<Map.Entry<String, String>> entrySet = map.entrySet();
-    int i = 0;
-    for (Map.Entry<String, String> e : entrySet) {
-      res[i] = e.getKey() + "=" + e.getValue();
-      i++;
-    }
-    return res;
   }
 
   @Override

@@ -19,7 +19,7 @@ SHELL := /bin/bash
 all: build
 
 build: gobuild
-	mvn -Pgenerate clean install -DskipTests
+	mvn clean install
 
 gobuild:
 	CGO_ENABLED=0 GO15VENDOREXPERIMENT=1 go build -a ./cmd/generate/generate.go

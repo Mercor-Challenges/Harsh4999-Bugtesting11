@@ -15,7 +15,17 @@
  */
 package io.fabric8.camelk.client;
 
+import io.fabric8.kubernetes.client.BaseClient;
+import io.fabric8.kubernetes.client.Config;
+import io.fabric8.kubernetes.client.dsl.MixedOperation;
+import io.fabric8.kubernetes.client.dsl.NonNamespaceOperation;
+import io.fabric8.kubernetes.client.dsl.Resource;
 import io.fabric8.camelk.client.dsl.V1APIGroupDSL;
+import io.fabric8.camelk.client.internal.v1.BuildOperationsImpl;
+import io.fabric8.camelk.client.internal.v1.CamelCatalogOperationsImpl;
+import io.fabric8.camelk.client.internal.v1.IntegrationKitOperationsImpl;
+import io.fabric8.camelk.client.internal.v1.IntegrationOperationsImpl;
+import io.fabric8.camelk.client.internal.v1.IntegrationPlatformOperationsImpl;
 import io.fabric8.camelk.v1.Build;
 import io.fabric8.camelk.v1.BuildList;
 import io.fabric8.camelk.v1.CamelCatalog;
@@ -26,40 +36,40 @@ import io.fabric8.camelk.v1.IntegrationKitList;
 import io.fabric8.camelk.v1.IntegrationList;
 import io.fabric8.camelk.v1.IntegrationPlatform;
 import io.fabric8.camelk.v1.IntegrationPlatformList;
-import io.fabric8.kubernetes.client.dsl.MixedOperation;
-import io.fabric8.kubernetes.client.dsl.Resource;
-import io.fabric8.kubernetes.client.extension.ClientAdapter;
+import okhttp3.OkHttpClient;
 
-public class V1APIGroupClient extends ClientAdapter<V1APIGroupClient> implements V1APIGroupDSL {
-
-  @Override
-  public V1APIGroupClient newInstance() {
-    return new V1APIGroupClient();
+public class V1APIGroupClient extends BaseClient implements V1APIGroupDSL {
+  public V1APIGroupClient() {
+    super();
   }
 
-  @Override
-  public MixedOperation<Build, BuildList, Resource<Build>> builds() {
-    return resources(Build.class, BuildList.class);
+  public V1APIGroupClient(OkHttpClient httpClient, final Config config) {
+    super(httpClient, config);
   }
 
-  @Override
-  public MixedOperation<CamelCatalog, CamelCatalogList, Resource<CamelCatalog>> camelCatalogs() {
-    return resources(CamelCatalog.class, CamelCatalogList.class);
-  }
+@Override
+public MixedOperation<Build, BuildList, Resource<Build>> builds() {
+	return new BuildOperationsImpl(httpClient, getConfiguration());
+}
 
-  @Override
-  public MixedOperation<Integration, IntegrationList, Resource<Integration>> integrations() {
-    return resources(Integration.class, IntegrationList.class);
-  }
+@Override
+public MixedOperation<CamelCatalog, CamelCatalogList, Resource<CamelCatalog>> camelCatalogs() {
+	return new CamelCatalogOperationsImpl(httpClient, getConfiguration());
+}
 
-  @Override
-  public MixedOperation<IntegrationKit, IntegrationKitList, Resource<IntegrationKit>> integrationKits() {
-    return resources(IntegrationKit.class, IntegrationKitList.class);
-  }
+@Override
+public MixedOperation<Integration, IntegrationList, Resource<Integration>> integrations() {
+	return new IntegrationOperationsImpl(httpClient, getConfiguration());
+}
 
-  @Override
-  public MixedOperation<IntegrationPlatform, IntegrationPlatformList, Resource<IntegrationPlatform>> integrationPlatforms() {
-    return resources(IntegrationPlatform.class, IntegrationPlatformList.class);
-  }
+@Override
+public MixedOperation<IntegrationKit, IntegrationKitList, Resource<IntegrationKit>> integrationKits() {
+	return new IntegrationKitOperationsImpl(httpClient, getConfiguration());
+}
+
+@Override
+public MixedOperation<IntegrationPlatform, IntegrationPlatformList, Resource<IntegrationPlatform>> integrationPlatforms() {
+  return new IntegrationPlatformOperationsImpl(httpClient, getConfiguration());
+}
 
 }

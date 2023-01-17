@@ -20,8 +20,8 @@ import io.fabric8.kubernetes.api.model.PodBuilder;
 import io.fabric8.kubernetes.api.model.scheduling.v1beta1.PriorityClass;
 import io.fabric8.kubernetes.api.model.scheduling.v1beta1.PriorityClassBuilder;
 import io.fabric8.kubernetes.client.ConfigBuilder;
+import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClient;
-import io.fabric8.kubernetes.client.KubernetesClientBuilder;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,23 +38,23 @@ public class PodPriorityExample {
       configBuilder.withMasterUrl(args[0]);
       logger.info("Using master with URL: {}", args[0]);
     }
-    try (KubernetesClient client = new KubernetesClientBuilder().withConfig(configBuilder.build()).build()) {
+    try (KubernetesClient client = new DefaultKubernetesClient(configBuilder.build())) {
       PriorityClass priorityClass = new PriorityClassBuilder()
-          .withNewMetadata().withName("high-priority").endMetadata()
-          .withValue(100000)
-          .withGlobalDefault(false)
-          .withDescription("This priority class should be used for XYZ service pods only.")
-          .build();
+        .withNewMetadata().withName("high-priority").endMetadata()
+        .withValue(100000)
+        .withGlobalDefault(false)
+        .withDescription("This priority class should be used for XYZ service pods only.")
+        .build();
       client.scheduling().v1beta1().priorityClasses().create(priorityClass);
 
       client.pods().inNamespace("default").create(new PodBuilder()
-          .withNewMetadata().withName("nginx").withLabels(Collections.singletonMap("env", "test")).endMetadata()
-          .withNewSpec()
-          .addToContainers(
-              new ContainerBuilder().withName("nginx").withImage("nginx").withImagePullPolicy("IfNotPresent").build())
-          .withPriorityClassName("high-priority")
-          .endSpec()
-          .build());
+        .withNewMetadata().withName("nginx").withLabels(Collections.singletonMap("env", "test")).endMetadata()
+        .withNewSpec()
+        .addToContainers(new ContainerBuilder().withName("nginx").withImage("nginx").withImagePullPolicy("IfNotPresent").build())
+        .withPriorityClassName("high-priority")
+        .endSpec()
+        .build()
+      );
     } catch (KubernetesClientException e) {
       logger.error("Could not create resource: {}", e.getMessage(), e);
     }

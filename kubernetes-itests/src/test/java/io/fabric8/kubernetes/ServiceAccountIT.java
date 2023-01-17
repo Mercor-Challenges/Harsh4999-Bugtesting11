@@ -16,62 +16,83 @@
 
 package io.fabric8.kubernetes;
 
-import io.fabric8.junit.jupiter.api.LoadKubernetesManifests;
-import io.fabric8.kubernetes.api.model.ServiceAccount;
-import io.fabric8.kubernetes.api.model.ServiceAccountBuilder;
-import io.fabric8.kubernetes.api.model.ServiceAccountList;
+import io.fabric8.commons.ClusterEntity;
+import io.fabric8.commons.ReadyEntity;
+import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.client.KubernetesClient;
-import org.junit.jupiter.api.Test;
+import org.arquillian.cube.kubernetes.api.Session;
+import org.arquillian.cube.kubernetes.impl.requirement.RequiresKubernetes;
+import org.arquillian.cube.requirement.ArquillianConditionalRunner;
+import org.jboss.arquillian.test.api.ArquillianResource;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 
-import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
+import static junit.framework.TestCase.assertNotNull;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.awaitility.Awaitility.await;
+import static org.junit.Assert.assertTrue;
 
-@LoadKubernetesManifests("/serviceaccount-it.yml")
-class ServiceAccountIT {
-
+@RunWith(ArquillianConditionalRunner.class)
+@RequiresKubernetes
+public class ServiceAccountIT {
+  @ArquillianResource
   KubernetesClient client;
 
+  @ArquillianResource
+  Session session;
+
+  @BeforeClass
+  public static void init() {
+    ClusterEntity.apply(ServiceAccountIT.class.getResourceAsStream("/serviceaccount-it.yml"));
+  }
+
   @Test
-  void load() {
-    ServiceAccount svcAccount = client.serviceAccounts()
-        .load(getClass().getResourceAsStream("/test-serviceaccount.yml")).item();
+  public void load() {
+    ServiceAccount svcAccount = client.serviceAccounts().inNamespace(session.getNamespace())
+      .load(getClass().getResourceAsStream("/test-serviceaccount.yml")).get();
     assertThat(svcAccount).isNotNull();
     assertThat(svcAccount.getMetadata().getName()).isNotNull();
   }
 
   @Test
-  void get() {
-    ServiceAccount serviceAccount1 = client.serviceAccounts().withName("sa-get").get();
+  public void get() {
+    ServiceAccount serviceAccount1 = client.serviceAccounts().inNamespace(session.getNamespace()).withName("sa-get").get();
     assertNotNull(serviceAccount1);
   }
 
   @Test
-  void list() {
-    ServiceAccountList svcAccountList = client.serviceAccounts().list();
+  public void list() {
+    ServiceAccountList svcAccountList = client.serviceAccounts().inNamespace(session.getNamespace()).list();
     assertThat(svcAccountList).isNotNull();
     // Every namespace has a default service account resource.
     assertTrue(svcAccountList.getItems().size() >= 1);
   }
 
   @Test
-  void update() {
-    ServiceAccount serviceAccount1 = client.serviceAccounts().withName("sa-update").edit(s -> new ServiceAccountBuilder(s)
-        .addNewSecret().withName("default-token-uudp").endSecret()
-        .addNewImagePullSecret().withName("myregistrykey").endImagePullSecret()
-        .build());
-    client.serviceAccounts().withName("sa-update").waitUntilCondition(Objects::nonNull, 30, TimeUnit.SECONDS);
+  public void update() {
+    ReadyEntity<ServiceAccount> serviceAccountReady = new ReadyEntity<>(ServiceAccount.class, client, "sa-update", session.getNamespace());
+    ServiceAccount serviceAccount1 = client.serviceAccounts().inNamespace(session.getNamespace()).withName("sa-update").edit(s -> new ServiceAccountBuilder(s)
+      .addNewSecret().withName("default-token-uudp").endSecret()
+      .addNewImagePullSecret().withName("myregistrykey").endImagePullSecret()
+      .build());
+    await().atMost(30, TimeUnit.SECONDS).until(serviceAccountReady);
     assertThat(serviceAccount1).isNotNull();
   }
 
   @Test
-  void delete() {
-    client.serviceAccounts().withName("sa-delete").waitUntilCondition(Objects::nonNull, 30, TimeUnit.SECONDS);
-    boolean bDeleted = client.serviceAccounts().withName("sa-delete").delete().size() == 1;
+  public void delete() {
+    ReadyEntity<ServiceAccount> serviceAccountReady = new ReadyEntity<>(ServiceAccount.class, client, "sa-delete", session.getNamespace());
+    await().atMost(30, TimeUnit.SECONDS).until(serviceAccountReady);
+    boolean bDeleted = client.serviceAccounts().inNamespace(session.getNamespace()).withName("sa-delete").delete();
     assertTrue(bDeleted);
   }
 
+  @AfterClass
+  public static void cleanup() {
+    ClusterEntity.remove(ServiceAccountIT.class.getResourceAsStream("/serviceaccount-it.yml"));
+  }
 }

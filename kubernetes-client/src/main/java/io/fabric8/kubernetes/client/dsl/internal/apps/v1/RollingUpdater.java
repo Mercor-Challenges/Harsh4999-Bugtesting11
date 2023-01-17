@@ -16,27 +16,18 @@
 package io.fabric8.kubernetes.client.dsl.internal.apps.v1;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import io.fabric8.kubernetes.client.dsl.internal.core.v1.PodOperationsImpl;
+import okhttp3.OkHttpClient;
 import io.fabric8.kubernetes.api.model.HasMetadata;
-import io.fabric8.kubernetes.api.model.LabelSelector;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.PodBuilder;
 import io.fabric8.kubernetes.api.model.PodCondition;
 import io.fabric8.kubernetes.api.model.PodList;
-import io.fabric8.kubernetes.client.Client;
 import io.fabric8.kubernetes.client.Config;
 import io.fabric8.kubernetes.client.KubernetesClientException;
-import io.fabric8.kubernetes.client.dsl.FilterWatchListDeletable;
-import io.fabric8.kubernetes.client.dsl.MixedOperation;
+import io.fabric8.kubernetes.client.dsl.Operation;
 import io.fabric8.kubernetes.client.dsl.PodResource;
-import io.fabric8.kubernetes.client.dsl.Resource;
 import io.fabric8.kubernetes.client.dsl.RollableScalableResource;
-import io.fabric8.kubernetes.client.dsl.base.PatchContext;
-import io.fabric8.kubernetes.client.dsl.base.PatchType;
-import io.fabric8.kubernetes.client.dsl.internal.PatchUtils;
-import io.fabric8.kubernetes.client.dsl.internal.PatchUtils.Format;
-import io.fabric8.kubernetes.client.dsl.internal.core.v1.PodOperationsImpl;
-import io.fabric8.kubernetes.client.utils.Serialization;
-import io.fabric8.kubernetes.client.utils.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,10 +41,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Future;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static io.fabric8.kubernetes.client.internal.SerializationUtils.dumpWithoutRuntimeStateAsYaml;
 
 public abstract class RollingUpdater<T extends HasMetadata, L> {
   public static final String DEPLOYMENT_KEY = "deployment";
@@ -64,17 +59,19 @@ public abstract class RollingUpdater<T extends HasMetadata, L> {
 
   private static final transient Logger LOG = LoggerFactory.getLogger(RollingUpdater.class);
 
-  protected final Client client;
+  protected final OkHttpClient client;
+  protected final Config config;
   protected final String namespace;
   private final long rollingTimeoutMillis;
   private final long loggingIntervalMillis;
 
-  protected RollingUpdater(Client client, String namespace) {
-    this(client, namespace, DEFAULT_ROLLING_TIMEOUT, Config.DEFAULT_LOGGING_INTERVAL);
+  public RollingUpdater(OkHttpClient client, Config config, String namespace) {
+    this(client, config, namespace, DEFAULT_ROLLING_TIMEOUT, Config.DEFAULT_LOGGING_INTERVAL);
   }
 
-  protected RollingUpdater(Client client, String namespace, long rollingTimeoutMillis, long loggingIntervalMillis) {
+  public RollingUpdater(OkHttpClient client, Config config, String namespace, long rollingTimeoutMillis, long loggingIntervalMillis) {
     this.client = client;
+    this.config = config;
     this.namespace = namespace;
     this.rollingTimeoutMillis = rollingTimeoutMillis;
     this.loggingIntervalMillis = loggingIntervalMillis;
@@ -82,7 +79,7 @@ public abstract class RollingUpdater<T extends HasMetadata, L> {
 
   protected abstract T createClone(T obj, String newName, String newDeploymentHash);
 
-  protected abstract FilterWatchListDeletable<Pod, PodList, PodResource> selectedPodLister(T obj);
+  protected abstract PodList listSelectedPods(T obj);
 
   protected abstract T updateDeploymentKey(String name, String hash);
 
@@ -103,15 +100,15 @@ public abstract class RollingUpdater<T extends HasMetadata, L> {
       String oldDeploymentHash = md5sum(oldObj);
 
       //Before we update the resource though we need to add the labels to the existing managed pods
-      PodList oldPods = selectedPodLister(oldObj).list();
+      PodList oldPods = listSelectedPods(oldObj);
 
       for (Pod pod : oldPods.getItems()) {
         try {
-          Pod old = pods().inNamespace(namespace).withName(pod.getMetadata().getName()).get();
-          Pod updated = new PodBuilder(old)
-              .editMetadata().addToLabels(DEPLOYMENT_KEY, oldDeploymentHash).endMetadata()
-              .build();
-          pods().inNamespace(namespace).withName(pod.getMetadata().getName()).replace(updated);
+            Pod old = pods().inNamespace(namespace).withName(pod.getMetadata().getName()).get();
+            Pod updated = new PodBuilder(old)
+                .editMetadata().addToLabels(DEPLOYMENT_KEY, oldDeploymentHash).endMetadata()
+                .build();
+            pods().inNamespace(namespace).withName(pod.getMetadata().getName()).replace(updated);
         } catch (KubernetesClientException e) {
           LOG.warn("Unable to add deployment key to pod: {}", e.getMessage());
         }
@@ -175,22 +172,6 @@ public abstract class RollingUpdater<T extends HasMetadata, L> {
     }
   }
 
-  private static <T> T applyPatch(Resource<T> resource, Map<String, Object> map) {
-    return resource.patch(PatchContext.of(PatchType.STRATEGIC_MERGE), Serialization.asJson(map));
-  }
-
-  public static <T> T resume(Resource<T> resource) {
-    return applyPatch(resource, RollingUpdater.requestPayLoadForRolloutResume());
-  }
-
-  public static <T> T pause(Resource<T> resource) {
-    return applyPatch(resource, RollingUpdater.requestPayLoadForRolloutPause());
-  }
-
-  public static <T> T restart(Resource<T> resource) {
-    return applyPatch(resource, RollingUpdater.requestPayLoadForRolloutRestart());
-  }
-
   public static Map<String, Object> requestPayLoadForRolloutPause() {
     Map<String, Object> jsonPatchPayload = new HashMap<>();
     Map<String, Object> spec = new HashMap<>();
@@ -210,8 +191,7 @@ public abstract class RollingUpdater<T extends HasMetadata, L> {
   public static Map<String, Object> requestPayLoadForRolloutRestart() {
     Map<String, Object> jsonPatchPayload = new HashMap<>();
     Map<String, String> annotations = new HashMap<>();
-    annotations.put("kubectl.kubernetes.io/restartedAt",
-        new Date().toInstant().atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+    annotations.put("kubectl.kubernetes.io/restartedAt", new Date().toInstant().atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
     Map<String, Object> templateMetadata = new HashMap<>();
     templateMetadata.put("annotations", annotations);
     Map<String, Object> template = new HashMap<>();
@@ -226,10 +206,13 @@ public abstract class RollingUpdater<T extends HasMetadata, L> {
    * Lets wait until there are enough Ready pods of the given RC
    */
   private void waitUntilPodsAreReady(final T obj, final String namespace, final int requiredPodCount) {
+    final CountDownLatch countDownLatch = new CountDownLatch(1);
     final AtomicInteger podCount = new AtomicInteger(0);
 
-    CompletableFuture<List<Pod>> future = selectedPodLister(obj).informOnCondition(items -> {
+    final Runnable readyPodsPoller = () -> {
+      PodList podList = listSelectedPods(obj);
       int count = 0;
+      List<Pod> items = podList.getItems();
       for (Pod item : items) {
         for (PodCondition c : item.getStatus().getConditions()) {
           if (c.getType().equals("Ready") && c.getStatus().equals("True")) {
@@ -238,23 +221,25 @@ public abstract class RollingUpdater<T extends HasMetadata, L> {
         }
       }
       podCount.set(count);
-      return count == requiredPodCount;
-    });
-
-    Future<?> logger = Utils.scheduleAtFixedRate(Runnable::run,
-        () -> LOG.debug("Only {}/{} pod(s) ready for {}: {} in namespace: {} seconds so waiting...",
-            podCount.get(), requiredPodCount, obj.getKind(), obj.getMetadata().getName(), namespace),
-        0, loggingIntervalMillis, TimeUnit.MILLISECONDS);
-
-    try {
-      if (!Utils.waitUntilReady(future, rollingTimeoutMillis, TimeUnit.MILLISECONDS)) {
-        LOG.warn("Only {}/{} pod(s) ready for {}: {} in namespace: {}  after waiting for {} seconds so giving up",
-            podCount.get(), requiredPodCount, obj.getKind(), obj.getMetadata().getName(), namespace,
-            TimeUnit.MILLISECONDS.toSeconds(rollingTimeoutMillis));
+      if (count == requiredPodCount) {
+        countDownLatch.countDown();
       }
-    } finally {
-      future.cancel(true);
+    };
+
+    ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
+    ScheduledFuture poller = executor.scheduleWithFixedDelay(readyPodsPoller, 0, 1, TimeUnit.SECONDS);
+    ScheduledFuture logger = executor.scheduleWithFixedDelay(() -> LOG.debug("Only {}/{} pod(s) ready for {}: {} in namespace: {} seconds so waiting...",
+        podCount.get(), requiredPodCount, obj.getKind(), obj.getMetadata().getName(), namespace), 0, loggingIntervalMillis, TimeUnit.MILLISECONDS);
+    try {
+      countDownLatch.await(rollingTimeoutMillis, TimeUnit.MILLISECONDS);
+      executor.shutdown();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      poller.cancel(true);
       logger.cancel(true);
+      executor.shutdown();
+      LOG.warn("Only {}/{} pod(s) ready for {}: {} in namespace: {}  after waiting for {} seconds so giving up",
+          podCount.get(), requiredPodCount, obj.getKind(), obj.getMetadata().getName(), namespace, TimeUnit.MILLISECONDS.toSeconds(rollingTimeoutMillis));
     }
   }
 
@@ -263,32 +248,47 @@ public abstract class RollingUpdater<T extends HasMetadata, L> {
    * Lets wait until the resource is actually deleted in the server
    */
   private void waitUntilDeleted(final String namespace, final String name) {
-    Future<?> logger = Utils.scheduleAtFixedRate(Runnable::run,
-        () -> LOG.debug("Found resource {}/{} not yet deleted on server, so waiting...", namespace, name),
-        0, loggingIntervalMillis, TimeUnit.MILLISECONDS);
+    final CountDownLatch countDownLatch = new CountDownLatch(1);
+
+    final Runnable waitTillDeletedPoller = () -> {
+      try {
+        T res = resources().inNamespace(namespace).withName(name).get();
+        if (res == null) {
+          countDownLatch.countDown();
+        }
+      } catch (KubernetesClientException e) {
+        if (e.getCode() == 404) {
+          countDownLatch.countDown();
+        }
+      }
+    };
+
+    ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
+    ScheduledFuture poller = executor.scheduleWithFixedDelay(waitTillDeletedPoller, 0, 5, TimeUnit.SECONDS);
+    ScheduledFuture logger = executor.scheduleWithFixedDelay(() -> LOG.debug("Found resource {}/{} not yet deleted on server, so waiting...", namespace, name), 0, loggingIntervalMillis, TimeUnit.MILLISECONDS);
     try {
-      resources().inNamespace(namespace)
-          .withName(name)
-          .waitUntilCondition(Objects::isNull, DEFAULT_SERVER_GC_WAIT_TIMEOUT, TimeUnit.MILLISECONDS);
-    } finally {
-      logger.cancel(true); // since we're using the common pool, we must shutdown manually
+      countDownLatch.await(DEFAULT_SERVER_GC_WAIT_TIMEOUT, TimeUnit.MILLISECONDS);
+      executor.shutdown();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      poller.cancel(true);
+      logger.cancel(true);
+      executor.shutdown();
+      LOG.warn("Still found deleted resource {} in namespace: {}  after waiting for {} seconds so giving up",
+               name, namespace, TimeUnit.MILLISECONDS.toSeconds(DEFAULT_SERVER_GC_WAIT_TIMEOUT));
     }
   }
 
   private String md5sum(HasMetadata obj) throws NoSuchAlgorithmException, JsonProcessingException {
-    byte[] digest = MessageDigest.getInstance("MD5").digest(PatchUtils.withoutRuntimeState(obj, Format.YAML, true).getBytes());
+    byte[] digest = MessageDigest.getInstance("MD5").digest(dumpWithoutRuntimeStateAsYaml(obj).getBytes());
     BigInteger i = new BigInteger(1, digest);
     return String.format("%1$032x", i);
   }
 
-  protected abstract MixedOperation<T, L, RollableScalableResource<T>> resources();
+  protected abstract Operation<T, L, RollableScalableResource<T>> resources();
 
-  protected MixedOperation<Pod, PodList, PodResource> pods() {
-    return new PodOperationsImpl(client);
-  }
-
-  protected FilterWatchListDeletable<Pod, PodList, PodResource> selectedPodLister(LabelSelector selector) {
-    return pods().inNamespace(namespace).withLabelSelector(selector);
+  protected Operation<Pod, PodList, PodResource<Pod>> pods() {
+    return new PodOperationsImpl(client, config);
   }
 
 }

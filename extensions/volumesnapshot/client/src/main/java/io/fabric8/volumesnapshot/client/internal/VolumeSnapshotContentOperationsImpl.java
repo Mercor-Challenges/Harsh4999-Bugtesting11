@@ -15,16 +15,41 @@
  */
 package io.fabric8.volumesnapshot.client.internal;
 
-import io.fabric8.kubernetes.client.extension.ExtensibleResourceAdapter;
+import io.fabric8.kubernetes.api.builder.Visitor;
+import io.fabric8.kubernetes.client.Config;
+import io.fabric8.kubernetes.client.dsl.base.BaseOperation;
+import io.fabric8.kubernetes.client.dsl.base.HasMetadataOperation;
+import io.fabric8.kubernetes.client.dsl.base.OperationContext;
 import io.fabric8.volumesnapshot.api.model.VolumeSnapshotContent;
-import io.fabric8.volumesnapshot.client.VolumeSnapshotContentResource;
+import io.fabric8.volumesnapshot.api.model.VolumeSnapshotContentBuilder;
+import io.fabric8.volumesnapshot.api.model.VolumeSnapshotContentList;
+import okhttp3.OkHttpClient;
 
-public class VolumeSnapshotContentOperationsImpl extends ExtensibleResourceAdapter<VolumeSnapshotContent>
-    implements VolumeSnapshotContentResource {
 
-  @Override
-  public ExtensibleResourceAdapter<VolumeSnapshotContent> newInstance() {
-    return new VolumeSnapshotContentOperationsImpl();
+public class VolumeSnapshotContentOperationsImpl extends HasMetadataOperation<VolumeSnapshotContent, VolumeSnapshotContentList, VolumeSnapshotContentResource> implements VolumeSnapshotContentResource {
+
+  public VolumeSnapshotContentOperationsImpl(OkHttpClient client, Config config) {
+    this(new OperationContext().withOkhttpClient(client).withConfig(config));
   }
 
+  public VolumeSnapshotContentOperationsImpl(OperationContext context) {
+    super(context.withApiGroupName("snapshot.storage.k8s.io").withApiGroupVersion("v1").withPlural("volumesnapshotcontents"));
+    this.type = VolumeSnapshotContent.class;
+    this.listType = VolumeSnapshotContentList.class;
+  }
+
+  @Override
+  public BaseOperation<VolumeSnapshotContent, VolumeSnapshotContentList, VolumeSnapshotContentResource> newInstance(OperationContext context) {
+    return new VolumeSnapshotContentOperationsImpl(context);
+  }
+
+  @Override
+  public VolumeSnapshotContent edit(Visitor... visitors) {
+    return patch(new VolumeSnapshotContentBuilder(getMandatory()).accept(visitors).build());
+  }
+
+  @Override
+  public boolean isResourceNamespaced() {
+    return false;
+  }
 }

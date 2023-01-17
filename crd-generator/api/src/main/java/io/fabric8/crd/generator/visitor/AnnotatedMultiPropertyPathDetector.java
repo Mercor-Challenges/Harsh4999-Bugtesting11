@@ -17,19 +17,16 @@ package io.fabric8.crd.generator.visitor;
 
 import io.fabric8.crd.generator.utils.Types;
 import io.sundr.builder.TypedVisitor;
-import io.sundr.model.ClassRef;
-import io.sundr.model.Property;
-import io.sundr.model.TypeDef;
-import io.sundr.model.TypeDefBuilder;
-
+import io.sundr.codegen.model.ClassRef;
+import io.sundr.codegen.model.Property;
+import io.sundr.codegen.model.TypeDef;
+import io.sundr.codegen.model.TypeDefBuilder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-
-import static io.fabric8.crd.generator.AbstractJsonSchema.ANNOTATION_JSON_IGNORE;
 
 public class AnnotatedMultiPropertyPathDetector extends TypedVisitor<TypeDefBuilder> {
 
@@ -49,50 +46,42 @@ public class AnnotatedMultiPropertyPathDetector extends TypedVisitor<TypeDefBuil
     this(prefix, annotationName, parents, new HashMap<>());
   }
 
-  public AnnotatedMultiPropertyPathDetector(String prefix, String annotationName, List<Property> parents,
-      Map<String, Property> properties) {
+  public AnnotatedMultiPropertyPathDetector(String prefix, String annotationName, List<Property> parents, Map<String, Property> properties) {
     this.prefix = prefix;
     this.annotationName = annotationName;
     this.parents = parents;
     this.properties = properties;
   }
 
-  private boolean excludePropertyProcessing(Property p) {
-    return p.getAnnotations().stream()
-        .anyMatch(ann -> ann.getClassRef().getFullyQualifiedName().equals(ANNOTATION_JSON_IGNORE));
-  }
-
   @Override
   public void visit(TypeDefBuilder builder) {
     TypeDef type = builder.build();
-    final List<Property> props = type.getProperties();
-    for (Property p : props) {
-      if (parents.contains(p)) {
-        continue;
-      }
+    for (Property p : Types.projectProperties(type)) {
+        if (p.isStatic() || parents.contains(p)) {
+          continue;
+        }
 
-      List<Property> newParents = new ArrayList<>(parents);
-      boolean match = p.getAnnotations().stream().anyMatch(a -> a.getClassRef().getName().equals(annotationName));
-      if (match) {
-        newParents.add(p);
-        this.properties
-            .put(newParents.stream().map(Property::getName).collect(Collectors.joining(DOT, prefix, "")), p);
-      }
+        List<Property> newParents = new ArrayList<>(parents);
+        boolean match = p.getAnnotations().stream().anyMatch(a -> a.getClassRef().getName().equals(annotationName));
+        if (match) {
+          newParents.add(p);
+          properties.put(newParents.stream().map(Property::getName).collect(Collectors.joining(DOT, prefix, "")), p);
+        }
     }
 
-    props.stream().filter(p -> p.getTypeRef() instanceof ClassRef).forEach(p -> {
-      if (!parents.contains(p) && !excludePropertyProcessing(p)) {
-        ClassRef classRef = (ClassRef) p.getTypeRef();
-        TypeDef propertyType = Types.typeDefFrom(classRef);
-        if (!propertyType.isEnum()) {
-          List<Property> newParents = new ArrayList<>(parents);
-          newParents.add(p);
-          new TypeDefBuilder(propertyType)
+    Types.projectProperties(type).stream().filter(p -> p.getTypeRef() instanceof ClassRef).forEach(p -> {
+        if (!p.isStatic() && !parents.contains(p)) {
+          ClassRef classRef = (ClassRef) p.getTypeRef();
+          TypeDef propertyType = classRef.getDefinition();
+          if (!propertyType.isEnum()) {
+            List<Property> newParents = new ArrayList<>(parents);
+            newParents.add(p);
+            new TypeDefBuilder(propertyType)
               .accept(new AnnotatedMultiPropertyPathDetector(prefix, annotationName, newParents, properties))
               .build();
+          }
         }
-      }
-    });
+      });
   }
 
   public Set<String> getPaths() {

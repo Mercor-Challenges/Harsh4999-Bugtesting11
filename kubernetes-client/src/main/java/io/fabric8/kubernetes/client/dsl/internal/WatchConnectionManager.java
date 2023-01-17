@@ -15,130 +15,108 @@
  */
 package io.fabric8.kubernetes.client.dsl.internal;
 
+import java.net.MalformedURLException;
+import java.util.List;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.KubernetesResourceList;
 import io.fabric8.kubernetes.api.model.ListOptions;
 import io.fabric8.kubernetes.api.model.Status;
+import io.fabric8.kubernetes.api.model.WatchEvent;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.Watcher;
-import io.fabric8.kubernetes.client.http.HttpClient;
-import io.fabric8.kubernetes.client.http.HttpResponse;
-import io.fabric8.kubernetes.client.http.WebSocket;
-import io.fabric8.kubernetes.client.http.WebSocket.Builder;
-import io.fabric8.kubernetes.client.http.WebSocketHandshakeException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import io.fabric8.kubernetes.client.Watcher.Action;
+import io.fabric8.kubernetes.client.WatcherException;
+import io.fabric8.kubernetes.client.dsl.base.BaseOperation;
+import okhttp3.OkHttpClient;
+import okhttp3.WebSocket;
 
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URL;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
+import static io.fabric8.kubernetes.client.dsl.internal.WatchHTTPManager.readWatchEvent;
+import static java.net.HttpURLConnection.HTTP_GONE;
 
-import static java.net.HttpURLConnection.HTTP_OK;
-import static java.net.HttpURLConnection.HTTP_UNAVAILABLE;
-
-/**
- * Manages a WebSocket and listener per request
- */
-public class WatchConnectionManager<T extends HasMetadata, L extends KubernetesResourceList<T>>
-    extends AbstractWatchManager<T> {
-
-  public static final int BACKOFF_MAX_EXPONENT = 5;
-
-  private static final Logger logger = LoggerFactory.getLogger(WatchConnectionManager.class);
-
-  protected WatcherWebSocketListener<T> listener;
-  private volatile CompletableFuture<WebSocket> websocketFuture;
-
-  private volatile boolean ready;
-
-  static void closeWebSocket(WebSocket webSocket) {
-    if (webSocket != null) {
-      logger.debug("Closing websocket {}", webSocket);
-      try {
-        if (!webSocket.sendClose(1000, null)) {
-          logger.debug("Websocket already closed {}", webSocket);
-        }
-      } catch (IllegalStateException e) {
-        logger.error("invalid code for websocket: {} {}", e.getClass(), e.getMessage());
+public class WatchConnectionManager<T extends HasMetadata, L extends KubernetesResourceList<T>> extends AbstractWatchManager<T> {
+  
+  public WatchConnectionManager(final OkHttpClient client, final BaseOperation<T, L, ?> baseOperation, final ListOptions listOptions, final Watcher<T> watcher, final int reconnectInterval, final int reconnectLimit, long websocketTimeout, int maxIntervalExponent) throws MalformedURLException {
+    super(
+      watcher, listOptions, reconnectLimit, reconnectInterval, maxIntervalExponent, new BaseOperationRequestBuilder<>(baseOperation, listOptions)
+    );
+    
+    initRunner(new WebSocketClientRunner<T>(client) {
+      @Override
+      WatcherWebSocketListener<T> newListener(BlockingQueue<Object> queue, AtomicReference<WebSocket> webSocketRef) {
+        return new TypedWatcherWebSocketListener<>(WatchConnectionManager.this, queue, webSocketRef);
       }
-    }
+  
+      @Override
+      OkHttpClient cloneAndCustomize(OkHttpClient client) {
+        return client.newBuilder()
+          .readTimeout(websocketTimeout, TimeUnit.MILLISECONDS)
+          .build();
+      }
+    });
+    runWatch();
   }
-
-  public WatchConnectionManager(final HttpClient client, final BaseOperation<T, L, ?> baseOperation,
-      final ListOptions listOptions, final Watcher<T> watcher, final int reconnectInterval, final int reconnectLimit,
-      long websocketTimeout, int maxIntervalExponent) throws MalformedURLException {
-    super(watcher, baseOperation, listOptions, reconnectLimit, reconnectInterval, maxIntervalExponent, () -> client.newBuilder()
-        .readTimeout(websocketTimeout, TimeUnit.MILLISECONDS)
-        .build());
-  }
-
-  public WatchConnectionManager(final HttpClient client, final BaseOperation<T, L, ?> baseOperation,
-      final ListOptions listOptions, final Watcher<T> watcher, final int reconnectInterval, final int reconnectLimit,
-      long websocketTimeout) throws MalformedURLException {
+  
+  public WatchConnectionManager(final OkHttpClient client, final BaseOperation<T, L, ?> baseOperation, final ListOptions listOptions, final Watcher<T> watcher, final int reconnectInterval, final int reconnectLimit, long websocketTimeout) throws MalformedURLException {
     // Default max 32x slowdown from base interval
-    this(client, baseOperation, listOptions, watcher, reconnectInterval, reconnectLimit, websocketTimeout,
-        BACKOFF_MAX_EXPONENT);
+    this(client, baseOperation, listOptions, watcher, reconnectInterval, reconnectLimit, websocketTimeout, 5);
   }
-
-  @Override
-  protected void closeRequest() {
-    if (this.listener != null) {
-      this.listener.close();
+  
+  private static class TypedWatcherWebSocketListener<T extends HasMetadata> extends WatcherWebSocketListener<T> {
+    public TypedWatcherWebSocketListener(AbstractWatchManager<T> manager, BlockingQueue<Object> queue, AtomicReference<WebSocket> webSocketRef) {
+      super(manager, queue, webSocketRef);
     }
-    Optional.ofNullable(this.websocketFuture).ifPresent(theFuture -> {
-      this.websocketFuture = null;
-      theFuture.whenComplete((w, t) -> {
-        if (w != null) {
-          closeWebSocket(w);
-        }
-      });
-    });
-  }
-
-  public CompletableFuture<WebSocket> getWebsocketFuture() {
-    return websocketFuture;
-  }
-
-  @Override
-  protected void start(URL url, Map<String, String> headers) {
-    this.listener = new WatcherWebSocketListener<>(this);
-    Builder builder = client.newWebSocketBuilder();
-    headers.forEach(builder::header);
-    builder.uri(URI.create(url.toString()));
-
-    this.websocketFuture = builder.buildAsync(this.listener).handle((w, t) -> {
-      if (t != null) {
-        if (t instanceof WebSocketHandshakeException) {
-          WebSocketHandshakeException wshe = (WebSocketHandshakeException) t;
-          HttpResponse<?> response = wshe.getResponse();
-          final int code = response.code();
-          // We do not expect a 200 in response to the websocket connection. If it occurs, we throw
-          // an exception and try the watch via a persistent HTTP Get.
-          // Newer Kubernetes might also return 503 Service Unavailable in case WebSockets are not supported
-          Status status = OperationSupport.createStatus(response);
-          if (HTTP_OK == code || HTTP_UNAVAILABLE == code) {
-            throw OperationSupport.requestFailure(client.newHttpRequestBuilder().url(url).build(), status,
-                "Received " + code + " on websocket");
+  
+    @Override
+    public void onMessage(WebSocket webSocket, String message) {
+      try {
+        WatchEvent event = readWatchEvent(message);
+        Object object = event.getObject();
+        if (object instanceof HasMetadata) {
+          @SuppressWarnings("unchecked")
+          T obj = (T) object;
+          manager.updateResourceVersion(obj.getMetadata().getResourceVersion());
+          Action action = Action.valueOf(event.getType());
+          manager.eventReceived(action, obj);
+        } else if (object instanceof KubernetesResourceList) {
+          // Dirty cast - should always be valid though
+          KubernetesResourceList list = (KubernetesResourceList) object;
+          manager.updateResourceVersion(list.getMetadata().getResourceVersion());
+          Action action = Action.valueOf(event.getType());
+          List<HasMetadata> items = list.getItems();
+          if (items != null) {
+            for (HasMetadata item : items) {
+              manager.eventReceived(action, (T) item);
+            }
           }
-          logger.warn("Exec Failure: HTTP {}, Status: {} - {}", code, status.getCode(), status.getMessage());
-          t = OperationSupport.requestFailure(client.newHttpRequestBuilder().url(url).build(), status);
+        } else if (object instanceof Status) {
+          Status status = (Status) object;
+        
+          // The resource version no longer exists - this has to be handled by the caller.
+          if (status.getCode() == HTTP_GONE) {
+            webSocketRef.set(null); // lose the ref: closing in close() would only generate a Broken pipe
+            // exception
+            // shut down executor, etc.
+            manager.closeEvent(new WatcherException(status.getMessage(), new KubernetesClientException(status)));
+            manager.close();
+            return;
+          }
+  
+          manager.eventReceived(Action.ERROR, null);
+          logger.error("Error received: {}", status);
+        } else {
+          logger.error("Unknown message received: {}", message);
         }
-        if (ready) {
-          // if we're not ready yet, that means we're waiting on the future and there's
-          // no need to invoke the reconnect logic
-          listener.onError(w, t);
-        }
-        throw KubernetesClientException.launderThrowable(t);
+      } catch (ClassCastException e) {
+        logger.error("Received wrong type of object for watch", e);
+      } catch (IllegalArgumentException e) {
+        logger.error("Invalid event type", e);
+      } catch (Throwable e) {
+        logger.error("Unhandled exception encountered in watcher event handler", e);
       }
-      if (w != null) {
-        this.ready = true;
-      }
-      return w;
-    });
+    }
   }
-
 }

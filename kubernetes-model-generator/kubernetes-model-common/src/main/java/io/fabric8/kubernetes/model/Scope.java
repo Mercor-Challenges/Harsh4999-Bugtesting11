@@ -20,8 +20,7 @@ package io.fabric8.kubernetes.model;
  * are visible within the confines of a given namespace.
  */
 public enum Scope {
-  NAMESPACED("Namespaced"),
-  CLUSTER("Cluster");
+  NAMESPACED("Namespaced"), CLUSTER("Cluster");
 
   private final String value;
 

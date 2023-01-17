@@ -52,7 +52,6 @@
     <bundle>mvn:io.fabric8/kubernetes-model-events/${project.version}</bundle>
     <bundle>mvn:io.fabric8/kubernetes-model-extensions/${project.version}</bundle>
     <bundle>mvn:io.fabric8/kubernetes-model-flowcontrol/${project.version}</bundle>
-    <bundle>mvn:io.fabric8/kubernetes-model-gatewayapi/${project.version}</bundle>
     <bundle>mvn:io.fabric8/kubernetes-model-networking/${project.version}</bundle>
     <bundle>mvn:io.fabric8/kubernetes-model-node/${project.version}</bundle>
     <bundle>mvn:io.fabric8/kubernetes-model-metrics/${project.version}</bundle>
@@ -60,27 +59,16 @@
     <bundle>mvn:io.fabric8/kubernetes-model-scheduling/${project.version}</bundle>
     <bundle>mvn:io.fabric8/kubernetes-model-storageclass/${project.version}</bundle>
     <bundle>mvn:io.fabric8/openshift-model/${project.version}</bundle>
-    <bundle>mvn:io.fabric8/kubernetes-httpclient-okhttp/${project.version}/jar/bundle</bundle>
     <bundle>mvn:io.fabric8/kubernetes-client/${project.version}/jar/bundle</bundle>
   </feature>
 
   <feature name="openshift-client" description="Fabric8 Openshift Client" version="${project.version}">
     <feature>kubernetes-client</feature>
     <bundle>mvn:io.fabric8/openshift-client/${project.version}/jar/bundle</bundle>
-    <bundle>mvn:io.fabric8/openshift-model-clusterautoscaling/${project.version}</bundle>
     <bundle>mvn:io.fabric8/openshift-model-console/${project.version}</bundle>
-    <bundle>mvn:io.fabric8/openshift-model-config/${project.version}</bundle>
-    <bundle>mvn:io.fabric8/openshift-model-machine/${project.version}</bundle>
     <bundle>mvn:io.fabric8/openshift-model-monitoring/${project.version}</bundle>
     <bundle>mvn:io.fabric8/openshift-model-operator/${project.version}</bundle>
     <bundle>mvn:io.fabric8/openshift-model-operatorhub/${project.version}</bundle>
-    <bundle>mvn:io.fabric8/openshift-model-machineconfig/${project.version}</bundle>
-    <bundle>mvn:io.fabric8/openshift-model-miscellaneous/${project.version}</bundle>
-    <bundle>mvn:io.fabric8/openshift-model-whereabouts/${project.version}</bundle>
-    <bundle>mvn:io.fabric8/openshift-model-storageversionmigrator/${project.version}</bundle>
-    <bundle>mvn:io.fabric8/openshift-model-tuned/${project.version}</bundle>
-    <bundle>mvn:io.fabric8/openshift-model-hive/${project.version}</bundle>
-    <bundle>mvn:io.fabric8/openshift-model-installer/${project.version}</bundle>
   </feature>
 
 </features>

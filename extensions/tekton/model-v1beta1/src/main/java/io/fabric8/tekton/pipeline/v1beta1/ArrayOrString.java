@@ -15,6 +15,7 @@
  */
 package io.fabric8.tekton.pipeline.v1beta1;
 
+
 import com.fasterxml.jackson.annotation.*;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
@@ -26,28 +27,21 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import io.fabric8.kubernetes.api.model.KubernetesResource;
 import io.sundr.builder.annotations.Buildable;
 import lombok.EqualsAndHashCode;
-import lombok.Setter;
 import lombok.ToString;
-import lombok.experimental.Accessors;
 
 import java.io.IOException;
 import java.util.*;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
-    "arrayVal",
-    "stringVal",
-    "type"
+  "arrayVal",
+  "stringVal",
+  "type"
 })
 @JsonDeserialize(using = ArrayOrString.Deserializer.class)
 @JsonSerialize(using = ArrayOrString.Serializer.class)
 @ToString
 @EqualsAndHashCode
-@Setter
-@Accessors(prefix = {
-    "_",
-    ""
-})
 @Buildable(editableEnabled = false, validationEnabled = false, generateBuilderPackage = false, builderPackage = "io.fabric8.kubernetes.api.builder")
 public class ArrayOrString implements KubernetesResource {
 
@@ -55,7 +49,7 @@ public class ArrayOrString implements KubernetesResource {
   private static final String TYPE_ARRAY = "array";
 
   @JsonProperty("arrayVal")
-  private List<String> arrayVal = new ArrayList<>();
+  private List<String> arrayVal = new ArrayList<String>();
 
   @JsonProperty("stringVal")
   private String stringVal;
@@ -64,7 +58,7 @@ public class ArrayOrString implements KubernetesResource {
   private String type;
 
   @JsonIgnore
-  private Map<String, Object> additionalProperties = new HashMap<>();
+  private Map<String, Object> additionalProperties = new HashMap<String, Object>();
 
   /**
    * No args constructor for use in serialization
@@ -131,8 +125,7 @@ public class ArrayOrString implements KubernetesResource {
   public static class Serializer extends JsonSerializer<ArrayOrString> {
 
     @Override
-    public void serialize(ArrayOrString value, JsonGenerator jgen, SerializerProvider provider)
-        throws IOException, JsonProcessingException {
+    public void serialize(ArrayOrString value, JsonGenerator jgen, SerializerProvider provider) throws IOException, JsonProcessingException {
       if (value != null) {
         if (value.getType() == null) {
           String stringVal = value.getStringVal();

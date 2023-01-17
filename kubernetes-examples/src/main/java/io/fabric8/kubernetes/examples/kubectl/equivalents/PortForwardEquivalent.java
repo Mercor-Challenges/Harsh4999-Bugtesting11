@@ -15,8 +15,8 @@
  */
 package io.fabric8.kubernetes.examples.kubectl.equivalents;
 
+import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClient;
-import io.fabric8.kubernetes.client.KubernetesClientBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,10 +30,10 @@ public class PortForwardEquivalent {
   private static final Logger logger = LoggerFactory.getLogger(PortForwardEquivalent.class);
 
   public static void main(String[] args) {
-    try (final KubernetesClient k8s = new KubernetesClientBuilder().build()) {
+    try (final KubernetesClient k8s = new DefaultKubernetesClient()) {
       CountDownLatch countDownLatch = new CountDownLatch(1);
       k8s.pods().inNamespace("default").withName("my-pod")
-          .portForward(80, 8080); // (container port , localhost port)
+        .portForward(80, 8080); // (container port , localhost port)
 
       logger.info("Port forward open for 10 seconds");
       boolean latchTerminationStatus = countDownLatch.await(10, TimeUnit.SECONDS);
@@ -43,7 +43,7 @@ public class PortForwardEquivalent {
       logger.info("Closing port forward");
     } catch (InterruptedException interruptedException) {
       Thread.currentThread().interrupt();
-      logger.warn("Interrupted while waiting for the port forward to be ready: {}", interruptedException.getMessage());
+      interruptedException.printStackTrace();
     }
   }
 }

@@ -20,7 +20,6 @@ import (
 	"github.com/fabric8io/kubernetes-client/generator/pkg/schemagen"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	machinery "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"reflect"
 )
 
@@ -72,11 +71,10 @@ func main() {
 
 	// overwriting some times
 	manualTypeMap := map[reflect.Type]string{
-		reflect.TypeOf(runtime.RawExtension{}): "java.util.Map<String, Object>",
 		reflect.TypeOf(machinery.Time{}): "java.lang.String",
 	}
 
-	json := schemagen.GenerateSchema("http://fabric8.io/tekton/v1beta1/TektonSchema#", crdLists, providedPackages, manualTypeMap, packageMapping, mappingSchema, providedTypes, constraints, "io.fabric8")
+	json := schemagen.GenerateSchema("http://fabric8.io/tekton/v1beta1/TektonSchema#", crdLists, providedPackages, manualTypeMap, packageMapping, mappingSchema, providedTypes, constraints)
 
 	fmt.Println(json)
 }

@@ -18,21 +18,27 @@ package io.fabric8.kubernetes;
 import io.fabric8.kubernetes.api.model.Namespace;
 import io.fabric8.kubernetes.api.model.NamespaceBuilder;
 import io.fabric8.kubernetes.client.KubernetesClient;
-import org.junit.jupiter.api.Test;
+import org.arquillian.cube.kubernetes.impl.requirement.RequiresKubernetes;
+import org.arquillian.cube.requirement.ArquillianConditionalRunner;
+import org.jboss.arquillian.test.api.ArquillianResource;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 
+import static junit.framework.TestCase.assertTrue;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
-class NamespaceIT {
-
+@RunWith(ArquillianConditionalRunner.class)
+@RequiresKubernetes
+public class NamespaceIT {
+  @ArquillianResource
   KubernetesClient client;
 
   @Test
-  void testCrud() {
+  public void testCrud() {
     // Load
-    Namespace namespace = client.namespaces().load(getClass().getResourceAsStream("/test-namespace.yml")).item();
+    Namespace namespace = client.namespaces().load(getClass().getResourceAsStream("/test-namespace.yml")).get();
     assertThat(namespace).isNotNull();
     assertEquals("fabric8-test", namespace.getMetadata().getName());
 
@@ -47,12 +53,12 @@ class NamespaceIT {
 
     // Update
     namespace = client.namespaces().withName("fabric8-test").edit(c -> new NamespaceBuilder(c)
-        .editOrNewMetadata().addToAnnotations("foo", "bar").endMetadata()
-        .build());
+      .editOrNewMetadata().addToAnnotations("foo", "bar").endMetadata()
+      .build());
     assertNotNull(namespace);
     assertEquals("bar", namespace.getMetadata().getAnnotations().get("foo"));
 
     // Delete
-    assertTrue(client.namespaces().withName("fabric8-test").delete().size() == 1);
+    assertTrue(client.namespaces().withName("fabric8-test").delete());
   }
 }

@@ -25,11 +25,10 @@ public class Person {
   private String lastName;
   private int birthYear;
   private List<String> hobbies;
-  private AddressList addresses;
+  private List<Address> addresses;
   private Type type;
 
   public enum Type {
-    crazy,
-    crazier
+    crazy, crazier;
   }
 }

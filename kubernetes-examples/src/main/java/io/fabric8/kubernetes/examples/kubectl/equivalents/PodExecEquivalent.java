@@ -15,10 +15,11 @@
  */
 package io.fabric8.kubernetes.examples.kubectl.equivalents;
 
+import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClient;
-import io.fabric8.kubernetes.client.KubernetesClientBuilder;
 import io.fabric8.kubernetes.client.dsl.ExecListener;
 import io.fabric8.kubernetes.client.dsl.ExecWatch;
+import okhttp3.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,15 +36,15 @@ public class PodExecEquivalent {
   private static final CountDownLatch execLatch = new CountDownLatch(1);
 
   public static void main(String[] args) {
-    try (final KubernetesClient k8s = new KubernetesClientBuilder().build()) {
+    try (final KubernetesClient k8s = new DefaultKubernetesClient()) {
       ByteArrayOutputStream out = new ByteArrayOutputStream();
       ByteArrayOutputStream error = new ByteArrayOutputStream();
 
       ExecWatch execWatch = k8s.pods().inNamespace("default").withName("my-pod")
-          .writingOutput(out)
-          .writingError(error)
-          .usingListener(new MyPodExecListener())
-          .exec("ls", "/");
+        .writingOutput(out)
+        .writingError(error)
+        .usingListener(new MyPodExecListener())
+        .exec("ls", "/");
 
       boolean latchTerminationStatus = execLatch.await(5, TimeUnit.SECONDS);
       if (!latchTerminationStatus) {
@@ -53,18 +54,18 @@ public class PodExecEquivalent {
       execWatch.close();
     } catch (InterruptedException ie) {
       Thread.currentThread().interrupt();
-      logger.warn("Interrupted while waiting for the exec: {}", ie.getMessage());
+      ie.printStackTrace();
     }
   }
 
   private static class MyPodExecListener implements ExecListener {
     @Override
-    public void onOpen() {
+    public void onOpen(Response response) {
       logger.info("Shell was opened");
     }
 
     @Override
-    public void onFailure(Throwable t, Response failureResponse) {
+    public void onFailure(Throwable throwable, Response response) {
       logger.info("Some error encountered");
       execLatch.countDown();
     }

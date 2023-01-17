@@ -15,6 +15,8 @@
  */
 package io.fabric8.kubernetes.api.model.coordination.v1;
 
+import io.fabric8.kubernetes.model.annotation.Generated;
+
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -22,12 +24,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import io.fabric8.kubernetes.api.model.KubernetesResource;
-import io.fabric8.kubernetes.model.annotation.Generated;
 import io.sundr.builder.annotations.Buildable;
 import lombok.EqualsAndHashCode;
-import lombok.Setter;
 import lombok.ToString;
-import lombok.experimental.Accessors;
 
 import java.time.ZonedDateTime;
 import java.util.HashMap;
@@ -36,23 +35,18 @@ import java.util.Map;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Generated("org.jsonschema2pojo")
 @JsonPropertyOrder({
-    "apiVersion",
-    "kind",
-    "metadata",
-    "acquireTime",
-    "holderIdentity",
-    "leaseDurationSeconds",
-    "leaseTransitions",
-    "renewTime"
+  "apiVersion",
+  "kind",
+  "metadata",
+  "acquireTime",
+  "holderIdentity",
+  "leaseDurationSeconds",
+  "leaseTransitions",
+  "renewTime"
 })
 @JsonDeserialize(using = com.fasterxml.jackson.databind.JsonDeserializer.None.class)
 @ToString
 @EqualsAndHashCode
-@Setter
-@Accessors(prefix = {
-    "_",
-    ""
-})
 @Buildable(editableEnabled = false, validationEnabled = false, generateBuilderPackage = false, lazyCollectionInitEnabled = false, builderPackage = "io.fabric8.kubernetes.api.builder")
 public class LeaseSpec implements KubernetesResource {
 
@@ -74,8 +68,7 @@ public class LeaseSpec implements KubernetesResource {
   public LeaseSpec() {
   }
 
-  public LeaseSpec(ZonedDateTime acquireTime, String holderIdentity, Integer leaseDurationSeconds, Integer leaseTransitions,
-      ZonedDateTime renewTime) {
+  public LeaseSpec(ZonedDateTime acquireTime, String holderIdentity, Integer leaseDurationSeconds, Integer leaseTransitions, ZonedDateTime renewTime) {
     this.acquireTime = acquireTime;
     this.holderIdentity = holderIdentity;
     this.leaseDurationSeconds = leaseDurationSeconds;

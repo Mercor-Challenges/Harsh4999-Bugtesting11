@@ -15,58 +15,101 @@
  */
 package io.fabric8.kubernetes.client.dsl.internal.apps.v1;
 
+import io.fabric8.kubernetes.api.builder.Visitor;
 import io.fabric8.kubernetes.api.model.Container;
+import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Status;
 import io.fabric8.kubernetes.api.model.apps.ReplicaSet;
+import io.fabric8.kubernetes.api.model.apps.ReplicaSetBuilder;
 import io.fabric8.kubernetes.api.model.apps.ReplicaSetList;
 import io.fabric8.kubernetes.api.model.extensions.DeploymentRollback;
-import io.fabric8.kubernetes.client.Client;
+import io.fabric8.kubernetes.client.Config;
 import io.fabric8.kubernetes.client.KubernetesClientException;
-import io.fabric8.kubernetes.client.dsl.BytesLimitTerminateTimeTailPrettyLoggable;
+import io.fabric8.kubernetes.client.dsl.ImageEditReplacePatchable;
 import io.fabric8.kubernetes.client.dsl.LogWatch;
 import io.fabric8.kubernetes.client.dsl.Loggable;
 import io.fabric8.kubernetes.client.dsl.PodResource;
-import io.fabric8.kubernetes.client.dsl.PrettyLoggable;
 import io.fabric8.kubernetes.client.dsl.RollableScalableResource;
-import io.fabric8.kubernetes.client.dsl.TailPrettyLoggable;
-import io.fabric8.kubernetes.client.dsl.TimeTailPrettyLoggable;
 import io.fabric8.kubernetes.client.dsl.TimeoutImageEditReplacePatchable;
-import io.fabric8.kubernetes.client.dsl.internal.HasMetadataOperationsImpl;
-import io.fabric8.kubernetes.client.dsl.internal.OperationContext;
-import io.fabric8.kubernetes.client.dsl.internal.PodOperationContext;
-import io.fabric8.kubernetes.client.utils.internal.PodOperationUtil;
+import io.fabric8.kubernetes.client.dsl.base.OperationContext;
+import io.fabric8.kubernetes.client.utils.PodOperationUtil;
+import io.fabric8.kubernetes.client.dsl.internal.RollingOperationContext;
+import okhttp3.OkHttpClient;
 
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Reader;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-public class ReplicaSetOperationsImpl
-    extends RollableScalableResourceOperation<ReplicaSet, ReplicaSetList, RollableScalableResource<ReplicaSet>>
-    implements TimeoutImageEditReplacePatchable<ReplicaSet> {
+public class ReplicaSetOperationsImpl extends RollableScalableResourceOperation<ReplicaSet, ReplicaSetList, RollableScalableResource<ReplicaSet>>
+  implements TimeoutImageEditReplacePatchable<ReplicaSet> {
+  private Integer podLogWaitTimeout;
 
-  public ReplicaSetOperationsImpl(Client client) {
-    this(new PodOperationContext(), HasMetadataOperationsImpl.defaultContext(client));
+  public ReplicaSetOperationsImpl(OkHttpClient client, Config config) {
+    this(client, config, null);
   }
 
-  ReplicaSetOperationsImpl(PodOperationContext context, OperationContext superContext) {
-    super(context, superContext.withApiGroupName("apps")
-        .withApiGroupVersion("v1")
-        .withPlural("replicasets"), ReplicaSet.class, ReplicaSetList.class);
+  public ReplicaSetOperationsImpl(OkHttpClient client, Config config, String namespace) {
+    this(new RollingOperationContext().withOkhttpClient(client).withConfig(config).withNamespace(namespace).withPropagationPolicy(DEFAULT_PROPAGATION_POLICY));
+  }
+
+  public ReplicaSetOperationsImpl(RollingOperationContext context) {
+    super(context.withApiGroupName("apps")
+      .withApiGroupVersion("v1")
+      .withPlural("replicasets"));
+    this.type = ReplicaSet.class;
+    this.listType = ReplicaSetList.class;
+  }
+
+  public ReplicaSetOperationsImpl(RollingOperationContext context, Integer podLogWaitTimeout) {
+    this(context);
+    this.podLogWaitTimeout = podLogWaitTimeout;
   }
 
   @Override
   public ReplicaSetOperationsImpl newInstance(OperationContext context) {
-    return new ReplicaSetOperationsImpl(rollingOperationContext, context);
+    return new ReplicaSetOperationsImpl((RollingOperationContext) context);
   }
 
   @Override
-  public ReplicaSetOperationsImpl newInstance(PodOperationContext context,
-      OperationContext superContext) {
-    return new ReplicaSetOperationsImpl(context, superContext);
+  public ReplicaSet updateImage(String image) {
+    ReplicaSet oldRC = get();
+
+    if (oldRC == null) {
+      throw new KubernetesClientException("Existing replication controller doesn't exist");
+    }
+    if (oldRC.getSpec().getTemplate().getSpec().getContainers().size() > 1) {
+      throw new KubernetesClientException("Image update is not supported for multicontainer pods");
+    }
+    if (oldRC.getSpec().getTemplate().getSpec().getContainers().isEmpty()) {
+      throw new KubernetesClientException("Pod has no containers!");
+    }
+
+    Container container = oldRC.getSpec().getTemplate().getSpec().getContainers().iterator().next();
+    return updateImage(Collections.singletonMap(container.getName(), image));
+  }
+
+  @Override
+  public ReplicaSet updateImage(Map<String, String> containerToImageMap) {
+    ReplicaSet replicationController = get();
+    if (replicationController == null) {
+      throw new KubernetesClientException("Existing replica set doesn't exist");
+    }
+    if (replicationController.getSpec().getTemplate().getSpec().getContainers().isEmpty()) {
+      throw new KubernetesClientException("Pod has no containers!");
+    }
+
+    List<Container> containers = replicationController.getSpec().getTemplate().getSpec().getContainers();
+    for (Container container : containers) {
+      if (containerToImageMap.containsKey(container.getName())) {
+        container.setImage(containerToImageMap.get(container.getName()));
+      }
+    }
+    replicationController.getSpec().getTemplate().getSpec().setContainers(containers);
+    return sendPatchedObject(get(), replicationController);
   }
 
   @Override
@@ -86,18 +129,17 @@ public class ReplicaSetOperationsImpl
 
   @Override
   public ReplicaSet undo() {
-    throw new UnsupportedOperationException("no rollbacker has been implemented for \"" + get().getKind() + "\"");
+    throw new UnsupportedOperationException("no rollbacker has been implemented for \"" + get().getKind() +"\"");
   }
 
   @Override
   public ReplicaSet withReplicas(int count) {
-    return accept(r -> r.getSpec().setReplicas(count));
+    return cascading(false).accept(r -> r.getSpec().setReplicas(count));
   }
 
   @Override
   public RollingUpdater<ReplicaSet, ReplicaSetList> getRollingUpdater(long rollingTimeout, TimeUnit rollingTimeUnit) {
-    return new ReplicaSetRollingUpdater(context.getClient(), getNamespace(), rollingTimeUnit.toMillis(rollingTimeout),
-        config.getLoggingInterval());
+    return new ReplicaSetRollingUpdater(client, config, getNamespace(), rollingTimeUnit.toMillis(rollingTimeout), config.getLoggingInterval());
   }
 
   @Override
@@ -113,7 +155,12 @@ public class ReplicaSetOperationsImpl
   @Override
   public long getObservedGeneration(ReplicaSet current) {
     return (current != null && current.getStatus() != null
-        && current.getStatus().getObservedGeneration() != null) ? current.getStatus().getObservedGeneration() : -1;
+      && current.getStatus().getObservedGeneration() != null)? current.getStatus().getObservedGeneration() : -1;
+  }
+
+  @Override
+  public TimeoutImageEditReplacePatchable rolling() {
+    return new ReplicaSetOperationsImpl(((RollingOperationContext)context).withRolling(true));
   }
 
   @Override
@@ -122,41 +169,73 @@ public class ReplicaSetOperationsImpl
   }
 
   @Override
-  public String getLog(boolean isPretty) {
-    return PodOperationUtil
-        .getLog(new ReplicaSetOperationsImpl(rollingOperationContext.withPrettyOutput(isPretty), context).doGetLog(), isPretty);
+  public ImageEditReplacePatchable<ReplicaSet> withTimeout(long timeout, TimeUnit unit) {
+    return new ReplicaSetOperationsImpl(((RollingOperationContext)context).withRollingTimeout(unit.toMillis(timeout)).withRollingTimeUnit(TimeUnit.MILLISECONDS));
   }
 
-  private List<PodResource> doGetLog() {
-    ReplicaSet replicaSet = requireFromServer();
-    return PodOperationUtil.getPodOperationsForController(context,
-        rollingOperationContext, replicaSet.getMetadata().getUid(),
-        getReplicaSetSelectorLabels(replicaSet));
+  @Override
+  public ImageEditReplacePatchable<ReplicaSet> withTimeoutInMillis(long timeoutInMillis) {
+    return new ReplicaSetOperationsImpl(((RollingOperationContext)context).withRollingTimeout(timeoutInMillis));
+  }
+
+  public String getLog() {
+    return getLog(false);
+  }
+
+  public String getLog(Boolean isPretty) {
+    StringBuilder stringBuilder = new StringBuilder();
+    List<PodResource<Pod>> podOperationList = doGetLog(isPretty);
+    for (PodResource<Pod> podOperation : podOperationList) {
+      stringBuilder.append(podOperation.getLog(isPretty));
+    }
+    return stringBuilder.toString();
+  }
+
+  private List<PodResource<Pod>> doGetLog(boolean isPretty) {
+    ReplicaSet replicaSet = fromServer().get();
+    return PodOperationUtil.getPodOperationsForController(context, replicaSet.getMetadata().getUid(),
+      getReplicaSetSelectorLabels(replicaSet), isPretty, podLogWaitTimeout);
   }
 
   /**
    * Returns an unclosed Reader. It's the caller responsibility to close it.
-   *
    * @return Reader
    */
   @Override
   public Reader getLogReader() {
-    return PodOperationUtil.getLogReader(doGetLog());
+    List<PodResource<Pod>> podResources = doGetLog(false);
+    if (podResources.size() > 1) {
+      throw new KubernetesClientException("Reading logs is not supported for multicontainer jobs");
+    } else if (podResources.size() == 1) {
+      return podResources.get(0).getLogReader();
+    }
+    return null;
   }
 
-  /**
-   * Returns an unclosed InputStream. It's the caller responsibility to close it.
-   *
-   * @return InputStream
-   */
   @Override
-  public InputStream getLogInputStream() {
-    return PodOperationUtil.getLogInputStream(doGetLog());
+  public LogWatch watchLog() {
+    return watchLog(null);
   }
 
   @Override
   public LogWatch watchLog(OutputStream out) {
-    return PodOperationUtil.watchLog(doGetLog(), out);
+    List<PodResource<Pod>> podResources = doGetLog(false);
+    if (podResources.size() > 1) {
+      throw new KubernetesClientException("Watching logs is not supported for multicontainer jobs");
+    } else if (podResources.size() == 1) {
+      return podResources.get(0).watchLog(out);
+    }
+    return null;
+  }
+
+  @Override
+  public Loggable<LogWatch> withLogWaitTimeout(Integer logWaitTimeout) {
+    return new ReplicaSetOperationsImpl(((RollingOperationContext)context), logWaitTimeout);
+  }
+
+  @Override
+  public ReplicaSet edit(Visitor... visitors) {
+    return patch(new ReplicaSetBuilder(getMandatory()).accept(visitors).build());
   }
 
   static Map<String, String> getReplicaSetSelectorLabels(ReplicaSet replicaSet) {
@@ -166,45 +245,5 @@ public class ReplicaSetOperationsImpl
       labels.putAll(replicaSet.getSpec().getSelector().getMatchLabels());
     }
     return labels;
-  }
-
-  @Override
-  protected List<Container> getContainers(ReplicaSet value) {
-    return value.getSpec().getTemplate().getSpec().getContainers();
-  }
-
-  @Override
-  public TimeTailPrettyLoggable limitBytes(int limitBytes) {
-    return new ReplicaSetOperationsImpl(rollingOperationContext.withLimitBytes(limitBytes), context);
-  }
-
-  @Override
-  public TimeTailPrettyLoggable terminated() {
-    return new ReplicaSetOperationsImpl(rollingOperationContext.withTerminatedStatus(true), context);
-  }
-
-  @Override
-  public Loggable withPrettyOutput() {
-    return new ReplicaSetOperationsImpl(rollingOperationContext.withPrettyOutput(true), context);
-  }
-
-  @Override
-  public PrettyLoggable tailingLines(int lines) {
-    return new ReplicaSetOperationsImpl(rollingOperationContext.withTailingLines(lines), context);
-  }
-
-  @Override
-  public TailPrettyLoggable sinceTime(String timestamp) {
-    return new ReplicaSetOperationsImpl(rollingOperationContext.withSinceTimestamp(timestamp), context);
-  }
-
-  @Override
-  public TailPrettyLoggable sinceSeconds(int seconds) {
-    return new ReplicaSetOperationsImpl(rollingOperationContext.withSinceSeconds(seconds), context);
-  }
-
-  @Override
-  public BytesLimitTerminateTimeTailPrettyLoggable usingTimestamps() {
-    return new ReplicaSetOperationsImpl(rollingOperationContext.withTimestamps(true), context);
   }
 }

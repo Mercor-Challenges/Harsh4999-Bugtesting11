@@ -15,141 +15,78 @@
  */
 package io.fabric8.kubernetes;
 
-import io.fabric8.junit.jupiter.api.RequireK8sVersionAtLeast;
-import io.fabric8.kubernetes.api.model.apiextensions.v1.CustomResourceDefinition;
-import io.fabric8.kubernetes.api.model.apiextensions.v1.CustomResourceDefinitionBuilder;
-import io.fabric8.kubernetes.api.model.apiextensions.v1.CustomResourceDefinitionList;
-import io.fabric8.kubernetes.api.model.apiextensions.v1.CustomResourceDefinitionVersionBuilder;
-import io.fabric8.kubernetes.api.model.apiextensions.v1.JSONSchemaPropsBuilder;
+import io.fabric8.kubernetes.api.model.apiextensions.v1beta1.CustomResourceDefinition;
+import io.fabric8.kubernetes.api.model.apiextensions.v1beta1.CustomResourceDefinitionBuilder;
+import io.fabric8.kubernetes.api.model.apiextensions.v1beta1.CustomResourceDefinitionList;
+import io.fabric8.kubernetes.api.model.apiextensions.v1beta1.CustomResourceDefinitionVersionBuilder;
 import io.fabric8.kubernetes.client.KubernetesClient;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.arquillian.cube.kubernetes.impl.requirement.RequiresKubernetes;
+import org.arquillian.cube.requirement.ArquillianConditionalRunner;
+import org.jboss.arquillian.test.api.ArquillianResource;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.util.Collections;
-import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertNotNull;
 
-@RequireK8sVersionAtLeast(majorVersion = 1, minorVersion = 16)
-class CustomResourceDefinitionIT {
-
+@RunWith(ArquillianConditionalRunner.class)
+@RequiresKubernetes
+public class CustomResourceDefinitionIT {
+  @ArquillianResource
   KubernetesClient client;
 
-  private String name;
-  private String singular;
-  private String plural;
-  private String group;
-  private CustomResourceDefinition crd;
-
-  @BeforeEach
-  public void setUp() {
-    singular = "a" + UUID.randomUUID().toString().replace("-", "");
-    plural = singular + "s";
-    group = "examples.fabric8.io";
-    name = plural + "." + group;
-    crd = createCRD();
-  }
-
-  @AfterEach
-  public void tearDown() {
-    deleteCRD();
-  }
-
-  @Test
-  void load() {
-    // When
-    final CustomResourceDefinition result = client.apiextensions().v1().customResourceDefinitions()
-        .load(getClass().getResourceAsStream("/test-crd.yml")).item();
-    // Then
-    assertThat(result).isNotNull();
+  public CustomResourceDefinition createCRD() {
+    return new CustomResourceDefinitionBuilder()
+      .withApiVersion("apiextensions.k8s.io/v1beta1")
+      .withNewMetadata()
+      .withName("itests.examples.fabric8.io")
+      .endMetadata()
+      .withNewSpec()
+      .withGroup("examples.fabric8.io")
+      .withVersion("v1")
+      .addAllToVersions(Collections.singletonList(new CustomResourceDefinitionVersionBuilder()
+        .withName("v1")
+        .withServed(true)
+        .withStorage(true)
+        .build()))
+      .withScope("Namespaced")
+      .withNewNames()
+      .withPlural("itests")
+      .withSingular("itest")
+      .withKind("Itest")
+      .withShortNames("it")
+      .endNames()
+      .endSpec()
+      .build();
   }
 
   @Test
-  void get() {
-    // When
-    final CustomResourceDefinition result = client.apiextensions().v1().customResourceDefinitions()
-        .withName(name).get();
-    // Then
-    assertThat(result).isNotNull();
-  }
+  public void testCrdOperations() {
+    // Load
+    CustomResourceDefinition crd1 = client.apiextensions().v1beta1().customResourceDefinitions().load(getClass().getResourceAsStream("/test-crd.yml")).get();
+    assertThat(crd1).isNotNull();
 
-  @Test
-  void list() {
-    // When
-    final CustomResourceDefinitionList result = client.apiextensions().v1().customResourceDefinitions()
-        .list();
-    // Then
-    assertThat(result.getItems())
-        .hasSizeGreaterThan(0)
-        .anyMatch(crd -> crd.getMetadata().getName().equals(name));
-  }
+    // Create
+    crd1 = client.apiextensions().v1beta1().customResourceDefinitions().create(createCRD());
+    assertNotNull(crd1);
 
-  @Test
-  void create() {
-    // Then
-    assertThat(crd)
-        .hasFieldOrPropertyWithValue("metadata.name", name)
-        .extracting("metadata.creationTimestamp")
-        .isNotNull();
-  }
+    // Get
+    crd1 = client.apiextensions().v1beta1().customResourceDefinitions().withName(crd1.getMetadata().getName()).get();
+    assertThat(crd1).isNotNull();
 
-  @Test
-  void update() {
-    // When
-    final CustomResourceDefinition result = client.apiextensions().v1().customResourceDefinitions()
-        .withName(name).edit(c -> new CustomResourceDefinitionBuilder(c)
-            .editSpec().editOrNewNames().addToShortNames("its").endNames().endSpec().build());
-    // Then
-    assertThat(result.getSpec().getNames().getShortNames())
-        .containsExactlyInAnyOrder("its");
-  }
+    // List
+    CustomResourceDefinitionList crdList = client.apiextensions().v1beta1().customResourceDefinitions().list();
+    assertThat(crdList).isNotNull();
+    assertThat(crdList.getItems().size()).isPositive();
 
-  @Test
-  void delete() {
-    // When
-    final boolean result = client.apiextensions().v1().customResourceDefinitions()
-        .withName(name).delete().size() == 1;
-    // Then
-    assertThat(result).isTrue();
-  }
+    // Update
+    CustomResourceDefinition updatedCrd = client.apiextensions().v1beta1().customResourceDefinitions().withName(crd1.getMetadata().getName()).edit(c -> new CustomResourceDefinitionBuilder(c).editSpec().editOrNewNames().addNewShortName("its").endNames().endSpec().build());
+    assertThat(updatedCrd.getSpec().getNames().getShortNames().size()).isEqualTo(2);
 
-  private CustomResourceDefinition createCRD() {
-    return client.apiextensions().v1().customResourceDefinitions().create(new CustomResourceDefinitionBuilder()
-        .withNewMetadata().withName(name).endMetadata()
-        .withNewSpec()
-        .withGroup(group)
-        .addAllToVersions(Collections.singletonList(new CustomResourceDefinitionVersionBuilder()
-            .withName("v1")
-            .withServed(true)
-            .withStorage(true)
-            .withNewSchema()
-            .withNewOpenAPIV3Schema()
-            .withType("object")
-            .addToProperties("spec", new JSONSchemaPropsBuilder()
-                .withType("object")
-                .addToProperties("field", new JSONSchemaPropsBuilder()
-                    .withType("string")
-                    .build())
-                .build())
-            .endOpenAPIV3Schema()
-            .endSchema()
-            .build()))
-        .withScope("Namespaced")
-        .withNewNames()
-        .withPlural(plural)
-        .withSingular(singular)
-        .withKind("Itest")
-        .endNames()
-        .endSpec()
-        .build());
-  }
-
-  private void deleteCRD() {
-    try {
-      client.apiextensions().v1().customResourceDefinitions().delete(crd);
-    } catch (Exception e) {
-      // ignore
-    }
+    // Delete
+    boolean bDeleted = client.apiextensions().v1beta1().customResourceDefinitions().withName(crd1.getMetadata().getName()).delete();
+    assertThat(bDeleted).isTrue();
   }
 }

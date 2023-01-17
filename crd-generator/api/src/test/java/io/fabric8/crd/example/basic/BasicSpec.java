@@ -15,8 +15,6 @@
  */
 package io.fabric8.crd.example.basic;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
 public class BasicSpec {
   private int myInt;
 
@@ -27,37 +25,4 @@ public class BasicSpec {
   public void setMyInt(int myInt) {
     this.myInt = myInt;
   }
-
-  private long myLong;
-
-  public long getMyLong() {
-    return myLong;
-  }
-
-  public void setMyLong(long myLong) {
-    this.myLong = myLong;
-  }
-
-  private double myDouble;
-
-  public double getMyDouble() {
-    return myDouble;
-  }
-
-  public void setMyDouble(long myDouble) {
-    this.myDouble = myDouble;
-  }
-
-  private float myFloat;
-
-  public float getMyFloat() {
-    return myFloat;
-  }
-
-  public void setMyFloat(long myFloat) {
-    this.myFloat = myFloat;
-  }
-
-  @JsonIgnore
-  public Class<?> clazz;
 }

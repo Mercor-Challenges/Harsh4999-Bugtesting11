@@ -27,11 +27,12 @@ import io.fabric8.kubernetes.client.server.mock.EnableKubernetesMockClient;
 import io.fabric8.kubernetes.internal.KubernetesDeserializer;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 @EnableKubernetesMockClient(crud = true)
 class CustomResourceCrudWithCRDContextTest {
+
 
   KubernetesClient client;
 
@@ -40,7 +41,7 @@ class CustomResourceCrudWithCRDContextTest {
     // Given
     KubernetesDeserializer.registerCustomKind("demo.fabric8.io/v1alpha1", "EntandoBundleRelease", EntandoBundleRelease.class);
     MixedOperation<EntandoBundleRelease, EntandoBundleReleaseList, Resource<EntandoBundleRelease>> ebrClient = client
-        .resources(EntandoBundleRelease.class, EntandoBundleReleaseList.class);
+      .customResources(EntandoBundleRelease.class, EntandoBundleReleaseList.class);
 
     // When
     ebrClient.inNamespace("ns1").create(getMockedEntandoBundleRelease());
@@ -55,8 +56,7 @@ class CustomResourceCrudWithCRDContextTest {
   void testCreateAndGetWithInferredContext() {
     // Given
     KubernetesDeserializer.registerCustomKind("demo.fabric8.io/v1alpha1", "EntandoBundleRelease", EntandoBundleRelease.class);
-    MixedOperation<EntandoBundleRelease, KubernetesResourceList<EntandoBundleRelease>, Resource<EntandoBundleRelease>> ebrClient = client
-        .resources(EntandoBundleRelease.class);
+    MixedOperation<EntandoBundleRelease, KubernetesResourceList<EntandoBundleRelease>, Resource<EntandoBundleRelease>> ebrClient = client.customResources(EntandoBundleRelease.class);
 
     // When
     ebrClient.inNamespace("ns1").create(getMockedEntandoBundleRelease());
@@ -67,13 +67,14 @@ class CustomResourceCrudWithCRDContextTest {
     assertEquals("ebr1", ebr1.getMetadata().getName());
   }
 
+
   private EntandoBundleRelease getMockedEntandoBundleRelease() {
     EntandoBundleReleaseSpec entandoBundleReleaseSpec = new EntandoBundleReleaseSpec();
     entandoBundleReleaseSpec.setDatabaseType("MySQL");
     EntandoBundleRelease entandoBundleRelease = new EntandoBundleRelease();
     entandoBundleRelease.setMetadata(new ObjectMetaBuilder()
-        .withName("ebr1")
-        .build());
+      .withName("ebr1")
+      .build());
     entandoBundleRelease.setSpec(entandoBundleReleaseSpec);
     return entandoBundleRelease;
   }

@@ -15,61 +15,76 @@
  */
 package io.fabric8.servicecatalog.client.internal;
 
-import io.fabric8.kubernetes.client.extension.ExtensibleResourceAdapter;
-import io.fabric8.servicecatalog.api.model.ClusterServiceBroker;
-import io.fabric8.servicecatalog.api.model.ClusterServiceClass;
-import io.fabric8.servicecatalog.api.model.ClusterServiceClassList;
-import io.fabric8.servicecatalog.api.model.ClusterServicePlanList;
-import io.fabric8.servicecatalog.client.ServiceCatalogClient;
-import io.fabric8.servicecatalog.client.dsl.ClusterServiceBrokerResource;
-import io.fabric8.servicecatalog.client.dsl.ClusterServiceClassResource;
+import io.fabric8.kubernetes.api.builder.Visitor;
+import io.fabric8.kubernetes.client.Config;
+import io.fabric8.kubernetes.client.dsl.base.BaseOperation;
+import io.fabric8.kubernetes.client.dsl.base.HasMetadataOperation;
+import io.fabric8.kubernetes.client.dsl.base.OperationContext;
+import io.fabric8.servicecatalog.api.model.*;
+import okhttp3.OkHttpClient;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class ClusterServiceBrokerOperationsImpl extends ExtensibleResourceAdapter<ClusterServiceBroker>
-    implements ClusterServiceBrokerResource {
 
-  @Override
-  public ExtensibleResourceAdapter<ClusterServiceBroker> newInstance() {
-    return new ClusterServiceBrokerOperationsImpl();
+public class ClusterServiceBrokerOperationsImpl extends HasMetadataOperation<ClusterServiceBroker, ClusterServiceBrokerList, ClusterServiceBrokerResource> implements ClusterServiceBrokerResource {
+
+  public ClusterServiceBrokerOperationsImpl(OkHttpClient client, Config config) {
+    this(new OperationContext().withOkhttpClient(client).withConfig(config));
   }
 
-  @Override
-  public ClusterServicePlanList listPlans() {
-    ClusterServiceBroker item = get();
-    return client.adapt(ServiceCatalogClient.class).clusterServicePlans()
-        .withField("spec.clusterServiceBrokerName", item.getMetadata().getName())
-        .list();
+  public ClusterServiceBrokerOperationsImpl(OperationContext context) {
+      super(context.withApiGroupName("servicecatalog.k8s.io").withApiGroupVersion("v1beta1").withPlural("clusterservicebrokers"));
+        this.type=ClusterServiceBroker.class;
+        this.listType= ClusterServiceBrokerList.class;
   }
 
-  @Override
-  public ClusterServiceClassList listClasses() {
-    ClusterServiceBroker item = get();
-    return client.adapt(ServiceCatalogClient.class).clusterServiceClasses()
-        .withField("spec.clusterServiceBrokerName", item.getMetadata().getName())
-        .list();
-  }
-
-  @Override
-  public ClusterServiceClassResource useServiceClass(String externalName) {
-    ClusterServiceBroker item = get();
-    Map<String, String> fields = new HashMap<>();
-    fields.put("spec.clusterServiceBrokerName", item.getMetadata().getName());
-    if (externalName != null) {
-      fields.put("spec.externalName", externalName);
+    @Override
+    public BaseOperation<ClusterServiceBroker, ClusterServiceBrokerList, ClusterServiceBrokerResource> newInstance(OperationContext context) {
+        return new ClusterServiceBrokerOperationsImpl(context);
     }
 
-    List<ClusterServiceClass> list = client.adapt(ServiceCatalogClient.class).clusterServiceClasses().withFields(fields).list()
-        .getItems();
+    @Override
+  public boolean isResourceNamespaced() {
+    return false;
+  }
 
-    if (list.size() != 1) {
-      throw new IllegalArgumentException("No unique ClusterServiceClass with external name:" + externalName
-          + "found for ClusterServiceBroker: " + item.getMetadata().getName());
+    @Override
+    public ClusterServicePlanList listPlans() {
+        ClusterServiceBroker item = get();
+        return new ClusterServicePlanOperationsImpl(context)
+                .withField("spec.clusterServiceBrokerName", item.getMetadata().getName())
+                .list();
     }
-    ClusterServiceClass c = list.get(0);
-    return client.adapt(ServiceCatalogClient.class).clusterServiceClasses().resource(c);
+
+    @Override
+    public ClusterServiceClassList listClasses() {
+        ClusterServiceBroker item = get();
+        return new ClusterServiceClassOperationsImpl(context)
+                .withField("spec.clusterServiceBrokerName", item.getMetadata().getName())
+                .list();
+    }
+
+
+    public ClusterServiceClassResource useServiceClass(String externalName) {
+        ClusterServiceBroker item = get();
+        Map<String, String> fields = new HashMap<>();
+        fields.put("spec.clusterServiceBrokerName", item.getMetadata().getName());
+        fields.put("spec.externalName", externalName);
+
+        List<ClusterServiceClass> list = new ClusterServiceClassOperationsImpl(context.withFields(fields)).list().getItems();
+
+        if (list.size() != 1) {
+            throw new IllegalArgumentException("No unique ClusterServiceClass with external name:" + externalName + "found for ClusterServiceBroker: " + item.getMetadata().getName());
+        }
+        ClusterServiceClass c = list.get(0);
+        return new ClusterServiceClassOperationsImpl(context);
+    }
+
+  @Override
+  public ClusterServiceBroker edit(Visitor... visitors) {
+    return patch(new ClusterServiceBrokerBuilder(getMandatory()).accept(visitors).build());
   }
 
 }

@@ -15,17 +15,17 @@
  */
 package io.fabric8.openshift.client.dsl.internal;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import io.fabric8.kubernetes.api.model.DeletionPropagation;
+import io.fabric8.kubernetes.client.Config;
+import io.fabric8.kubernetes.client.dsl.base.OperationContext;
+import io.fabric8.openshift.client.OpenShiftConfig;
+import okhttp3.OkHttpClient;
 
-@Builder(toBuilder = true)
-@NoArgsConstructor
-@AllArgsConstructor
-@Getter
-public class BuildConfigOperationContext {
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
+public class BuildConfigOperationContext extends OperationContext {
+  
   private String secret;
   private String triggerType;
 
@@ -37,40 +37,195 @@ public class BuildConfigOperationContext {
   private String message;
   private String asFile;
 
+  private long timeout;
+  private TimeUnit timeoutUnit;
+
+  public BuildConfigOperationContext() {
+  }
+
+  public BuildConfigOperationContext(OkHttpClient client, Config config, String plural, String namespace, String name, String apiGroupName, String apiGroupVersion, boolean cascading, Object item, Map<String, String> labels, Map<String, String[]> labelsNot, Map<String, String[]> labelsIn, Map<String, String[]> labelsNotIn, Map<String, String> fields, Map<String, String[]> fieldsNot,String resourceVersion, boolean reloadingFromServer, long gracePeriodSeconds, DeletionPropagation propagationPolicy, long watchRetryInitialBackoffMillis, double watchRetryBackoffMultiplier, boolean namespaceFromGlobalConfig, String secret, String triggerType, String authorName, String authorEmail, String committerName, String committerEmail, String commit, String message, String asFile, Long timeout, TimeUnit timeUnit, boolean dryRun) {
+    super(client, config, plural, namespace, name, apiGroupName, apiGroupVersion, cascading, item, labels, labelsNot, labelsIn, labelsNotIn, fields, fieldsNot,resourceVersion, reloadingFromServer, gracePeriodSeconds, propagationPolicy, watchRetryInitialBackoffMillis, watchRetryBackoffMultiplier, namespaceFromGlobalConfig, dryRun);
+    this.secret = secret;
+    this.triggerType = triggerType;
+    this.authorName = authorName;
+    this.authorEmail = authorEmail;
+    this.committerName = committerName;
+    this.committerEmail = committerEmail;
+    this.commit = commit;
+    this.message = message;
+    this.asFile = asFile;
+    this.timeout = timeout;
+    this.timeoutUnit = timeUnit != null ? timeUnit : TimeUnit.MILLISECONDS;
+  }
+
+  public String getSecret() {
+    return secret;
+  }
+
+  public String getTriggerType() {
+    return triggerType;
+  }
+
+  public String getAuthorName() {
+    return authorName;
+  }
+
+  public String getAuthorEmail() {
+    return authorEmail;
+  }
+
+  public String getCommitterName() {
+    return committerName;
+  }
+
+  public String getCommitterEmail() {
+    return committerEmail;
+  }
+
+  public String getCommit() {
+    return commit;
+  }
+
+  public String getMessage() {
+    return message;
+  }
+
+  public String getAsFile() {
+    return asFile;
+  }
+
+  public long getTimeout() {
+    return timeout;
+  }
+
+  public TimeUnit getTimeoutUnit() {
+    return timeoutUnit;
+  }
+
+  public BuildConfigOperationContext withOkhttpClient(OkHttpClient client) {
+    return new BuildConfigOperationContext(client, config, plural, namespace, name, apiGroupName, apiGroupVersion, cascading,item, labels, labelsNot, labelsIn, labelsNotIn, fields, fieldsNot,resourceVersion, reloadingFromServer, gracePeriodSeconds, propagationPolicy, watchRetryInitialBackoffMillis, watchRetryBackoffMultiplier, namespaceFromGlobalConfig, secret, triggerType, authorName, authorEmail, committerName, committerEmail, commit, message, asFile, timeout, timeoutUnit, dryRun);
+  }
+
+  public BuildConfigOperationContext withConfig(Config config) {
+    return new BuildConfigOperationContext(client, OpenShiftConfig.wrap(config), plural, namespace, name, apiGroupName, apiGroupVersion, cascading,item, labels, labelsNot, labelsIn, labelsNotIn, fields, fieldsNot,resourceVersion, reloadingFromServer, gracePeriodSeconds, propagationPolicy, watchRetryInitialBackoffMillis, watchRetryBackoffMultiplier, namespaceFromGlobalConfig, secret, triggerType, authorName, authorEmail, committerName, committerEmail, commit, message, asFile, timeout, timeoutUnit, dryRun);
+  }
+
+  public BuildConfigOperationContext withPlural(String plural) {
+    return new BuildConfigOperationContext(client, config, plural, namespace, name, apiGroupName, apiGroupVersion, cascading,item, labels, labelsNot, labelsIn, labelsNotIn, fields, fieldsNot,resourceVersion, reloadingFromServer, gracePeriodSeconds, propagationPolicy, watchRetryInitialBackoffMillis, watchRetryBackoffMultiplier, namespaceFromGlobalConfig, secret, triggerType, authorName, authorEmail, committerName, committerEmail, commit, message, asFile, timeout, timeoutUnit, dryRun);
+  }
+
+  public BuildConfigOperationContext withNamespace(String namespace) {
+    return new BuildConfigOperationContext(client, config, plural, namespace, name, apiGroupName, apiGroupVersion, cascading,item, labels, labelsNot, labelsIn, labelsNotIn, fields, fieldsNot,resourceVersion, reloadingFromServer, gracePeriodSeconds, propagationPolicy, watchRetryInitialBackoffMillis, watchRetryBackoffMultiplier, namespaceFromGlobalConfig, secret, triggerType, authorName, authorEmail, committerName, committerEmail, commit, message, asFile, timeout, timeoutUnit, dryRun);
+  }
+
+  public BuildConfigOperationContext withName(String name) {
+    return new BuildConfigOperationContext(client, config, plural, namespace, name, apiGroupName, apiGroupVersion, cascading,item, labels, labelsNot, labelsIn, labelsNotIn, fields, fieldsNot,resourceVersion, reloadingFromServer, gracePeriodSeconds, propagationPolicy, watchRetryInitialBackoffMillis, watchRetryBackoffMultiplier, namespaceFromGlobalConfig, secret, triggerType, authorName, authorEmail, committerName, committerEmail, commit, message, asFile, timeout, timeoutUnit, dryRun);
+  }
+
+
+  public BuildConfigOperationContext withApiGroupName(String apiGroupName) {
+    return new BuildConfigOperationContext(client, config, plural, namespace, name, apiGroupName, apiGroupVersion, cascading,item, labels, labelsNot, labelsIn, labelsNotIn, fields, fieldsNot,resourceVersion, reloadingFromServer, gracePeriodSeconds, propagationPolicy, watchRetryInitialBackoffMillis, watchRetryBackoffMultiplier, namespaceFromGlobalConfig, secret, triggerType, authorName, authorEmail, committerName, committerEmail, commit, message, asFile, timeout, timeoutUnit, dryRun);
+  }
+
+  public BuildConfigOperationContext withApiGroupVersion(String apiGroupVersion) {
+    return new BuildConfigOperationContext(client, config, plural, namespace, name, apiGroupName, apiGroupVersion, cascading,item, labels, labelsNot, labelsIn, labelsNotIn, fields, fieldsNot,resourceVersion, reloadingFromServer, gracePeriodSeconds, propagationPolicy, watchRetryInitialBackoffMillis, watchRetryBackoffMultiplier, namespaceFromGlobalConfig, secret, triggerType, authorName, authorEmail, committerName, committerEmail, commit, message, asFile, timeout, timeoutUnit, dryRun);
+  }
+
+  @Override
+  public BuildConfigOperationContext withItem(Object item) {
+    return new BuildConfigOperationContext(client, config, plural, namespace, name, apiGroupName, apiGroupVersion, cascading,item, labels, labelsNot, labelsIn, labelsNotIn, fields, fieldsNot,resourceVersion, reloadingFromServer, gracePeriodSeconds, propagationPolicy, watchRetryInitialBackoffMillis, watchRetryBackoffMultiplier, namespaceFromGlobalConfig, secret, triggerType, authorName, authorEmail, committerName, committerEmail, commit, message, asFile, timeout, timeoutUnit, dryRun);
+  }
+
+  public BuildConfigOperationContext withCascading(boolean cascading) {
+    return new BuildConfigOperationContext(client, config, plural, namespace, name, apiGroupName, apiGroupVersion, cascading,item, labels, labelsNot, labelsIn, labelsNotIn, fields, fieldsNot,resourceVersion, reloadingFromServer, gracePeriodSeconds, propagationPolicy, watchRetryInitialBackoffMillis, watchRetryBackoffMultiplier, namespaceFromGlobalConfig, secret, triggerType, authorName, authorEmail, committerName, committerEmail, commit, message, asFile, timeout, timeoutUnit, dryRun);
+  }
+
+  public BuildConfigOperationContext withLabels(Map<String, String> labels) {
+    return new BuildConfigOperationContext(client, config, plural, namespace, name, apiGroupName, apiGroupVersion, cascading,item, labels, labelsNot, labelsIn, labelsNotIn, fields, fieldsNot,resourceVersion, reloadingFromServer, gracePeriodSeconds, propagationPolicy, watchRetryInitialBackoffMillis, watchRetryBackoffMultiplier, namespaceFromGlobalConfig, secret, triggerType, authorName, authorEmail, committerName, committerEmail, commit, message, asFile, timeout, timeoutUnit, dryRun);
+  }
+
+  public BuildConfigOperationContext withLabelsIn(Map<String, String[]> labelsIn) {
+    return new BuildConfigOperationContext(client, config, plural, namespace, name, apiGroupName, apiGroupVersion, cascading,item, labels, labelsNot, labelsIn, labelsNotIn, fields, fieldsNot,resourceVersion, reloadingFromServer, gracePeriodSeconds, propagationPolicy, watchRetryInitialBackoffMillis, watchRetryBackoffMultiplier, namespaceFromGlobalConfig, secret, triggerType, authorName, authorEmail, committerName, committerEmail, commit, message, asFile, timeout, timeoutUnit, dryRun);
+  }
+
+  public BuildConfigOperationContext withLabelsNot(Map<String, String[]> labelsNot) {
+    return new BuildConfigOperationContext(client, config, plural, namespace, name, apiGroupName, apiGroupVersion, cascading,item, labels, labelsNot, labelsIn, labelsNotIn, fields, fieldsNot,resourceVersion, reloadingFromServer, gracePeriodSeconds, propagationPolicy, watchRetryInitialBackoffMillis, watchRetryBackoffMultiplier, namespaceFromGlobalConfig, secret, triggerType, authorName, authorEmail, committerName, committerEmail, commit, message, asFile, timeout, timeoutUnit, dryRun);
+  }
+
+  public BuildConfigOperationContext withLabelsNotIn(Map<String, String[]> labelsNotIn) {
+    return new BuildConfigOperationContext(client, config, plural, namespace, name, apiGroupName, apiGroupVersion, cascading,item, labels, labelsNot, labelsIn, labelsNotIn, fields, fieldsNot,resourceVersion, reloadingFromServer, gracePeriodSeconds, propagationPolicy, watchRetryInitialBackoffMillis, watchRetryBackoffMultiplier, namespaceFromGlobalConfig, secret, triggerType, authorName, authorEmail, committerName, committerEmail, commit, message, asFile, timeout, timeoutUnit, dryRun);
+  }
+
+  public BuildConfigOperationContext withFields(Map<String, String> fields) {
+    return new BuildConfigOperationContext(client, config, plural, namespace, name, apiGroupName, apiGroupVersion, cascading,item, labels, labelsNot, labelsIn, labelsNotIn, fields, fieldsNot,resourceVersion, reloadingFromServer, gracePeriodSeconds, propagationPolicy, watchRetryInitialBackoffMillis, watchRetryBackoffMultiplier, namespaceFromGlobalConfig, secret, triggerType, authorName, authorEmail, committerName, committerEmail, commit, message, asFile, timeout, timeoutUnit, dryRun);
+  }
+
+  public BuildConfigOperationContext withFieldsNot(Map<String, String[]> fieldsNot) {
+    return new BuildConfigOperationContext(client, config, plural, namespace, name, apiGroupName, apiGroupVersion, cascading,item, labels, labelsNot, labelsIn, labelsNotIn, fields, fieldsNot,resourceVersion, reloadingFromServer, gracePeriodSeconds, propagationPolicy, watchRetryInitialBackoffMillis, watchRetryBackoffMultiplier, namespaceFromGlobalConfig, secret, triggerType, authorName, authorEmail, committerName, committerEmail, commit, message, asFile, timeout, timeoutUnit, dryRun);
+  }
+
+  public BuildConfigOperationContext withResourceVersion(String resourceVersion) {
+    return new BuildConfigOperationContext(client, config, plural, namespace, name, apiGroupName, apiGroupVersion, cascading,item, labels, labelsNot, labelsIn, labelsNotIn, fields, fieldsNot,resourceVersion, reloadingFromServer, gracePeriodSeconds, propagationPolicy, watchRetryInitialBackoffMillis, watchRetryBackoffMultiplier, namespaceFromGlobalConfig, secret, triggerType, authorName, authorEmail, committerName, committerEmail, commit, message, asFile, timeout, timeoutUnit, dryRun);
+  }
+
+  public BuildConfigOperationContext withReloadingFromServer(boolean reloadingFromServer) {
+    return new BuildConfigOperationContext(client, config, plural, namespace, name, apiGroupName, apiGroupVersion, cascading,item, labels, labelsNot, labelsIn, labelsNotIn, fields, fieldsNot,resourceVersion, reloadingFromServer, gracePeriodSeconds, propagationPolicy, watchRetryInitialBackoffMillis, watchRetryBackoffMultiplier, namespaceFromGlobalConfig, secret, triggerType, authorName, authorEmail, committerName, committerEmail, commit, message, asFile, timeout, timeoutUnit, dryRun);
+  }
+
+  public BuildConfigOperationContext withGracePeriodSeconds(long gracePeriodSeconds) {
+    return new BuildConfigOperationContext(client, config, plural, namespace, name, apiGroupName, apiGroupVersion, cascading,item, labels, labelsNot, labelsIn, labelsNotIn, fields, fieldsNot,resourceVersion, reloadingFromServer, gracePeriodSeconds, propagationPolicy, watchRetryInitialBackoffMillis, watchRetryBackoffMultiplier, namespaceFromGlobalConfig, secret, triggerType, authorName, authorEmail, committerName, committerEmail, commit, message, asFile, timeout, timeoutUnit, dryRun);
+  }
+
+  public BuildConfigOperationContext withPropagationPolicy(DeletionPropagation propagationPolicy) {
+    return new BuildConfigOperationContext(client, config, plural, namespace, name, apiGroupName, apiGroupVersion, cascading,item, labels, labelsNot, labelsIn, labelsNotIn, fields, fieldsNot,resourceVersion, reloadingFromServer, gracePeriodSeconds, propagationPolicy, watchRetryInitialBackoffMillis, watchRetryBackoffMultiplier, namespaceFromGlobalConfig, secret, triggerType, authorName, authorEmail, committerName, committerEmail, commit, message, asFile, timeout, timeoutUnit, dryRun);
+  }
+
   public BuildConfigOperationContext withSecret(String secret) {
-    return toBuilder().secret(secret).build();
+    return new BuildConfigOperationContext(client, config, plural, namespace, name, apiGroupName, apiGroupVersion, cascading,item, labels, labelsNot, labelsIn, labelsNotIn, fields, fieldsNot,resourceVersion, reloadingFromServer, gracePeriodSeconds, propagationPolicy, watchRetryInitialBackoffMillis, watchRetryBackoffMultiplier, namespaceFromGlobalConfig, secret, triggerType, authorName, authorEmail, committerName, committerEmail, commit, message, asFile, timeout, timeoutUnit, dryRun);
   }
 
   public BuildConfigOperationContext withTriggerType(String triggerType) {
-    return toBuilder().triggerType(triggerType).build();
+    return new BuildConfigOperationContext(client, config, plural, namespace, name, apiGroupName, apiGroupVersion, cascading,item, labels, labelsNot, labelsIn, labelsNotIn, fields, fieldsNot,resourceVersion, reloadingFromServer, gracePeriodSeconds, propagationPolicy, watchRetryInitialBackoffMillis, watchRetryBackoffMultiplier, namespaceFromGlobalConfig, secret, triggerType, authorName, authorEmail, committerName, committerEmail, commit, message, asFile, timeout, timeoutUnit, dryRun);
   }
 
   public BuildConfigOperationContext withAuthorName(String authorName) {
-    return toBuilder().authorName(authorName).build();
+    return new BuildConfigOperationContext(client, config, plural, namespace, name, apiGroupName, apiGroupVersion, cascading,item, labels, labelsNot, labelsIn, labelsNotIn, fields, fieldsNot,resourceVersion, reloadingFromServer, gracePeriodSeconds, propagationPolicy, watchRetryInitialBackoffMillis, watchRetryBackoffMultiplier, namespaceFromGlobalConfig, secret, triggerType, authorName, authorEmail, committerName, committerEmail, commit, message, asFile, timeout, timeoutUnit, dryRun);
   }
 
   public BuildConfigOperationContext withAuthorEmail(String authorEmail) {
-    return toBuilder().authorEmail(authorEmail).build();
+    return new BuildConfigOperationContext(client, config, plural, namespace, name, apiGroupName, apiGroupVersion, cascading,item, labels, labelsNot, labelsIn, labelsNotIn, fields, fieldsNot,resourceVersion, reloadingFromServer, gracePeriodSeconds, propagationPolicy, watchRetryInitialBackoffMillis, watchRetryBackoffMultiplier, namespaceFromGlobalConfig, secret, triggerType, authorName, authorEmail, committerName, committerEmail, commit, message, asFile, timeout, timeoutUnit, dryRun);
   }
 
   public BuildConfigOperationContext withCommitterName(String committerName) {
-    return toBuilder().committerName(committerName).build();
+    return new BuildConfigOperationContext(client, config, plural, namespace, name, apiGroupName, apiGroupVersion, cascading,item, labels, labelsNot, labelsIn, labelsNotIn, fields, fieldsNot,resourceVersion, reloadingFromServer, gracePeriodSeconds, propagationPolicy, watchRetryInitialBackoffMillis, watchRetryBackoffMultiplier, namespaceFromGlobalConfig, secret, triggerType, authorName, authorEmail, committerName, committerEmail, commit, message, asFile, timeout, timeoutUnit, dryRun);
   }
 
   public BuildConfigOperationContext withCommitterEmail(String committerEmail) {
-    return toBuilder().committerEmail(committerEmail).build();
+    return new BuildConfigOperationContext(client, config, plural, namespace, name, apiGroupName, apiGroupVersion, cascading,item, labels, labelsNot, labelsIn, labelsNotIn, fields, fieldsNot,resourceVersion, reloadingFromServer, gracePeriodSeconds, propagationPolicy, watchRetryInitialBackoffMillis, watchRetryBackoffMultiplier, namespaceFromGlobalConfig, secret, triggerType, authorName, authorEmail, committerName, committerEmail, commit, message, asFile, timeout, timeoutUnit, dryRun);
   }
 
   public BuildConfigOperationContext withCommit(String commit) {
-    return toBuilder().commit(commit).build();
+    return new BuildConfigOperationContext(client, config, plural, namespace, name, apiGroupName, apiGroupVersion, cascading,item, labels, labelsNot, labelsIn, labelsNotIn, fields, fieldsNot,resourceVersion, reloadingFromServer, gracePeriodSeconds, propagationPolicy, watchRetryInitialBackoffMillis, watchRetryBackoffMultiplier, namespaceFromGlobalConfig, secret, triggerType, authorName, authorEmail, committerName, committerEmail, commit, message, asFile, timeout, timeoutUnit, dryRun);
   }
 
   public BuildConfigOperationContext withMessage(String message) {
-    return toBuilder().message(message).build();
+    return new BuildConfigOperationContext(client, config, plural, namespace, name, apiGroupName, apiGroupVersion, cascading,item, labels, labelsNot, labelsIn, labelsNotIn, fields, fieldsNot,resourceVersion, reloadingFromServer, gracePeriodSeconds, propagationPolicy, watchRetryInitialBackoffMillis, watchRetryBackoffMultiplier, namespaceFromGlobalConfig, secret, triggerType, authorName, authorEmail, committerName, committerEmail, commit, message, asFile, timeout, timeoutUnit, dryRun);
   }
 
   public BuildConfigOperationContext withAsFile(String asFile) {
-    return toBuilder().asFile(asFile).build();
+    return new BuildConfigOperationContext(client, config, plural, namespace, name, apiGroupName, apiGroupVersion, cascading,item, labels, labelsNot, labelsIn, labelsNotIn, fields, fieldsNot,resourceVersion, reloadingFromServer, gracePeriodSeconds, propagationPolicy, watchRetryInitialBackoffMillis, watchRetryBackoffMultiplier, namespaceFromGlobalConfig, secret, triggerType, authorName, authorEmail, committerName, committerEmail, commit, message, asFile, timeout, timeoutUnit, dryRun);
   }
 
+  public BuildConfigOperationContext withTimeout(long timeout) {
+    return new BuildConfigOperationContext(client, config, plural, namespace, name, apiGroupName, apiGroupVersion, cascading,item, labels, labelsNot, labelsIn, labelsNotIn, fields, fieldsNot,resourceVersion, reloadingFromServer, gracePeriodSeconds, propagationPolicy, watchRetryInitialBackoffMillis, watchRetryBackoffMultiplier, namespaceFromGlobalConfig, secret, triggerType, authorName, authorEmail, committerName, committerEmail, commit, message, asFile, timeout, timeoutUnit, dryRun);
+  }
+
+  public BuildConfigOperationContext withTimeoutUnit(TimeUnit timeoutUnit) {
+    return new BuildConfigOperationContext(client, config, plural, namespace, name, apiGroupName, apiGroupVersion, cascading,item, labels, labelsNot, labelsIn, labelsNotIn, fields, fieldsNot,resourceVersion, reloadingFromServer, gracePeriodSeconds, propagationPolicy, watchRetryInitialBackoffMillis, watchRetryBackoffMultiplier, namespaceFromGlobalConfig, secret, triggerType, authorName, authorEmail, committerName, committerEmail, commit, message, asFile, timeout, timeoutUnit, dryRun);
+  }
+
+  @Override
+  public BuildConfigOperationContext withDryRun(boolean dryRun) {
+    return new BuildConfigOperationContext(client, config, plural, namespace, name, apiGroupName, apiGroupVersion, cascading,item, labels, labelsNot, labelsIn, labelsNotIn, fields, fieldsNot,resourceVersion, reloadingFromServer, gracePeriodSeconds, propagationPolicy, watchRetryInitialBackoffMillis, watchRetryBackoffMultiplier, namespaceFromGlobalConfig, secret, triggerType, authorName, authorEmail, committerName, committerEmail, commit, message, asFile, timeout, timeoutUnit, dryRun);
+  }
 }

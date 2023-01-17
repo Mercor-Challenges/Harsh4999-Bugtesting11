@@ -15,21 +15,41 @@
  */
 package io.fabric8.volumesnapshot.client.internal;
 
-import io.fabric8.kubernetes.client.extension.ExtensibleResourceAdapter;
+import io.fabric8.kubernetes.api.builder.Visitor;
+import io.fabric8.kubernetes.client.Config;
+import io.fabric8.kubernetes.client.dsl.base.BaseOperation;
+import io.fabric8.kubernetes.client.dsl.base.HasMetadataOperation;
+import io.fabric8.kubernetes.client.dsl.base.OperationContext;
 import io.fabric8.volumesnapshot.api.model.VolumeSnapshotClass;
+import io.fabric8.volumesnapshot.api.model.VolumeSnapshotClassBuilder;
+import io.fabric8.volumesnapshot.api.model.VolumeSnapshotClassList;
 import io.fabric8.volumesnapshot.api.model.VolumeSnapshotList;
-import io.fabric8.volumesnapshot.client.VolumeSnapshotClassResource;
-import io.fabric8.volumesnapshot.client.VolumeSnapshotClient;
+import okhttp3.OkHttpClient;
 
 import java.util.HashMap;
 import java.util.Map;
 
-public class VolumeSnapshotClassOperationsImpl extends ExtensibleResourceAdapter<VolumeSnapshotClass>
-    implements VolumeSnapshotClassResource {
+
+public class VolumeSnapshotClassOperationsImpl extends HasMetadataOperation<VolumeSnapshotClass, VolumeSnapshotClassList, VolumeSnapshotClassResource> implements VolumeSnapshotClassResource {
+
+  public VolumeSnapshotClassOperationsImpl(OkHttpClient client, Config config) {
+    this(new OperationContext().withOkhttpClient(client).withConfig(config));
+  }
+
+  public VolumeSnapshotClassOperationsImpl(OperationContext context) {
+    super(context.withApiGroupName("snapshot.storage.k8s.io").withApiGroupVersion("v1").withPlural("volumesnapshotclasses"));
+    this.type = VolumeSnapshotClass.class;
+    this.listType = VolumeSnapshotClassList.class;
+  }
 
   @Override
-  public ExtensibleResourceAdapter<VolumeSnapshotClass> newInstance() {
-    return new VolumeSnapshotClassOperationsImpl();
+  public BaseOperation<VolumeSnapshotClass, VolumeSnapshotClassList, VolumeSnapshotClassResource> newInstance(OperationContext context) {
+    return new VolumeSnapshotClassOperationsImpl(context);
+  }
+
+  @Override
+  public boolean isResourceNamespaced() {
+    return false;
   }
 
   @Override
@@ -37,7 +57,14 @@ public class VolumeSnapshotClassOperationsImpl extends ExtensibleResourceAdapter
     VolumeSnapshotClass item = get();
     Map<String, String> fields = new HashMap<>();
     fields.put("spec.volumeSnapshotClassName", item.getMetadata().getName());
-    return client.adapt(VolumeSnapshotClient.class).volumeSnapshots().withFields(fields).list();
+    return new VolumeSnapshotOperationsImpl(context.withName(null))
+      .withFields(fields)
+      .list();
+  }
+
+  @Override
+  public VolumeSnapshotClass edit(Visitor... visitors) {
+    return patch(new VolumeSnapshotClassBuilder(getMandatory()).accept(visitors).build());
   }
 
 }
