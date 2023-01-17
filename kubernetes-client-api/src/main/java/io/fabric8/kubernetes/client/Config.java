@@ -51,15 +51,10 @@ import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
-import java.util.function.Predicate;
-import java.util.function.UnaryOperator;
-import java.util.stream.Collectors;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(allowGetters = true, allowSetters = true)
@@ -232,7 +227,7 @@ public class Config {
    */
   private Map<String, String> customHeaders = null;
 
-  private boolean autoConfigure;
+  private Boolean autoConfigure = Boolean.FALSE;
 
   private File file;
 
@@ -244,15 +239,12 @@ public class Config {
    */
   @Deprecated
   public Config() {
-    this(!disableAutoConfig());
+    this(!Utils.getSystemPropertyOrEnvVar(KUBERNETES_DISABLE_AUTO_CONFIG_SYSTEM_PROPERTY, false));
   }
 
-  private static boolean disableAutoConfig() {
-    return Utils.getSystemPropertyOrEnvVar(KUBERNETES_DISABLE_AUTO_CONFIG_SYSTEM_PROPERTY, false);
-  }
-
-  private Config(boolean autoConfigure) {
-    if (autoConfigure) {
+  private Config(Boolean autoConfigure) {
+    if (Boolean.TRUE.equals(autoConfigure)) {
+      this.autoConfigure = Boolean.TRUE;
       autoConfigure(this, null);
     }
   }
@@ -292,16 +284,12 @@ public class Config {
       tryServiceAccount(config);
       tryNamespaceFromPath(config);
     }
-    postAutoConfigure(config);
-    config.autoConfigure = true;
-    return config;
-  }
-
-  private static void postAutoConfigure(Config config) {
     configFromSysPropsOrEnvVars(config);
 
     config.masterUrl = ensureHttps(config.masterUrl, config);
     config.masterUrl = ensureEndsWithSlash(config.masterUrl);
+
+    return config;
   }
 
   private static String ensureEndsWithSlash(String masterUrl) {
@@ -351,6 +339,7 @@ public class Config {
       String impersonateUsername, String[] impersonateGroups, Map<String, List<String>> impersonateExtras,
       OAuthTokenProvider oauthTokenProvider, Map<String, String> customHeaders, int requestRetryBackoffLimit,
       int requestRetryBackoffInterval, int uploadConnectionTimeout, int uploadRequestTimeout) {
+    this.masterUrl = masterUrl;
     this.apiVersion = apiVersion;
     this.namespace = namespace;
     this.trustCerts = trustCerts;
@@ -366,7 +355,7 @@ public class Config {
 
     this.requestConfig = new RequestConfig(username, password, oauthToken, watchReconnectLimit, watchReconnectInterval,
         connectionTimeout, rollingTimeout, requestTimeout, scaleTimeout, loggingInterval, websocketTimeout,
-        websocketPingInterval, oauthTokenProvider,
+        websocketPingInterval, maxConcurrentRequests, maxConcurrentRequestsPerHost, oauthTokenProvider,
         requestRetryBackoffLimit, requestRetryBackoffInterval, uploadConnectionTimeout, uploadRequestTimeout);
     this.requestConfig.setImpersonateUsername(impersonateUsername);
     this.requestConfig.setImpersonateGroups(impersonateGroups);
@@ -381,19 +370,22 @@ public class Config {
     this.errorMessages = errorMessages;
     this.userAgent = userAgent;
     this.tlsVersions = tlsVersions;
+
+    if (!this.masterUrl.toLowerCase(Locale.ROOT).startsWith(HTTP_PROTOCOL_PREFIX)
+        && !this.masterUrl.startsWith(HTTPS_PROTOCOL_PREFIX)) {
+      this.masterUrl = (SSLUtils.isHttpsAvailable(this) ? HTTPS_PROTOCOL_PREFIX : HTTP_PROTOCOL_PREFIX) + this.masterUrl;
+    }
+
+    if (!this.masterUrl.endsWith("/")) {
+      this.masterUrl = this.masterUrl + "/";
+    }
+
     this.trustStoreFile = trustStoreFile;
     this.trustStorePassphrase = trustStorePassphrase;
     this.keyStoreFile = keyStoreFile;
     this.keyStorePassphrase = keyStorePassphrase;
     this.oauthTokenProvider = oauthTokenProvider;
     this.customHeaders = customHeaders;
-
-    //We need to keep this after ssl configuration & masterUrl
-    //We set the masterUrl because it's needed by ensureHttps
-    this.masterUrl = masterUrl;
-    this.masterUrl = ensureEndsWithSlash(ensureHttps(masterUrl, this));
-    this.maxConcurrentRequests = maxConcurrentRequests;
-    this.maxConcurrentRequestsPerHost = maxConcurrentRequestsPerHost;
   }
 
   public static void configFromSysPropsOrEnvVars(Config config) {
@@ -434,8 +426,8 @@ public class Config {
     config.setImpersonateUsername(
         Utils.getSystemPropertyOrEnvVar(KUBERNETES_IMPERSONATE_USERNAME, config.getImpersonateUsername()));
 
-    String configuredImpersonateGroups = Utils.getSystemPropertyOrEnvVar(KUBERNETES_IMPERSONATE_GROUP, Arrays
-        .stream(Optional.ofNullable(config.getImpersonateGroups()).orElse(new String[0])).collect(Collectors.joining(",")));
+    String configuredImpersonateGroups = Utils.getSystemPropertyOrEnvVar(KUBERNETES_IMPERSONATE_GROUP,
+        config.getImpersonateGroup());
     if (configuredImpersonateGroups != null) {
       config.setImpersonateGroups(configuredImpersonateGroups.split(","));
     }
@@ -599,33 +591,11 @@ public class Config {
   // Note: kubeconfigPath is optional (see note on loadFromKubeConfig)
   public static Config fromKubeconfig(String context, String kubeconfigContents, String kubeconfigPath) {
     // we allow passing context along here, since downstream accepts it
-    Config config = new Config(false);
-    if (kubeconfigPath != null) {
+    Config config = new Config();
+    if (kubeconfigPath != null)
       config.file = new File(kubeconfigPath);
-    }
-    if (!loadFromKubeconfig(config, context, kubeconfigContents)) {
-      throw new KubernetesClientException("Could not create Config from kubeconfig");
-    }
-    if (!disableAutoConfig()) {
-      postAutoConfigure(config);
-    }
+    loadFromKubeconfig(config, context, kubeconfigContents);
     return config;
-  }
-
-  public Config refresh() {
-    final String currentContextName = this.getCurrentContext() != null ? this.getCurrentContext().getName() : null;
-    if (this.autoConfigure) {
-      return Config.autoConfigure(currentContextName);
-    }
-    if (this.file != null) {
-      String kubeconfigContents = getKubeconfigContents(this.file);
-      if (kubeconfigContents == null) {
-        return this; // getKubeconfigContents will have logged an exception
-      }
-      return Config.fromKubeconfig(currentContextName, kubeconfigContents, this.file.getPath());
-    }
-    // nothing to refresh - the kubeconfig was directly supplied
-    return this;
   }
 
   private static boolean tryKubeConfig(Config config, String context) {
@@ -644,7 +614,8 @@ public class Config {
       return false;
     }
     config.file = new File(kubeConfigFile.getPath());
-    return loadFromKubeconfig(config, context, kubeconfigContents);
+    loadFromKubeconfig(config, context, kubeconfigContents);
+    return true;
   }
 
   public static String getKubeconfigFilename() {
@@ -745,7 +716,7 @@ public class Config {
         return true;
       }
     } catch (Exception e) {
-      throw KubernetesClientException.launderThrowable("Failed to parse the kubeconfig.", e);
+      LOGGER.error("Failed to parse the kubeconfig.", e);
     }
 
     return false;
@@ -795,10 +766,9 @@ public class Config {
     List<String> argv = new ArrayList<>(Utils.getCommandPlatformPrefix());
     command = getCommandWithFullyQualifiedPath(command, systemPathValue);
     List<String> args = exec.getArgs();
-    if (args != null && !args.isEmpty()) {
-      command += " " + String.join(" ", args);
+    if (args != null) {
+      argv.add(command + " " + String.join(" ", args));
     }
-    argv.add(command);
     return argv;
   }
 
@@ -869,40 +839,34 @@ public class Config {
   }
 
   private static String getHomeDir() {
-    return getHomeDir(Config::isDirectoryAndExists, Config::getSystemEnvVariable);
-  }
-
-  private static boolean isDirectoryAndExists(String filePath) {
-    File f = new File(filePath);
-    return f.exists() && f.isDirectory();
-  }
-
-  private static String getSystemEnvVariable(String envVariableName) {
-    return System.getenv(envVariableName);
-  }
-
-  protected static String getHomeDir(Predicate<String> directoryExists, UnaryOperator<String> getEnvVar) {
-    String home = getEnvVar.apply("HOME");
-    if (home != null && !home.isEmpty() && directoryExists.test(home)) {
-      return home;
-    }
     String osName = System.getProperty("os.name").toLowerCase(Locale.ROOT);
     if (osName.startsWith("win")) {
-      String homeDrive = getEnvVar.apply("HOMEDRIVE");
-      String homePath = getEnvVar.apply("HOMEPATH");
+      String homeDrive = System.getenv("HOMEDRIVE");
+      String homePath = System.getenv("HOMEPATH");
       if (homeDrive != null && !homeDrive.isEmpty() && homePath != null && !homePath.isEmpty()) {
         String homeDir = homeDrive + homePath;
-        if (directoryExists.test(homeDir)) {
+        File f = new File(homeDir);
+        if (f.exists() && f.isDirectory()) {
           return homeDir;
         }
       }
-      String userProfile = getEnvVar.apply("USERPROFILE");
-      if (userProfile != null && !userProfile.isEmpty() && directoryExists.test(userProfile)) {
-        return userProfile;
+      String userProfile = System.getenv("USERPROFILE");
+      if (userProfile != null && !userProfile.isEmpty()) {
+        File f = new File(userProfile);
+        if (f.exists() && f.isDirectory()) {
+          return userProfile;
+        }
+      }
+    }
+    String home = System.getenv("HOME");
+    if (home != null && !home.isEmpty()) {
+      File f = new File(home);
+      if (f.exists() && f.isDirectory()) {
+        return home;
       }
     }
 
-    // Fall back to user.home should never really get here
+    //Fall back to user.home should never really get here
     return System.getProperty("user.home", ".");
   }
 
@@ -981,6 +945,25 @@ public class Config {
   }
 
   public void setImpersonateGroups(String... impersonateGroup) {
+    this.requestConfig.setImpersonateGroups(impersonateGroup);
+  }
+
+  /**
+   * @deprecated Use {@link #getImpersonateGroups()} instead
+   * @return returns string of impersonate group
+   */
+  @Deprecated
+  @JsonProperty("impersonateGroup")
+  public String getImpersonateGroup() {
+    return getRequestConfig().getImpersonateGroup();
+  }
+
+  /**
+   * @param impersonateGroup ImpersonateGroup string
+   * @deprecated Use {@link #setImpersonateGroups(String...)} instead
+   */
+  @Deprecated
+  public void setImpersonateGroup(String impersonateGroup) {
     this.requestConfig.setImpersonateGroups(impersonateGroup);
   }
 
@@ -1080,9 +1063,7 @@ public class Config {
   }
 
   public void setMasterUrl(String masterUrl) {
-    //We set the masterUrl because it's needed by ensureHttps
     this.masterUrl = masterUrl;
-    this.masterUrl = ensureEndsWithSlash(ensureHttps(masterUrl, this));
   }
 
   @JsonProperty("trustCerts")
@@ -1306,19 +1287,19 @@ public class Config {
   }
 
   public int getMaxConcurrentRequests() {
-    return maxConcurrentRequests;
+    return getRequestConfig().getMaxConcurrentRequests();
   }
 
   public void setMaxConcurrentRequests(int maxConcurrentRequests) {
-    this.maxConcurrentRequests = maxConcurrentRequests;
+    this.requestConfig.setMaxConcurrentRequests(maxConcurrentRequests);
   }
 
   public int getMaxConcurrentRequestsPerHost() {
-    return maxConcurrentRequestsPerHost;
+    return getRequestConfig().getMaxConcurrentRequestsPerHost();
   }
 
   public void setMaxConcurrentRequestsPerHost(int maxConcurrentRequestsPerHost) {
-    this.maxConcurrentRequestsPerHost = maxConcurrentRequestsPerHost;
+    this.requestConfig.setMaxConcurrentRequestsPerHost(maxConcurrentRequestsPerHost);
   }
 
   @JsonProperty("proxyUsername")
@@ -1385,11 +1366,11 @@ public class Config {
 
   @JsonIgnore
   public OAuthTokenProvider getOauthTokenProvider() {
-    return this.getRequestConfig().getOauthTokenProvider();
+    return oauthTokenProvider;
   }
 
   public void setOauthTokenProvider(OAuthTokenProvider oauthTokenProvider) {
-    this.requestConfig.setOauthTokenProvider(oauthTokenProvider);
+    this.oauthTokenProvider = oauthTokenProvider;
   }
 
   @JsonProperty("customHeaders")
@@ -1401,7 +1382,7 @@ public class Config {
     this.customHeaders = customHeaders;
   }
 
-  public boolean getAutoConfigure() {
+  public Boolean getAutoConfigure() {
     return autoConfigure;
   }
 
@@ -1466,14 +1447,6 @@ public class Config {
   @JsonAnySetter
   public void setAdditionalProperty(String name, Object value) {
     this.additionalProperties.put(name, value);
-  }
-
-  public void setFile(File file) {
-    this.file = file;
-  }
-
-  public void setAutoConfigure(boolean autoConfigure) {
-    this.autoConfigure = autoConfigure;
   }
 
 }

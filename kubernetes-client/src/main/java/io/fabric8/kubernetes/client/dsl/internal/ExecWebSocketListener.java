@@ -100,29 +100,17 @@ public class ExecWebSocketListener implements ExecWatch, AutoCloseable, WebSocke
   private final class ListenerStream {
     private MessageHandler handler;
     private ExecWatchInputStream inputStream;
-    private String name;
-
-    public ListenerStream(String name) {
-      this.name = name;
-    }
 
     private void handle(ByteBuffer byteString, WebSocket webSocket) throws IOException {
       if (handler != null) {
         handler.handle(byteString);
       } else {
-        if (LOGGER.isDebugEnabled()) {
-          String message = ExecWebSocketListener.toString(byteString);
-          if (message.length() > 200) {
-            message = message.substring(0, 197) + "...";
-          }
-          LOGGER.debug("exec message received on channel {}: {}", name, message);
-        }
         webSocket.request();
       }
     }
   }
 
-  static final Logger LOGGER = LoggerFactory.getLogger(ExecWebSocketListener.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ExecWebSocketListener.class);
   private static final String HEIGHT = "Height";
   private static final String WIDTH = "Width";
 
@@ -164,14 +152,14 @@ public class ExecWebSocketListener implements ExecWatch, AutoCloseable, WebSocke
     }
 
     this.terminateOnError = context.isTerminateOnError();
-    this.out = createStream("stdOut", context.getOutput());
-    this.error = createStream("stdErr", context.getError());
-    this.errorChannel = createStream("errorChannel", context.getErrorChannel());
+    this.out = createStream(context.getOutput());
+    this.error = createStream(context.getError());
+    this.errorChannel = createStream(context.getErrorChannel());
     this.serialExecutor = new SerialExecutor(executor);
   }
 
-  private ListenerStream createStream(String name, StreamContext streamContext) {
-    ListenerStream stream = new ListenerStream(name);
+  private ListenerStream createStream(StreamContext streamContext) {
+    ListenerStream stream = new ListenerStream();
     if (streamContext == null) {
       return stream;
     }
@@ -201,7 +189,7 @@ public class ExecWebSocketListener implements ExecWatch, AutoCloseable, WebSocke
         if (closed.get()) {
           LOGGER.debug("Stream write failed after close", t);
         } else {
-          // This could happen if the user simply closes their stream prior to completion
+          // This could happen if the user simply closes their stream prior to completion 
           LOGGER.warn("Stream write failed", t);
         }
       }
@@ -211,7 +199,7 @@ public class ExecWebSocketListener implements ExecWatch, AutoCloseable, WebSocke
   @Override
   public void close() {
     // simply sends a close, which will shut down the output
-    // it's expected that the server will respond with a close, but if not the input will be shutdown implicitly
+    // it's expected that the server will respond with a close, but if not the input will be shutdown implicitly 
     closeWebSocketOnce(1000, "Closing...");
   }
 
@@ -280,22 +268,18 @@ public class ExecWebSocketListener implements ExecWatch, AutoCloseable, WebSocke
       status.setMessage(t.getMessage());
       cleanUpOnce();
     } finally {
-      if (exitCode.isDone()) {
-        LOGGER.debug("Exec failure after done", t);
-      } else {
-        try {
-          if (listener != null) {
-            ExecListener.Response execResponse = null;
-            if (response != null) {
-              execResponse = new SimpleResponse(response);
-            }
-            listener.onFailure(t, execResponse);
-          } else {
-            LOGGER.error("Exec Failure", t);
+      try {
+        if (listener != null) {
+          ExecListener.Response execResponse = null;
+          if (response != null) {
+            execResponse = new SimpleResponse(response);
           }
-        } finally {
-          exitCode.completeExceptionally(t);
+          listener.onFailure(t, execResponse);
+        } else {
+          LOGGER.error("Exec Failure", t);
         }
+      } finally {
+        exitCode.completeExceptionally(t);
       }
     }
   }

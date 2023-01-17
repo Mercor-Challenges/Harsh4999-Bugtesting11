@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @EnableKubernetesMockClient(crud = true)
 class ClusterServicePlanTest {
@@ -88,7 +89,7 @@ class ClusterServicePlanTest {
     assertEquals("true", u1.getMetadata().getLabels().get("updated"));
 
     //Delete
-    assertEquals(1, client.clusterServicePlans().withName("plan1").delete().size());
+    assertTrue(client.clusterServicePlans().withName("plan1").delete().size() == 1);
     assertNull(client.clusterServicePlans().withName("plan1").get());
   }
 }

@@ -1,4 +1,4 @@
-/**
+package io.fabric8.servicecatalog.examples; /**
  * Copyright (C) 2015 Red Hat, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-package io.fabric8.servicecatalog.examples;
-
 import io.fabric8.servicecatalog.api.model.ClusterServiceClassList;
 import io.fabric8.servicecatalog.client.ServiceCatalogClient;
 import org.slf4j.Logger;
@@ -25,12 +23,11 @@ public class ListServiceClasses {
   private static final Logger logger = LoggerFactory.getLogger(ListServiceClasses.class.getSimpleName());
 
   public static void main(String[] args) {
-    ServiceCatalogClient client = ClientFactory.newClient(args);
-    logger.info("Listing Cluster Service Classes:");
-    ClusterServiceClassList list = client.clusterServiceClasses().list();
-    list.getItems()
-        .forEach(b -> logger.info(b.getSpec().getClusterServiceBrokerName() + "\t\t" + b.getSpec().getExternalName()
-            + "\t\t\t\t" + b.getMetadata().getName()));
-    logger.info("Done");
+      ServiceCatalogClient client = ClientFactory.newClient(args);
+      logger.info("Listing Cluster Service Classes:");
+      ClusterServiceClassList list = client.clusterServiceClasses().list();
+      list.getItems()
+          .forEach(b -> logger.info(b.getSpec().getClusterServiceBrokerName() + "\t\t" + b.getSpec().getExternalName() + "\t\t\t\t" + b.getMetadata().getName()));
+      logger.info("Done");
   }
 }

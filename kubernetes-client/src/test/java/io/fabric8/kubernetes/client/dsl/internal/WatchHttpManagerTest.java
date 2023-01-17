@@ -20,8 +20,8 @@ import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.KubernetesResourceList;
 import io.fabric8.kubernetes.api.model.ListOptions;
 import io.fabric8.kubernetes.client.Watcher;
-import io.fabric8.kubernetes.client.http.AsyncBody;
 import io.fabric8.kubernetes.client.http.HttpClient;
+import io.fabric8.kubernetes.client.http.HttpClient.AsyncBody;
 import io.fabric8.kubernetes.client.http.HttpClient.DerivedClientBuilder;
 import io.fabric8.kubernetes.client.http.HttpResponse;
 import org.junit.jupiter.api.Test;
@@ -47,7 +47,7 @@ class WatchHttpManagerTest {
     BaseOperation baseOperation = Mockito.mock(BaseOperation.class);
     Mockito.when(baseOperation.getNamespacedUrl()).thenReturn(new URL("http://localhost"));
     CompletableFuture<HttpResponse<AsyncBody>> future = new CompletableFuture<>();
-    Mockito.when(client.consumeBytes(Mockito.any(), Mockito.any())).thenReturn(future);
+    Mockito.when(client.consumeLines(Mockito.any(), Mockito.any())).thenReturn(future);
 
     CountDownLatch reconnect = new CountDownLatch(1);
     WatchHTTPManager<HasMetadata, KubernetesResourceList<HasMetadata>> watch = new WatchHTTPManager(client,

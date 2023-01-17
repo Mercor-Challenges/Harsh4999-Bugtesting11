@@ -3,7 +3,6 @@ package io.fabric8.certmanager.api.model.v1alpha3;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
@@ -42,13 +41,9 @@ import lombok.experimental.Accessors;
     "metadata",
     "csr",
     "duration",
-    "extra",
-    "groups",
     "isCA",
     "issuerRef",
-    "uid",
-    "usages",
-    "username"
+    "usages"
 })
 @ToString
 @EqualsAndHashCode
@@ -76,28 +71,18 @@ public class CertificateRequestSpec implements KubernetesResource
 {
 
     @JsonProperty("csr")
-    private java.lang.String csr;
+    private String csr;
     @JsonProperty("duration")
     private Duration duration;
-    @JsonProperty("extra")
-    @JsonInclude(JsonInclude.Include.NON_EMPTY)
-    private Map<String, List<String>> extra = new LinkedHashMap<String, List<String>>();
-    @JsonProperty("groups")
-    @JsonInclude(JsonInclude.Include.NON_EMPTY)
-    private List<java.lang.String> groups = new ArrayList<java.lang.String>();
     @JsonProperty("isCA")
     private Boolean isCA;
     @JsonProperty("issuerRef")
     private io.fabric8.certmanager.api.model.meta.v1.ObjectReference issuerRef;
-    @JsonProperty("uid")
-    private java.lang.String uid;
     @JsonProperty("usages")
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
-    private List<java.lang.String> usages = new ArrayList<java.lang.String>();
-    @JsonProperty("username")
-    private java.lang.String username;
+    private List<String> usages = new ArrayList<String>();
     @JsonIgnore
-    private Map<java.lang.String, Object> additionalProperties = new HashMap<java.lang.String, Object>();
+    private Map<String, Object> additionalProperties = new HashMap<String, Object>();
 
     /**
      * No args constructor for use in serialization
@@ -109,35 +94,27 @@ public class CertificateRequestSpec implements KubernetesResource
     /**
      * 
      * @param duration
-     * @param uid
      * @param csr
-     * @param extra
-     * @param groups
      * @param isCA
      * @param issuerRef
      * @param usages
-     * @param username
      */
-    public CertificateRequestSpec(java.lang.String csr, Duration duration, Map<String, List<String>> extra, List<java.lang.String> groups, Boolean isCA, io.fabric8.certmanager.api.model.meta.v1.ObjectReference issuerRef, java.lang.String uid, List<java.lang.String> usages, java.lang.String username) {
+    public CertificateRequestSpec(String csr, Duration duration, Boolean isCA, io.fabric8.certmanager.api.model.meta.v1.ObjectReference issuerRef, List<String> usages) {
         super();
         this.csr = csr;
         this.duration = duration;
-        this.extra = extra;
-        this.groups = groups;
         this.isCA = isCA;
         this.issuerRef = issuerRef;
-        this.uid = uid;
         this.usages = usages;
-        this.username = username;
     }
 
     @JsonProperty("csr")
-    public java.lang.String getCsr() {
+    public String getCsr() {
         return csr;
     }
 
     @JsonProperty("csr")
-    public void setCsr(java.lang.String csr) {
+    public void setCsr(String csr) {
         this.csr = csr;
     }
 
@@ -149,26 +126,6 @@ public class CertificateRequestSpec implements KubernetesResource
     @JsonProperty("duration")
     public void setDuration(Duration duration) {
         this.duration = duration;
-    }
-
-    @JsonProperty("extra")
-    public Map<String, List<String>> getExtra() {
-        return extra;
-    }
-
-    @JsonProperty("extra")
-    public void setExtra(Map<String, List<String>> extra) {
-        this.extra = extra;
-    }
-
-    @JsonProperty("groups")
-    public List<java.lang.String> getGroups() {
-        return groups;
-    }
-
-    @JsonProperty("groups")
-    public void setGroups(List<java.lang.String> groups) {
-        this.groups = groups;
     }
 
     @JsonProperty("isCA")
@@ -191,43 +148,23 @@ public class CertificateRequestSpec implements KubernetesResource
         this.issuerRef = issuerRef;
     }
 
-    @JsonProperty("uid")
-    public java.lang.String getUid() {
-        return uid;
-    }
-
-    @JsonProperty("uid")
-    public void setUid(java.lang.String uid) {
-        this.uid = uid;
-    }
-
     @JsonProperty("usages")
-    public List<java.lang.String> getUsages() {
+    public List<String> getUsages() {
         return usages;
     }
 
     @JsonProperty("usages")
-    public void setUsages(List<java.lang.String> usages) {
+    public void setUsages(List<String> usages) {
         this.usages = usages;
     }
 
-    @JsonProperty("username")
-    public java.lang.String getUsername() {
-        return username;
-    }
-
-    @JsonProperty("username")
-    public void setUsername(java.lang.String username) {
-        this.username = username;
-    }
-
     @JsonAnyGetter
-    public Map<java.lang.String, Object> getAdditionalProperties() {
+    public Map<String, Object> getAdditionalProperties() {
         return this.additionalProperties;
     }
 
     @JsonAnySetter
-    public void setAdditionalProperty(java.lang.String name, Object value) {
+    public void setAdditionalProperty(String name, Object value) {
         this.additionalProperties.put(name, value);
     }
 

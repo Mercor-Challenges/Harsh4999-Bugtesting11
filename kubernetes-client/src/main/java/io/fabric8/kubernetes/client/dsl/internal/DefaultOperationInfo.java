@@ -27,8 +27,7 @@ public class DefaultOperationInfo implements OperationInfo {
   private final String plural;
   private final String version;
 
-  public DefaultOperationInfo(String kind, String operationType, String name, String namespace, String group, String plural,
-      String version) {
+  public DefaultOperationInfo(String kind, String operationType, String name, String namespace, String group, String plural, String version) {
     this.kind = kind;
     this.name = name;
     this.namespace = namespace;
@@ -37,6 +36,7 @@ public class DefaultOperationInfo implements OperationInfo {
     this.plural = plural;
     this.version = version;
   }
+
 
   @Override
   public String getKind() {

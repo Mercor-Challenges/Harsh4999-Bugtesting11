@@ -15,7 +15,6 @@
  */
 package io.fabric8.crd.example.extraction;
 
-import io.fabric8.crd.generator.annotation.PreserveUnknownFields;
 import io.fabric8.crd.generator.annotation.SchemaFrom;
 
 public class ExtractionSpec {
@@ -23,7 +22,6 @@ public class ExtractionSpec {
   @SchemaFrom(type = FooExtractor.class)
   private Foo foo;
 
-  @PreserveUnknownFields
   private Foo bar;
 
 }

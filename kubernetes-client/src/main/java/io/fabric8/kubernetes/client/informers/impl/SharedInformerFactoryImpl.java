@@ -52,7 +52,7 @@ public class SharedInformerFactoryImpl implements SharedInformerFactory {
   private String name;
   private String namespace;
 
-  private final KubernetesClient client;
+  private KubernetesClient client;
 
   public SharedInformerFactoryImpl(KubernetesClient client) {
     this.client = client;
@@ -110,12 +110,12 @@ public class SharedInformerFactoryImpl implements SharedInformerFactory {
 
     if (!informers.isEmpty()) {
       for (SharedIndexInformer<?> informer : informers) {
-        CompletableFuture<Void> future = informer.start().toCompletableFuture();
+        CompletableFuture<Void> future = informer.start();
         startInformerTasks.add(future);
         future.whenComplete((v, t) -> {
           if (t != null) {
             if (this.eventListeners.isEmpty()) {
-              log.warn("Failed to start informer {}", informer, t);
+              log.warn("Failed to start informer", t);
             } else {
               this.eventListeners
                   .forEach(listener -> listener.onException(informer, KubernetesClientException.launderThrowable(t)));

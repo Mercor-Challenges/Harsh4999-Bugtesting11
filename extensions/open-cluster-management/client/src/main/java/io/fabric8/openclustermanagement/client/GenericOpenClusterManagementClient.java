@@ -21,7 +21,8 @@ import io.fabric8.kubernetes.client.dsl.Namespaceable;
 import io.fabric8.kubernetes.client.dsl.RequestConfigurable;
 
 public interface GenericOpenClusterManagementClient<C extends Client> extends Client, OpenClusterManagementClient,
-    Namespaceable<C>,
-    AnyNamespaceable<C>,
-    RequestConfigurable<C> {
+  Namespaceable<C>,
+  AnyNamespaceable<C>,
+  RequestConfigurable<C> {
 }
+

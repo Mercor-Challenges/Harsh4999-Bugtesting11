@@ -27,6 +27,7 @@ import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
@@ -75,6 +76,7 @@ class OperationContextTest {
         .withFields(Collections.singletonMap("test", "field"))
         .withFieldsNot(Collections.singletonMap("test", new String[] { "fieldsNot" }))
         .withResourceVersion("234343")
+        .withReloadingFromServer(false)
         .withGracePeriodSeconds(0)
         .withPropagationPolicy(DeletionPropagation.BACKGROUND);
 
@@ -94,6 +96,7 @@ class OperationContextTest {
     assertEquals("field", operationContext.getFields().get("test"));
     assertArrayEquals(new String[] { "fieldsNot" }, operationContext.getFieldsNot().get("test"));
     assertEquals("234343", operationContext.getResourceVersion());
+    assertFalse(operationContext.isReloadingFromServer());
     assertEquals(0, operationContext.getGracePeriodSeconds());
     assertEquals(DeletionPropagation.BACKGROUND, operationContext.getPropagationPolicy());
 

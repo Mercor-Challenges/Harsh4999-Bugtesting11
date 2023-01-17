@@ -38,7 +38,6 @@ import lombok.experimental.Accessors;
     "kind",
     "metadata",
     "name",
-    "type",
     "value"
 })
 @ToString
@@ -68,10 +67,8 @@ public class TaskRunResult implements KubernetesResource
 
     @JsonProperty("name")
     private String name;
-    @JsonProperty("type")
-    private String type;
     @JsonProperty("value")
-    private ArrayOrString value;
+    private String value;
     @JsonIgnore
     private Map<String, Object> additionalProperties = new HashMap<String, Object>();
 
@@ -85,13 +82,11 @@ public class TaskRunResult implements KubernetesResource
     /**
      * 
      * @param name
-     * @param type
      * @param value
      */
-    public TaskRunResult(String name, String type, ArrayOrString value) {
+    public TaskRunResult(String name, String value) {
         super();
         this.name = name;
-        this.type = type;
         this.value = value;
     }
 
@@ -105,23 +100,13 @@ public class TaskRunResult implements KubernetesResource
         this.name = name;
     }
 
-    @JsonProperty("type")
-    public String getType() {
-        return type;
-    }
-
-    @JsonProperty("type")
-    public void setType(String type) {
-        this.type = type;
-    }
-
     @JsonProperty("value")
-    public ArrayOrString getValue() {
+    public String getValue() {
         return value;
     }
 
     @JsonProperty("value")
-    public void setValue(ArrayOrString value) {
+    public void setValue(String value) {
         this.value = value;
     }
 

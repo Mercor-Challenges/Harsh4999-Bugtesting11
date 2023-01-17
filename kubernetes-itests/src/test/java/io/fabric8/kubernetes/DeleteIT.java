@@ -17,21 +17,14 @@ package io.fabric8.kubernetes;
 
 import io.fabric8.junit.jupiter.api.LoadKubernetesManifests;
 import io.fabric8.kubernetes.api.model.DeletionPropagation;
-import io.fabric8.kubernetes.api.model.Secret;
-import io.fabric8.kubernetes.api.model.StatusDetails;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.api.model.apps.ReplicaSet;
 import io.fabric8.kubernetes.api.model.apps.ReplicaSetList;
 import io.fabric8.kubernetes.client.KubernetesClient;
-import io.fabric8.kubernetes.client.dsl.Resource;
-import io.fabric8.kubernetes.client.utils.CommonThreadPool;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -54,44 +47,14 @@ class DeleteIT {
   }
 
   @Test
-  void testDeleteNonExistentResourceBlocking() {
-    // Given
-    String podName = "i-dont-exist";
-    // When
-    long start = System.currentTimeMillis();
-    client.pods().withName(podName).withTimeout(10, TimeUnit.MINUTES).delete();
-    // Then it shouldn't block
-    assertTrue(System.currentTimeMillis() - start < TimeUnit.MILLISECONDS.convert(1, TimeUnit.MINUTES));
-  }
-
-  @Test
-  void testBlockingDeleteExistentResource() throws Exception {
+  void testDeleteExistentResource() {
     // Given
     String name = "deleteit-existent";
     // When
-    Resource<Secret> op = client.secrets().withName(name);
-    CompletableFuture<List<StatusDetails>> future;
-    try {
-      op.edit(s -> {
-        s.addFinalizer("fabric8.com/blocking");
-        return s;
-      });
-      future = CompletableFuture.supplyAsync(() -> op.withTimeout(60, TimeUnit.SECONDS).delete(), CommonThreadPool.get());
-
-      try {
-        future.get(10, TimeUnit.SECONDS);
-      } catch (TimeoutException e) {
-        // expected - we're waiting for the finalizer
-      }
-      assertNotNull(op.get().getMetadata().getDeletionTimestamp());
-    } finally {
-      op.edit(s -> {
-        s.getMetadata().setFinalizers(null);
-        return s;
-      });
-    }
-
-    assertEquals(1, future.get(60, TimeUnit.SECONDS).size());
+    boolean isDeleted = client.secrets().withName(name).delete().size() == 1;
+    // Then
+    assertTrue(isDeleted);
+    client.secrets().withName(name).waitUntilCondition(Objects::isNull, 30, TimeUnit.SECONDS);
   }
 
   @Test
@@ -103,7 +66,7 @@ class DeleteIT {
         .withGracePeriod(0).delete().size() == 1;
     // Then
     assertTrue(isDeleted);
-    client.secrets().withName(name).waitUntilCondition(Objects::isNull, 60, TimeUnit.SECONDS);
+    client.secrets().withName(name).waitUntilCondition(Objects::isNull, 5, TimeUnit.SECONDS);
   }
 
   @Test
@@ -114,7 +77,7 @@ class DeleteIT {
     boolean isDeleted = client.apps().replicaSets().withName(name).cascading(true).delete().size() == 1;
     // Then
     assertTrue(isDeleted);
-    client.apps().replicaSets().withName(name).waitUntilCondition(Objects::isNull, 60, TimeUnit.SECONDS);
+    client.apps().replicaSets().withName(name).waitUntilCondition(Objects::isNull, 30, TimeUnit.SECONDS);
   }
 
   @Test
@@ -127,7 +90,7 @@ class DeleteIT {
         .delete().size() == 1;
     // Then
     assertTrue(isDeleted);
-    client.apps().replicaSets().withName(name).waitUntilCondition(Objects::isNull, 60, TimeUnit.SECONDS);
+    client.apps().replicaSets().withName(name).waitUntilCondition(Objects::isNull, 30, TimeUnit.SECONDS);
   }
 
   @Test
@@ -140,7 +103,7 @@ class DeleteIT {
         .delete().size() == 1;
     // Then
     assertTrue(isDeleted);
-    client.apps().replicaSets().withName(name).waitUntilCondition(Objects::isNull, 60, TimeUnit.SECONDS);
+    client.apps().replicaSets().withName(name).waitUntilCondition(Objects::isNull, 30, TimeUnit.SECONDS);
   }
 
   @Test
@@ -168,7 +131,7 @@ class DeleteIT {
     boolean isDeleted = client.resource(replicaSet).delete().size() == 1;
     // Then
     assertTrue(isDeleted);
-    client.apps().replicaSets().withName(name).waitUntilCondition(Objects::isNull, 60, TimeUnit.SECONDS);
+    client.apps().replicaSets().withName(name).waitUntilCondition(Objects::isNull, 30, TimeUnit.SECONDS);
   }
 
   @Test
@@ -180,7 +143,7 @@ class DeleteIT {
     boolean isDeleted = client.resource(replicaSet).cascading(true).delete().size() == 1;
     // Then
     assertTrue(isDeleted);
-    client.apps().replicaSets().withName(name).waitUntilCondition(Objects::isNull, 60, TimeUnit.SECONDS);
+    client.apps().replicaSets().withName(name).waitUntilCondition(Objects::isNull, 30, TimeUnit.SECONDS);
   }
 
   @Test
@@ -194,7 +157,7 @@ class DeleteIT {
         .delete().size() == 1;
     // Then
     assertTrue(isDeleted);
-    client.apps().replicaSets().withName(name).waitUntilCondition(Objects::isNull, 60, TimeUnit.SECONDS);
+    client.apps().replicaSets().withName(name).waitUntilCondition(Objects::isNull, 30, TimeUnit.SECONDS);
   }
 
   @Test
@@ -208,7 +171,7 @@ class DeleteIT {
         .delete().size() == 1;
     // Then
     assertTrue(isDeleted);
-    client.apps().replicaSets().withName(name).waitUntilCondition(Objects::isNull, 60, TimeUnit.SECONDS);
+    client.apps().replicaSets().withName(name).waitUntilCondition(Objects::isNull, 30, TimeUnit.SECONDS);
   }
 
   @Test

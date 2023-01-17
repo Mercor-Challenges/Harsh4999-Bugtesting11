@@ -52,7 +52,6 @@
     <bundle>mvn:io.fabric8/kubernetes-model-events/${project.version}</bundle>
     <bundle>mvn:io.fabric8/kubernetes-model-extensions/${project.version}</bundle>
     <bundle>mvn:io.fabric8/kubernetes-model-flowcontrol/${project.version}</bundle>
-    <bundle>mvn:io.fabric8/kubernetes-model-gatewayapi/${project.version}</bundle>
     <bundle>mvn:io.fabric8/kubernetes-model-networking/${project.version}</bundle>
     <bundle>mvn:io.fabric8/kubernetes-model-node/${project.version}</bundle>
     <bundle>mvn:io.fabric8/kubernetes-model-metrics/${project.version}</bundle>
@@ -69,7 +68,6 @@
     <bundle>mvn:io.fabric8/openshift-client/${project.version}/jar/bundle</bundle>
     <bundle>mvn:io.fabric8/openshift-model-clusterautoscaling/${project.version}</bundle>
     <bundle>mvn:io.fabric8/openshift-model-console/${project.version}</bundle>
-    <bundle>mvn:io.fabric8/openshift-model-config/${project.version}</bundle>
     <bundle>mvn:io.fabric8/openshift-model-machine/${project.version}</bundle>
     <bundle>mvn:io.fabric8/openshift-model-monitoring/${project.version}</bundle>
     <bundle>mvn:io.fabric8/openshift-model-operator/${project.version}</bundle>

@@ -19,8 +19,7 @@ import io.fabric8.kubernetes.api.model.autoscaling.v1.Scale;
 
 public interface ScalableResource<T> extends Resource<T>,
     Loggable,
-    Containerable<String, Loggable>,
-    TimestampBytesLimitTerminateTimeTailPrettyLoggable {
+    Containerable<String, Loggable> {
 
   /**
    * Scale the resource to given count

@@ -18,13 +18,11 @@ package io.fabric8.kubernetes.client;
 
 import io.fabric8.kubernetes.client.http.HttpClient;
 import io.fabric8.kubernetes.client.informers.ResourceEventHandler;
-import io.fabric8.kubernetes.client.utils.HttpClientUtils;
 import io.fabric8.kubernetes.client.utils.Serialization;
 
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.util.concurrent.Executor;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
@@ -46,12 +44,11 @@ public class KubernetesClientBuilder {
   private HttpClient.Factory factory;
   private Class<KubernetesClient> clazz;
   private ExecutorSupplier executorSupplier;
-  private Consumer<HttpClient.Builder> builderConsumer;
 
   public KubernetesClientBuilder() {
     // basically the same logic as in KubernetesResourceUtil for finding list types
     // we're not guarding against a null context class loader
-    String className = "io.fabric8.kubernetes.client.impl.KubernetesClientImpl";
+    String className = "io.fabric8.kubernetes.client.DefaultKubernetesClient";
     try {
       clazz = (Class<KubernetesClient>) Thread.currentThread().getContextClassLoader().loadClass(className);
     } catch (ClassNotFoundException | ClassCastException e) {
@@ -63,19 +60,15 @@ public class KubernetesClientBuilder {
     }
   }
 
-  KubernetesClientBuilder(Class<KubernetesClient> clazz) {
-    this.clazz = clazz;
-  }
-
   public KubernetesClient build() {
     if (config == null) {
       config = new ConfigBuilder().build();
     }
     try {
       if (factory == null) {
-        this.factory = HttpClientUtils.getHttpClientFactory();
+        return clazz.getConstructor(Config.class).newInstance(config);
       }
-      HttpClient client = getHttpClient();
+      HttpClient client = factory.createHttpClient(config);
       return clazz.getConstructor(HttpClient.class, Config.class, ExecutorSupplier.class).newInstance(client, config,
           executorSupplier);
     } catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException
@@ -84,26 +77,18 @@ public class KubernetesClientBuilder {
     }
   }
 
-  HttpClient getHttpClient() {
-    HttpClient.Builder builder = factory.newBuilder(config);
-    if (this.builderConsumer != null) {
-      this.builderConsumer.accept(builder);
-    }
-    return builder.build();
-  }
-
   public KubernetesClientBuilder withConfig(Config config) {
     this.config = config;
     return this;
   }
 
   public KubernetesClientBuilder withConfig(String config) {
-    this.config = Serialization.unmarshal(config, Config.class);
+    this.config = Serialization.unmarshal(config);
     return this;
   }
 
   public KubernetesClientBuilder withConfig(InputStream config) {
-    this.config = Serialization.unmarshal(config, Config.class);
+    this.config = Serialization.unmarshal(config);
     return this;
   }
 
@@ -117,7 +102,7 @@ public class KubernetesClientBuilder {
    * calls and writing to streams.
    * <p>
    * Only override if you need more control over the number of task threads used by the kubernetes client.
-   *
+   * 
    * @return this builder
    */
   public KubernetesClientBuilder withTaskExecutor(Executor executor) {
@@ -132,22 +117,11 @@ public class KubernetesClientBuilder {
    * There will be a call to {@link ExecutorSupplier#onClose(Executor)} when a client is closed.
    * <p>
    * Only override if you need more control over the number of task threads used by the kubernetes client.
-   *
+   * 
    * @return this builder
    */
   public KubernetesClientBuilder withTaskExecutorSupplier(ExecutorSupplier executorSupplier) {
     this.executorSupplier = executorSupplier;
-    return this;
-  }
-
-  /**
-   * Provide additional configuration for the {@link HttpClient} that is created for this {@link KubernetesClient}.
-   *
-   * @param consumer to modify the {@link HttpClient.Builder}
-   * @return this builder
-   */
-  public KubernetesClientBuilder withHttpClientBuilderConsumer(Consumer<HttpClient.Builder> consumer) {
-    this.builderConsumer = consumer;
     return this;
   }
 

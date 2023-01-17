@@ -81,10 +81,6 @@ public interface SharedInformerFactory {
    */
   void stopAllRegisteredInformers();
 
-  /**
-   * @deprecated use {@link SharedIndexInformer#stopped()} method to get notified when an informer stops.
-   */
-  @Deprecated
   void addSharedInformerEventListener(SharedInformerEventListener event);
 
 }

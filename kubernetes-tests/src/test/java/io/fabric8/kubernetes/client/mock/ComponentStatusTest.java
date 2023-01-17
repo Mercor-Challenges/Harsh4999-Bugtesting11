@@ -34,26 +34,27 @@ class ComponentStatusTest {
   KubernetesMockServer server;
   KubernetesClient client;
 
-  ComponentStatus status = new ComponentStatusBuilder().withConditions(new ComponentCondition(null, "ok",
-      "True", "Healthy")).build();
+	ComponentStatus status = new ComponentStatusBuilder().withConditions(new ComponentCondition(null, "ok",
+			"True", "Healthy")).build();
 
-  ComponentStatusList list = new ComponentStatusListBuilder().addNewItem().addNewCondition()
-      .and().endItem().build();
+	ComponentStatusList list = new ComponentStatusListBuilder().addNewItem().addNewCondition()
+			.and().endItem().build();
 
-  @Test
-  void testComponentStatus() {
+	@Test
+	void testComponentStatus() {
     server.expect().withPath("/api/v1/componentstatuses/scheduler").andReturn(200, status).once();
 
-    ComponentStatus stat = client.componentstatuses().withName("scheduler").get();
-    assertNotNull(stat);
-    assertEquals(1, stat.getConditions().size());
-  }
 
-  @Test
-  void testComponentStatusList() {
+		ComponentStatus stat = client.componentstatuses().withName("scheduler").get();
+	    assertNotNull(stat);
+	    assertEquals(1, stat.getConditions().size());
+	}
+
+	@Test
+	void testComponentStatusList() {
     server.expect().withPath("/api/v1/componentstatuses").andReturn(200, status).once();
 
-    ComponentStatusList stats = client.componentstatuses().list();
-    assertNotNull(stats);
-  }
+		ComponentStatusList stats = client.componentstatuses().list();
+	    assertNotNull(stats);
+	}
 }

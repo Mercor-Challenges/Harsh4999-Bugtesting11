@@ -59,7 +59,7 @@ class APIServiceTest {
     // Given
 
     // When
-    APIService apiService = client.apiServices().load(getClass().getResourceAsStream("/test-apiservice.yml")).item();
+    APIService apiService = client.apiServices().load(getClass().getResourceAsStream("/test-apiservice.yml")).get();
 
     // Then
     assertNotNull(apiService);

@@ -50,13 +50,14 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>io.fabric8</groupId>
-      <artifactId>kubernetes-client</artifactId>
-      <version>@project.version@</version>
+      <groupId>javax.validation</groupId>
+      <artifactId>validation-api</artifactId>
+      <version>@validation-api.version@</version>
+      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>io.fabric8</groupId>
-      <artifactId>generator-annotations</artifactId>
+      <artifactId>kubernetes-client</artifactId>
       <version>@project.version@</version>
     </dependency>
   </dependencies>
@@ -80,7 +81,6 @@
           <extraAnnotations>true</extraAnnotations>
           <alwaysPreserveUnknown>true</alwaysPreserveUnknown>
           <suffixStrategy>TOP_LEVEL</suffixStrategy>
-          <generatedAnnotations>false</generatedAnnotations>
         </configuration>
       </plugin>
     </plugins>

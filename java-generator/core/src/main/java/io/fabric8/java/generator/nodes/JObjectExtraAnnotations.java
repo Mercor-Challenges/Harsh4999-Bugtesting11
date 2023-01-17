@@ -24,13 +24,7 @@ public interface JObjectExtraAnnotations {
 
   default void addExtraAnnotations(ClassOrInterfaceDeclaration clz) {
     clz.addAnnotation("lombok.ToString");
-    if (clz.getExtendedTypes().isEmpty()) {
-      clz.addAnnotation("lombok.EqualsAndHashCode");
-    } else {
-      clz.addAnnotation(new SingleMemberAnnotationExpr(
-          new Name("lombok.EqualsAndHashCode"),
-          new NameExpr("callSuper = true")));
-    }
+    clz.addAnnotation("lombok.EqualsAndHashCode");
     clz.addAnnotation("lombok.Setter");
 
     clz.addAnnotation(

@@ -22,7 +22,6 @@ import io.fabric8.kubernetes.client.Client;
 public interface V1PolicyAPIGroupDSL extends Client {
   /**
    * DSL entrypoint for policy/v1 PodDisruptionBudget
-   * 
    * @return {@link MixedOperation} for PodDisruptionBudget
    */
   MixedOperation<PodDisruptionBudget, PodDisruptionBudgetList, Resource<PodDisruptionBudget>> podDisruptionBudget();

@@ -12,7 +12,6 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.ContainerPort;
 import io.fabric8.kubernetes.api.model.EnvVar;
 import io.fabric8.kubernetes.api.model.IntOrString;
@@ -58,7 +57,7 @@ import lombok.experimental.Accessors;
 @Buildable(editableEnabled = false, validationEnabled = false, generateBuilderPackage = false, lazyCollectionInitEnabled = false, builderPackage = "io.fabric8.kubernetes.api.builder", refs = {
     @BuildableReference(ObjectMeta.class),
     @BuildableReference(LabelSelector.class),
-    @BuildableReference(Container.class),
+    @BuildableReference(io.fabric8.kubernetes.api.model.Container.class),
     @BuildableReference(PodTemplateSpec.class),
     @BuildableReference(ResourceRequirements.class),
     @BuildableReference(IntOrString.class),
@@ -87,7 +86,7 @@ public class TaskSpec implements KubernetesResource
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
     private List<Sidecar> sidecars = new ArrayList<Sidecar>();
     @JsonProperty("stepTemplate")
-    private StepTemplate stepTemplate;
+    private io.fabric8.kubernetes.api.model.Container stepTemplate;
     @JsonProperty("steps")
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
     private List<Step> steps = new ArrayList<Step>();
@@ -119,7 +118,7 @@ public class TaskSpec implements KubernetesResource
      * @param results
      * @param steps
      */
-    public TaskSpec(String description, List<ParamSpec> params, TaskResources resources, List<TaskResult> results, List<Sidecar> sidecars, StepTemplate stepTemplate, List<Step> steps, List<io.fabric8.kubernetes.api.model.Volume> volumes, List<WorkspaceDeclaration> workspaces) {
+    public TaskSpec(String description, List<ParamSpec> params, TaskResources resources, List<TaskResult> results, List<Sidecar> sidecars, io.fabric8.kubernetes.api.model.Container stepTemplate, List<Step> steps, List<io.fabric8.kubernetes.api.model.Volume> volumes, List<WorkspaceDeclaration> workspaces) {
         super();
         this.description = description;
         this.params = params;
@@ -183,12 +182,12 @@ public class TaskSpec implements KubernetesResource
     }
 
     @JsonProperty("stepTemplate")
-    public StepTemplate getStepTemplate() {
+    public io.fabric8.kubernetes.api.model.Container getStepTemplate() {
         return stepTemplate;
     }
 
     @JsonProperty("stepTemplate")
-    public void setStepTemplate(StepTemplate stepTemplate) {
+    public void setStepTemplate(io.fabric8.kubernetes.api.model.Container stepTemplate) {
         this.stepTemplate = stepTemplate;
     }
 

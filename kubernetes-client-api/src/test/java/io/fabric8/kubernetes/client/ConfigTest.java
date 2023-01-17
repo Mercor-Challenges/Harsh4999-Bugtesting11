@@ -25,7 +25,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledOnOs;
 
 import java.io.File;
 import java.io.IOException;
@@ -39,15 +38,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.condition.OS.WINDOWS;
 
 public class ConfigTest {
 
@@ -60,11 +56,6 @@ public class ConfigTest {
 
   private static final String TEST_KUBECONFIG_EXEC_WIN_FILE = Utils
       .filePath(ConfigTest.class.getResource("/test-kubeconfig-exec-win"));
-
-  private static final String TEST_KUBECONFIG_EXEC_FILE_NULL_ARGS = Utils
-      .filePath(ConfigTest.class.getResource("/test-kubeconfig-exec-null-args"));
-  private static final String TEST_KUBECONFIG_EXEC_FILE_WIN_NULL_ARGS = Utils
-      .filePath(ConfigTest.class.getResource("/test-kubeconfig-exec-win-null-args"));
 
   private static final String TEST_KUBECONFIG_NO_CURRENT_CONTEXT_FILE = Utils
       .filePath(ConfigTest.class.getResource("/test-kubeconfig-nocurrentctxt.yml"));
@@ -247,21 +238,6 @@ public class ConfigTest {
   }
 
   @Test
-  void testAutoConfig() {
-    System.setProperty(Config.KUBERNETES_KUBECONFIG_FILE, "/dev/null");
-    Config config = Config.autoConfigure(null);
-    assertNotNull(config);
-    assertNull(config.getFile());
-    assertTrue(config.getAutoConfigure());
-
-    // ensure that refresh creates a new instance
-    Config refresh = config.refresh();
-    assertNotSame(config, refresh);
-    assertNull(refresh.getFile());
-    assertTrue(refresh.getAutoConfigure());
-  }
-
-  @Test
   void testMasterUrlWithServiceAccountIPv6() {
     System.setProperty(Config.KUBERNETES_KUBECONFIG_FILE, "/dev/null");
     System.setProperty(Config.KUBERNETES_SERVICE_HOST_PROPERTY, "2001:db8:1f70::999:de8:7648:6e8");
@@ -346,11 +322,7 @@ public class ConfigTest {
     File configFile = new File(TEST_KUBECONFIG_FILE);
     final String configYAML = String.join("\n", Files.readAllLines(configFile.toPath()));
     final Config config = Config.fromKubeconfig(configYAML);
-    assertEquals("https://172.28.128.4:8443/", config.getMasterUrl());
-
-    assertFalse(config.getAutoConfigure());
-    assertNull(config.getFile());
-    assertSame(config, config.refresh());
+    assertEquals("https://172.28.128.4:8443", config.getMasterUrl());
   }
 
   @Test
@@ -472,24 +444,6 @@ public class ConfigTest {
     Config config = Config.autoConfigure(null);
     assertNotNull(config);
     assertEquals("HELLO WORLD", config.getOauthToken());
-  }
-
-  @Test
-  void should_accept_client_authentication_commands_with_null_args() throws Exception {
-    try {
-      if (FileSystem.getCurrent() == FileSystem.WINDOWS) {
-        System.setProperty(Config.KUBERNETES_KUBECONFIG_FILE, TEST_KUBECONFIG_EXEC_FILE_WIN_NULL_ARGS);
-      } else {
-        Files.setPosixFilePermissions(Paths.get(TEST_TOKEN_GENERATOR_FILE), PosixFilePermissions.fromString("rwxrwxr-x"));
-        System.setProperty(Config.KUBERNETES_KUBECONFIG_FILE, TEST_KUBECONFIG_EXEC_FILE_NULL_ARGS);
-      }
-
-      Config config = Config.autoConfigure(null);
-      assertNotNull(config);
-      assertEquals("HELLO", config.getOauthToken());
-    } finally {
-      System.clearProperty(Config.KUBERNETES_KUBECONFIG_FILE);
-    }
   }
 
   @Test
@@ -628,30 +582,6 @@ public class ConfigTest {
     assertEquals("api-eks.example.com", commandParts.get(6));
   }
 
-  @Test
-  void testGetAuthenticatorCommandFromExecConfigNullArgs() throws IOException {
-    // Given
-    File commandFolder = Files.createTempDirectory("test").toFile();
-    File commandFile = new File(commandFolder, "gke-gcloud-auth-plugin");
-    String systemPathValue = getTestPathValue(commandFolder);
-    ExecConfig execConfigNoArgs = new ExecConfigBuilder()
-        .withApiVersion("client.authentication.k8s.io/v1alpha1")
-        .withCommand(commandFile.getPath())
-        .build();
-    // Simulate "user.exec.args: null" like e.g. in the configuration for the gke-gcloud-auth-plugin.
-    execConfigNoArgs.setArgs(null);
-
-    // When
-    List<String> processBuilderArgs = Config.getAuthenticatorCommandFromExecConfig(
-        execConfigNoArgs, null, systemPathValue);
-
-    // Then
-    assertNotNull(processBuilderArgs);
-    assertEquals(3, processBuilderArgs.size());
-    assertPlatformPrefixes(processBuilderArgs);
-    assertEquals(commandFile.getPath(), processBuilderArgs.get(2));
-  }
-
   private void assertPlatformPrefixes(List<String> processBuilderArgs) {
     List<String> platformArgsExpected = Utils.getCommandPlatformPrefix();
     assertEquals(platformArgsExpected.get(0), processBuilderArgs.get(0));
@@ -667,93 +597,6 @@ public class ConfigTest {
       return "/usr/java/jdk-14.0.1/bin" + File.pathSeparator +
           commandFolder.getAbsolutePath() + File.pathSeparator +
           "/opt/apache-maven/bin";
-    }
-  }
-
-  @Test
-  void getHomeDir_shouldUseHomedriveHomepathOnWindows_WhenHomeEnvVariableIsNotSet() {
-    String osNamePropToRestore = System.getProperty("os.name");
-    try {
-
-      System.setProperty("os.name", "Windows");
-
-      Map<String, String> envVars = new HashMap<String, String>();
-      envVars.put("HOMEDRIVE", "C:\\Users\\");
-      envVars.put("HOMEPATH", "user");
-      envVars.put("USERPROFILE", "C:\\Users\\user\\workspace\\myworkspace\\tools\\cygwin\\");
-
-      assertEquals("C:\\Users\\user", Config.getHomeDir(f -> true, envVars::get));
-
-    } finally {
-      System.setProperty("os.name", osNamePropToRestore);
-    }
-  }
-
-  @Test
-  void getHomeDir_shouldUseUserprofileOnWindows_WhenHomeHomedriveHomepathEnvVariablesAreNotSet() {
-    String osNamePropToRestore = System.getProperty("os.name");
-    try {
-
-      System.setProperty("os.name", "Windows");
-
-      Map<String, String> envVars = new HashMap<String, String>();
-      envVars.put("USERPROFILE", "C:\\Users\\user\\workspace\\myworkspace\\tools\\cygwin\\");
-
-      assertEquals("C:\\Users\\user\\workspace\\myworkspace\\tools\\cygwin\\",
-          Config.getHomeDir(f -> true, envVars::get));
-
-    } finally {
-      System.setProperty("os.name", osNamePropToRestore);
-    }
-  }
-
-  @Test
-  void getHomeDir_shouldUseHomeEnvVariableOnWindows_WhenHomeEnvVariableIsSet() {
-    String osNamePropToRestore = System.getProperty("os.name");
-    try {
-
-      System.setProperty("os.name", "Windows");
-
-      Map<String, String> envVars = new HashMap<String, String>();
-      envVars.put("HOMEDRIVE", "C:\\Users\\");
-      envVars.put("HOMEPATH", "user");
-      envVars.put("HOME", "C:\\Users\\user\\workspace\\myworkspace\\tools\\cygwin\\");
-
-      assertEquals("C:\\Users\\user\\workspace\\myworkspace\\tools\\cygwin\\",
-          Config.getHomeDir(f -> true, envVars::get));
-
-    } finally {
-      System.setProperty("os.name", osNamePropToRestore);
-    }
-  }
-
-  @Test
-  @EnabledOnOs({ WINDOWS })
-  void getHomeDir_shouldUseHomeEnvVariable_WhenEnabledOnWindows_WhenHomeEnvVariableIsSet() {
-
-    Map<String, String> envVars = new HashMap<String, String>();
-    envVars.put("HOMEDRIVE", "C:\\Users\\");
-    envVars.put("HOMEPATH", "user");
-    envVars.put("HOME", "C:\\Users\\user\\workspace\\myworkspace\\tools\\cygwin\\");
-
-    assertEquals("C:\\Users\\user\\workspace\\myworkspace\\tools\\cygwin\\",
-        Config.getHomeDir(f -> true, envVars::get));
-
-  }
-
-  @Test
-  void getHomeDir_shouldReturnUserHomeProp_WhenHomeEnvVariablesAreNotSet() {
-    String userHomePropToRestore = System.getProperty("user.home");
-    try {
-
-      System.setProperty("user.home", "/home/user");
-
-      Map<String, String> emptyEnvVars = Collections.emptyMap();
-
-      assertEquals("/home/user", Config.getHomeDir(f -> true, emptyEnvVars::get));
-
-    } finally {
-      System.setProperty("user.home", userHomePropToRestore);
     }
   }
 }

@@ -15,10 +15,14 @@
  */
 package io.fabric8.kubernetes.client.utils;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import io.fabric8.kubernetes.api.model.IntOrString;
 import io.fabric8.kubernetes.api.model.KubernetesList;
 import io.fabric8.kubernetes.api.model.KubernetesListBuilder;
-import io.fabric8.kubernetes.api.model.ObjectMetaBuilder;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.PodBuilder;
 import io.fabric8.kubernetes.api.model.ReplicationController;
@@ -29,11 +33,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
-
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import java.util.List;
 
 class ResourceCompareTest {
 
@@ -43,15 +43,14 @@ class ResourceCompareTest {
 
   @BeforeEach
   public void setup() {
-    pod = new PodBuilder().withNewMetadata().withName("pod1").withNamespace("test")
-        .withLabels(Collections.singletonMap("label", "value")).and().build();
+    pod = new PodBuilder().withNewMetadata().withName("pod1").withNamespace("test").withLabels(Collections.singletonMap("label", "value")).and().build();
     service = new ServiceBuilder()
-        .withNewMetadata().withName("service1").withNamespace("test").and()
-        .build();
+      .withNewMetadata().withName("service1").withNamespace("test").and()
+      .build();
     final ReplicationController rc = new ReplicationControllerBuilder()
-        .withNewMetadata().withName("repl1").withNamespace("test").endMetadata()
-        .withNewSpec().withReplicas(1).endSpec()
-        .build();
+      .withNewMetadata().withName("repl1").withNamespace("test").endMetadata()
+      .withNewSpec().withReplicas(1).endSpec()
+      .build();
 
     kubeList = new KubernetesListBuilder().withItems(pod, service, rc).build();
   }
@@ -64,10 +63,11 @@ class ResourceCompareTest {
   @Test
   void testResourceCompareEqualsFalse() {
     final ReplicationController rc = new ReplicationControllerBuilder()
-        .withNewMetadata().withName("repl1").withNamespace("test").endMetadata()
-        .withNewSpec().withReplicas(2).endSpec()
-        .build();
-    final KubernetesList kubeList2 = new KubernetesListBuilder(kubeList).withItems(pod, service, rc).build();
+      .withNewMetadata().withName("repl1").withNamespace("test").endMetadata()
+      .withNewSpec().withReplicas(2).endSpec()
+      .build();
+    final KubernetesList kubeList2 =
+      new KubernetesListBuilder(kubeList).withItems(pod, service, rc).build();
     assertThat(ResourceCompare.equals(kubeList, kubeList2), is(false));
   }
 
@@ -79,15 +79,13 @@ class ResourceCompareTest {
 
   @Test
   void testPodResourceCompareEqualsTrueMatchingLabels() {
-    Pod podWithLabels = new PodBuilder().withNewMetadata().withName("pod1").withNamespace("test")
-        .withLabels(Collections.singletonMap("label", "value")).and().build();
+    Pod podWithLabels = new PodBuilder().withNewMetadata().withName("pod1").withNamespace("test").withLabels(Collections.singletonMap("label", "value")).and().build();
     assertThat(ResourceCompare.equals(pod, podWithLabels), is(true));
   }
 
   @Test
   void testPodResourceCompareEqualsFalseDifferentLabels() {
-    Pod podWithLabels = new PodBuilder().withNewMetadata().withName("pod1").withNamespace("test")
-        .withLabels(Collections.singletonMap("label", "another value")).and().build();
+    Pod podWithLabels = new PodBuilder().withNewMetadata().withName("pod1").withNamespace("test").withLabels(Collections.singletonMap("label", "another value")).and().build();
     assertThat(ResourceCompare.equals(pod, podWithLabels), is(false));
   }
 
@@ -95,37 +93,37 @@ class ResourceCompareTest {
   void testServiceDifferenceFromClusterAndAsObject() {
     // Given
     Service serviceFromCluster = new ServiceBuilder()
-        .withNewMetadata()
-        .withCreationTimestamp("2020-07-27T10:36:33Z")
-        .withName("my-service")
-        .withNamespace("default")
-        .withResourceVersion("202998")
-        .withSelfLink("/api/v1/namespaces/default/services/my-service")
-        .withUid("99fe3964-b53b-473f-b1d8-bdb0390d1634")
-        .endMetadata()
-        .withNewSpec()
-        .withClusterIP("10.110.153.70")
-        .addNewPort()
-        .withPort(80)
-        .withProtocol("TCP")
-        .withTargetPort(new IntOrString("9376"))
-        .endPort()
-        .addToSelector(Collections.singletonMap("app", "MyApp"))
-        .withType("ClusterIP")
-        .endSpec()
-        .build();
+      .withNewMetadata()
+      .withCreationTimestamp("2020-07-27T10:36:33Z")
+      .withName("my-service")
+      .withNamespace("default")
+      .withResourceVersion("202998")
+      .withSelfLink("/api/v1/namespaces/default/services/my-service")
+      .withUid("99fe3964-b53b-473f-b1d8-bdb0390d1634")
+      .endMetadata()
+      .withNewSpec()
+      .withClusterIP("10.110.153.70")
+      .addNewPort()
+      .withPort(80)
+      .withProtocol("TCP")
+      .withTargetPort(new IntOrString("9376"))
+      .endPort()
+      .addToSelector(Collections.singletonMap("app", "MyApp"))
+      .withType("ClusterIP")
+      .endSpec()
+      .build();
 
     Service serviceAsObj = new ServiceBuilder()
-        .withNewMetadata().withName("my-service").endMetadata()
-        .withNewSpec()
-        .addToSelector(Collections.singletonMap("app", "MyApp"))
-        .addNewPort()
-        .withPort(80)
-        .withProtocol("TCP")
-        .withTargetPort(new IntOrString("9376"))
-        .endPort()
-        .endSpec()
-        .build();
+      .withNewMetadata().withName("my-service").endMetadata()
+      .withNewSpec()
+      .addToSelector(Collections.singletonMap("app", "MyApp"))
+      .addNewPort()
+      .withPort(80)
+      .withProtocol("TCP")
+      .withTargetPort(new IntOrString("9376"))
+      .endPort()
+      .endSpec()
+      .build();
 
     // When
     boolean result = ResourceCompare.equals(serviceFromCluster, serviceAsObj);
@@ -149,11 +147,5 @@ class ResourceCompareTest {
   @Test
   void testEqualsWhenBothNull() {
     assertTrue(ResourceCompare.equals(null, null));
-  }
-
-  @Test
-  void testMetadataChanged() {
-    assertFalse(ResourceCompare.metadataChanged(new ObjectMetaBuilder().withResourceVersion("1").build(),
-        new ObjectMetaBuilder().withResourceVersion("2").build()));
   }
 }

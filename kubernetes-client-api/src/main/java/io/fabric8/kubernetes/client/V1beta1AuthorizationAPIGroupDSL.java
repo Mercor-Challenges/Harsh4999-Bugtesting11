@@ -24,10 +24,7 @@ import io.fabric8.kubernetes.client.dsl.NamespacedInOutCreateable;
 
 public interface V1beta1AuthorizationAPIGroupDSL extends Client {
   InOutCreateable<SelfSubjectAccessReview, SelfSubjectAccessReview> selfSubjectAccessReview();
-
   InOutCreateable<SubjectAccessReview, SubjectAccessReview> subjectAccessReview();
-
   NamespacedInOutCreateable<LocalSubjectAccessReview, LocalSubjectAccessReview> localSubjectAccessReview();
-
   InOutCreateable<SelfSubjectRulesReview, SelfSubjectRulesReview> selfSubjectRulesReview();
 }

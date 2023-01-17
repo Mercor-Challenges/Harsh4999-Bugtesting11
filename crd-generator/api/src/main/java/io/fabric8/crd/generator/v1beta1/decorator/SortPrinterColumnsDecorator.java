@@ -21,8 +21,7 @@ import io.fabric8.kubernetes.api.model.apiextensions.v1beta1.CustomResourceDefin
 
 import java.util.List;
 
-public class SortPrinterColumnsDecorator
-    extends CustomResourceDefinitionVersionDecorator<CustomResourceDefinitionVersionFluent<?>> {
+public class SortPrinterColumnsDecorator extends CustomResourceDefinitionVersionDecorator<CustomResourceDefinitionVersionFluent<?>> {
 
   public SortPrinterColumnsDecorator(String name, String version) {
     super(name, version);
@@ -31,7 +30,7 @@ public class SortPrinterColumnsDecorator
   @Override
   public void andThenVisit(CustomResourceDefinitionVersionFluent<?> version) {
     List<CustomResourceColumnDefinition> columns = version.buildAdditionalPrinterColumns();
-    if (columns != null && !columns.isEmpty()) {
+    if(columns != null && !columns.isEmpty()) {
       columns.sort((o1, o2) -> String.CASE_INSENSITIVE_ORDER.compare(o1.getJSONPath(), o2.getJSONPath()));
     }
     version.withAdditionalPrinterColumns(columns);
@@ -39,6 +38,6 @@ public class SortPrinterColumnsDecorator
 
   @Override
   public Class<? extends Decorator>[] after() {
-    return new Class[] { AddCustomResourceDefinitionVersionDecorator.class, AddAdditionPrinterColumnDecorator.class };
+    return new Class[] {AddCustomResourceDefinitionVersionDecorator.class, AddAdditionPrinterColumnDecorator.class};
   }
 }

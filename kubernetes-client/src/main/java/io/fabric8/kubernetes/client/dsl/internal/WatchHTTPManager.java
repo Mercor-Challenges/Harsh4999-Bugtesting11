@@ -19,8 +19,8 @@ import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.KubernetesResourceList;
 import io.fabric8.kubernetes.api.model.ListOptions;
 import io.fabric8.kubernetes.client.Watcher;
-import io.fabric8.kubernetes.client.http.AsyncBody;
 import io.fabric8.kubernetes.client.http.HttpClient;
+import io.fabric8.kubernetes.client.http.HttpClient.AsyncBody;
 import io.fabric8.kubernetes.client.http.HttpRequest;
 import io.fabric8.kubernetes.client.http.HttpResponse;
 import org.slf4j.Logger;
@@ -28,17 +28,13 @@ import org.slf4j.LoggerFactory;
 
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 public class WatchHTTPManager<T extends HasMetadata, L extends KubernetesResourceList<T>> extends AbstractWatchManager<T> {
   private static final Logger logger = LoggerFactory.getLogger(WatchHTTPManager.class);
   private CompletableFuture<HttpResponse<AsyncBody>> call;
-  private volatile AsyncBody body;
 
   public WatchHTTPManager(final HttpClient client,
       final BaseOperation<T, L, ?> baseOperation,
@@ -68,18 +64,8 @@ public class WatchHTTPManager<T extends HasMetadata, L extends KubernetesResourc
   protected synchronized void start(URL url, Map<String, String> headers) {
     HttpRequest.Builder builder = client.newHttpRequestBuilder().url(url);
     headers.forEach(builder::header);
-    StringBuffer buffer = new StringBuffer();
-    call = client.consumeBytes(builder.build(), (b, a) -> {
-      for (ByteBuffer content : b) {
-        for (char c : StandardCharsets.UTF_8.decode(content).array()) {
-          if (c == '\n') {
-            onMessage(buffer.toString());
-            buffer.setLength(0);
-          } else {
-            buffer.append(c);
-          }
-        }
-      }
+    call = client.consumeLines(builder.build(), (s, a) -> {
+      onMessage(s);
       a.consume();
     });
     call.whenComplete((response, t) -> {
@@ -88,7 +74,7 @@ public class WatchHTTPManager<T extends HasMetadata, L extends KubernetesResourc
         scheduleReconnect();
       }
       if (response != null) {
-        body = response.body();
+        AsyncBody body = response.body();
         if (!response.isSuccessful()) {
           body.cancel();
           if (onStatus(OperationSupport.createStatus(response.code(), response.message()))) {
@@ -115,9 +101,9 @@ public class WatchHTTPManager<T extends HasMetadata, L extends KubernetesResourc
 
   @Override
   protected synchronized void closeRequest() {
-    Optional.ofNullable(call).ifPresent(theFuture -> {
-      theFuture.cancel(true);
-    });
-    Optional.ofNullable(body).ifPresent(AsyncBody::cancel);
+    if (call != null) {
+      call.cancel(true);
+      call = null;
+    }
   }
 }

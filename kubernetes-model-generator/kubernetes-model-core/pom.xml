@@ -23,7 +23,7 @@
   <parent>
     <groupId>io.fabric8</groupId>
     <artifactId>kubernetes-model-generator</artifactId>
-    <version>6.4-SNAPSHOT</version>
+    <version>6.0-SNAPSHOT</version>
   </parent>
 
   <artifactId>kubernetes-model-core</artifactId>
@@ -32,6 +32,10 @@
 
   <properties>
     <clone-kube>true</clone-kube>
+    <osgi.include.resources>
+      ${osgi.include.resources.default},
+      /core.properties=target/classes/core.properties,
+    </osgi.include.resources>
     <osgi.import>
       *,
       io.fabric8.kubernetes.api.model.admission.v1,
@@ -105,13 +109,6 @@
     <osgi.private>
       io.fabric8.kubernetes.internal
     </osgi.private>
-    <osgi.require-capability>
-      osgi.extender;
-	  filter:="(osgi.extender=osgi.serviceloader.processor)", 
-	  osgi.serviceloader;
-	  filter:="(osgi.serviceloader=io.fabric8.kubernetes.api.model.KubernetesResource)"; 
-	  cardinality:=multiple
-    </osgi.require-capability>
   </properties>
 
   <dependencies>
@@ -181,10 +178,7 @@
                       file="${generate.targetDirectory}/io/fabric8/kubernetes/api/model/Quantity.java"
                       verbose="true" />
                     <delete
-                      file="${generate.targetDirectory}/io/fabric8/kubernetes/api/model/KubernetesResource.java"
-                      verbose="true" />
-                    <delete
-                      file="${generate.targetDirectory}/io/fabric8/kubernetes/api/model/KubernetesList.java"
+                      file="${generate.targetDirectory}/io/fabric8/kubernetes/api/model/WatchEvent.java"
                       verbose="true" />
                     <delete verbose="true">
                       <fileset dir="${generate.targetDirectory}">

@@ -13,7 +13,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import io.fabric8.kubernetes.api.model.Container;
-import io.fabric8.kubernetes.api.model.GenericKubernetesResource;
+import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.IntOrString;
 import io.fabric8.kubernetes.api.model.KubernetesResource;
 import io.fabric8.kubernetes.api.model.LabelSelector;
@@ -24,7 +24,6 @@ import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.PodTemplateSpec;
 import io.fabric8.kubernetes.api.model.ResourceRequirements;
 import io.fabric8.kubernetes.api.model.Status;
-import io.fabric8.kubernetes.api.model.runtime.RawExtension;
 import io.sundr.builder.annotations.Buildable;
 import io.sundr.builder.annotations.BuildableReference;
 import lombok.EqualsAndHashCode;
@@ -58,15 +57,13 @@ import lombok.experimental.Accessors;
     @BuildableReference(IntOrString.class),
     @BuildableReference(ObjectReference.class),
     @BuildableReference(LocalObjectReference.class),
-    @BuildableReference(PersistentVolumeClaim.class),
-    @BuildableReference(GenericKubernetesResource.class),
-    @BuildableReference(RawExtension.class)
+    @BuildableReference(PersistentVolumeClaim.class)
 })
 public class ConversionResponse implements KubernetesResource
 {
 
     @JsonProperty("convertedObjects")
-    private List<KubernetesResource> convertedObjects = new ArrayList<KubernetesResource>();
+    private List<HasMetadata> convertedObjects = new ArrayList<HasMetadata>();
     @JsonProperty("result")
     private Status result;
     @JsonProperty("uid")
@@ -87,7 +84,7 @@ public class ConversionResponse implements KubernetesResource
      * @param uid
      * @param convertedObjects
      */
-    public ConversionResponse(List<KubernetesResource> convertedObjects, Status result, String uid) {
+    public ConversionResponse(List<HasMetadata> convertedObjects, Status result, String uid) {
         super();
         this.convertedObjects = convertedObjects;
         this.result = result;
@@ -95,12 +92,12 @@ public class ConversionResponse implements KubernetesResource
     }
 
     @JsonProperty("convertedObjects")
-    public List<KubernetesResource> getConvertedObjects() {
+    public List<HasMetadata> getConvertedObjects() {
         return convertedObjects;
     }
 
     @JsonProperty("convertedObjects")
-    public void setConvertedObjects(List<KubernetesResource> convertedObjects) {
+    public void setConvertedObjects(List<HasMetadata> convertedObjects) {
         this.convertedObjects = convertedObjects;
     }
 

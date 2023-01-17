@@ -48,7 +48,6 @@ import lombok.experimental.Accessors;
     "annotations",
     "conditions",
     "deadLetterChannel",
-    "deadLetterSinkUri",
     "observedGeneration",
     "subscribers"
 })
@@ -87,8 +86,6 @@ public class KafkaChannelStatus implements KubernetesResource
     private List<Condition> conditions = new ArrayList<Condition>();
     @JsonProperty("deadLetterChannel")
     private KReference deadLetterChannel;
-    @JsonProperty("deadLetterSinkUri")
-    private java.lang.String deadLetterSinkUri;
     @JsonProperty("observedGeneration")
     private Long observedGeneration;
     @JsonProperty("subscribers")
@@ -108,19 +105,17 @@ public class KafkaChannelStatus implements KubernetesResource
      * 
      * @param deadLetterChannel
      * @param address
-     * @param deadLetterSinkUri
      * @param subscribers
      * @param annotations
      * @param conditions
      * @param observedGeneration
      */
-    public KafkaChannelStatus(Addressable address, Map<String, String> annotations, List<Condition> conditions, KReference deadLetterChannel, java.lang.String deadLetterSinkUri, Long observedGeneration, List<SubscriberStatus> subscribers) {
+    public KafkaChannelStatus(Addressable address, Map<String, String> annotations, List<Condition> conditions, KReference deadLetterChannel, Long observedGeneration, List<SubscriberStatus> subscribers) {
         super();
         this.address = address;
         this.annotations = annotations;
         this.conditions = conditions;
         this.deadLetterChannel = deadLetterChannel;
-        this.deadLetterSinkUri = deadLetterSinkUri;
         this.observedGeneration = observedGeneration;
         this.subscribers = subscribers;
     }
@@ -163,16 +158,6 @@ public class KafkaChannelStatus implements KubernetesResource
     @JsonProperty("deadLetterChannel")
     public void setDeadLetterChannel(KReference deadLetterChannel) {
         this.deadLetterChannel = deadLetterChannel;
-    }
-
-    @JsonProperty("deadLetterSinkUri")
-    public java.lang.String getDeadLetterSinkUri() {
-        return deadLetterSinkUri;
-    }
-
-    @JsonProperty("deadLetterSinkUri")
-    public void setDeadLetterSinkUri(java.lang.String deadLetterSinkUri) {
-        this.deadLetterSinkUri = deadLetterSinkUri;
     }
 
     @JsonProperty("observedGeneration")

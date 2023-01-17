@@ -15,6 +15,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.ContainerPort;
+import io.fabric8.kubernetes.api.model.Duration;
 import io.fabric8.kubernetes.api.model.EnvVar;
 import io.fabric8.kubernetes.api.model.IntOrString;
 import io.fabric8.kubernetes.api.model.KubernetesResource;
@@ -42,12 +43,12 @@ import lombok.experimental.Accessors;
     "kind",
     "metadata",
     "caSecret",
-    "caSecrets",
     "cliOptions",
     "extension",
     "localRepository",
     "properties",
-    "settings"
+    "settings",
+    "timeout"
 })
 @ToString
 @EqualsAndHashCode
@@ -76,9 +77,6 @@ public class MavenSpec implements KubernetesResource
 
     @JsonProperty("caSecret")
     private SecretKeySelector caSecret;
-    @JsonProperty("caSecrets")
-    @JsonInclude(JsonInclude.Include.NON_EMPTY)
-    private List<SecretKeySelector> caSecrets = new ArrayList<SecretKeySelector>();
     @JsonProperty("cliOptions")
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
     private List<java.lang.String> cliOptions = new ArrayList<java.lang.String>();
@@ -92,6 +90,8 @@ public class MavenSpec implements KubernetesResource
     private Map<String, String> properties = new LinkedHashMap<String, String>();
     @JsonProperty("settings")
     private ValueSource settings;
+    @JsonProperty("timeout")
+    private Duration timeout;
     @JsonIgnore
     private Map<java.lang.String, Object> additionalProperties = new HashMap<java.lang.String, Object>();
 
@@ -106,21 +106,21 @@ public class MavenSpec implements KubernetesResource
      * 
      * @param settings
      * @param extension
-     * @param caSecrets
      * @param cliOptions
      * @param properties
+     * @param timeout
      * @param caSecret
      * @param localRepository
      */
-    public MavenSpec(SecretKeySelector caSecret, List<SecretKeySelector> caSecrets, List<java.lang.String> cliOptions, List<MavenArtifact> extension, java.lang.String localRepository, Map<String, String> properties, ValueSource settings) {
+    public MavenSpec(SecretKeySelector caSecret, List<java.lang.String> cliOptions, List<MavenArtifact> extension, java.lang.String localRepository, Map<String, String> properties, ValueSource settings, Duration timeout) {
         super();
         this.caSecret = caSecret;
-        this.caSecrets = caSecrets;
         this.cliOptions = cliOptions;
         this.extension = extension;
         this.localRepository = localRepository;
         this.properties = properties;
         this.settings = settings;
+        this.timeout = timeout;
     }
 
     @JsonProperty("caSecret")
@@ -131,16 +131,6 @@ public class MavenSpec implements KubernetesResource
     @JsonProperty("caSecret")
     public void setCaSecret(SecretKeySelector caSecret) {
         this.caSecret = caSecret;
-    }
-
-    @JsonProperty("caSecrets")
-    public List<SecretKeySelector> getCaSecrets() {
-        return caSecrets;
-    }
-
-    @JsonProperty("caSecrets")
-    public void setCaSecrets(List<SecretKeySelector> caSecrets) {
-        this.caSecrets = caSecrets;
     }
 
     @JsonProperty("cliOptions")
@@ -191,6 +181,16 @@ public class MavenSpec implements KubernetesResource
     @JsonProperty("settings")
     public void setSettings(ValueSource settings) {
         this.settings = settings;
+    }
+
+    @JsonProperty("timeout")
+    public Duration getTimeout() {
+        return timeout;
+    }
+
+    @JsonProperty("timeout")
+    public void setTimeout(Duration timeout) {
+        this.timeout = timeout;
     }
 
     @JsonAnyGetter

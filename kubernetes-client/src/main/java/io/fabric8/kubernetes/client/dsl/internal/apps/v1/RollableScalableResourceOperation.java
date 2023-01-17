@@ -21,6 +21,7 @@ import io.fabric8.kubernetes.api.model.KubernetesResourceList;
 import io.fabric8.kubernetes.api.model.autoscaling.v1.Scale;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.KubernetesClientTimeoutException;
+import io.fabric8.kubernetes.client.dsl.ImageEditReplacePatchable;
 import io.fabric8.kubernetes.client.dsl.LogWatch;
 import io.fabric8.kubernetes.client.dsl.Loggable;
 import io.fabric8.kubernetes.client.dsl.Resource;
@@ -30,7 +31,7 @@ import io.fabric8.kubernetes.client.dsl.base.PatchContext;
 import io.fabric8.kubernetes.client.dsl.base.PatchType;
 import io.fabric8.kubernetes.client.dsl.internal.HasMetadataOperation;
 import io.fabric8.kubernetes.client.dsl.internal.OperationContext;
-import io.fabric8.kubernetes.client.dsl.internal.PodOperationContext;
+import io.fabric8.kubernetes.client.dsl.internal.RollingOperationContext;
 import io.fabric8.kubernetes.client.utils.Serialization;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,12 +52,18 @@ public abstract class RollableScalableResourceOperation<T extends HasMetadata, L
 
   private static final Logger Log = LoggerFactory.getLogger(RollableScalableResourceOperation.class);
 
-  protected final PodOperationContext rollingOperationContext;
+  protected final RollingOperationContext rollingOperationContext;
+  final boolean rolling;
+  final long rollingTimeout;
+  final TimeUnit rollingTimeUnit;
 
-  protected RollableScalableResourceOperation(PodOperationContext context, OperationContext superContext, Class<T> type,
+  protected RollableScalableResourceOperation(RollingOperationContext context, OperationContext superContext, Class<T> type,
       Class<L> listType) {
     super(superContext, type, listType);
     this.rollingOperationContext = context;
+    this.rolling = context.getRolling();
+    this.rollingTimeout = context.getRollingTimeout();
+    this.rollingTimeUnit = context.getRollingTimeUnit();
   }
 
   protected abstract T withReplicas(int count);
@@ -136,13 +143,13 @@ public abstract class RollableScalableResourceOperation<T extends HasMetadata, L
 
   @Override
   public T edit(UnaryOperator<T> function) {
-    if (!rollingOperationContext.isRolling()) {
+    if (!rolling) {
       return super.edit(function);
     }
     try {
-      T oldObj = getItemOrRequireFromServer();
+      T oldObj = getMandatory();
       T newObj = function.apply(Serialization.clone(oldObj));
-      return getRollingUpdater(context.getTimeout(), context.getTimeoutUnit()).rollUpdate(oldObj, newObj);
+      return getRollingUpdater(rollingTimeout, rollingTimeUnit).rollUpdate(oldObj, newObj);
     } catch (Exception e) {
       throw KubernetesClientException.launderThrowable(e);
     }
@@ -150,46 +157,50 @@ public abstract class RollableScalableResourceOperation<T extends HasMetadata, L
 
   @Override
   public T replace(T t) {
-    if (!rollingOperationContext.isRolling()) {
+    if (!rolling) {
       return super.replace(t);
     }
-    return getRollingUpdater(context.getTimeout(), context.getTimeoutUnit()).rollUpdate(getItemOrRequireFromServer(), t);
+    return getRollingUpdater(rollingTimeout, rollingTimeUnit).rollUpdate(getMandatory(), t);
   }
 
   @Override
   public T patch(PatchContext patchContext, T item) {
-    if (!rollingOperationContext.isRolling() || patchContext == null || patchContext.getPatchType() != PatchType.JSON) {
+    if (!rolling || patchContext == null || patchContext.getPatchType() != PatchType.JSON) {
       return super.patch(patchContext, item);
     }
-    return getRollingUpdater(context.getTimeout(), context.getTimeoutUnit()).rollUpdate(getItemOrRequireFromServer(), item);
+    return getRollingUpdater(rollingTimeout, rollingTimeUnit).rollUpdate(getMandatory(), item);
   }
 
-  public abstract RollableScalableResourceOperation<T, L, R> newInstance(PodOperationContext context,
-      OperationContext superContext);
+  public abstract RollableScalableResourceOperation<T, L, R> newInstance(RollingOperationContext context);
 
   @Override
   public Loggable withLogWaitTimeout(Integer logWaitTimeout) {
-    return withReadyWaitTimeout(logWaitTimeout);
-  }
-
-  @Override
-  public Loggable withReadyWaitTimeout(Integer timeout) {
-    return newInstance(rollingOperationContext.withReadyWaitTimeout(timeout), context);
+    return newInstance(rollingOperationContext.withLogWaitTimout(logWaitTimeout));
   }
 
   @Override
   public Loggable inContainer(String id) {
-    return newInstance(rollingOperationContext.withContainerId(id), context);
+    return newInstance(rollingOperationContext.withContainerId(id));
   }
 
   @Override
   public TimeoutImageEditReplacePatchable<T> rolling() {
-    return newInstance(rollingOperationContext.toBuilder().rolling(true).build(), context);
+    return newInstance(rollingOperationContext.withRolling(true));
+  }
+
+  @Override
+  public ImageEditReplacePatchable<T> withTimeoutInMillis(long timeoutInMillis) {
+    return newInstance(rollingOperationContext.withRollingTimeout(timeoutInMillis).withRollingTimeUnit(TimeUnit.MILLISECONDS));
+  }
+
+  @Override
+  public ImageEditReplacePatchable<T> withTimeout(long timeout, TimeUnit unit) {
+    return newInstance(rollingOperationContext.withRollingTimeout(timeout).withRollingTimeUnit(unit));
   }
 
   @Override
   public String getLog() {
-    return getLog(rollingOperationContext.isPrettyOutput());
+    return getLog(false);
   }
 
   @Override
@@ -246,16 +257,6 @@ public abstract class RollableScalableResourceOperation<T extends HasMetadata, L
 
   protected T sendPatchedObject(T oldObject, T updatedObject) {
     return this.patch(null, oldObject, updatedObject, false);
-  }
-
-  @Override
-  public RollableScalableResourceOperation<T, L, R> withTimeout(long timeout, TimeUnit unit) {
-    return newInstance(rollingOperationContext, context.withTimeout(timeout, unit));
-  }
-
-  @Override
-  public RollableScalableResourceOperation<T, L, R> withTimeoutInMillis(long timeoutInMillis) {
-    return withTimeout(timeoutInMillis, TimeUnit.MILLISECONDS);
   }
 
 }

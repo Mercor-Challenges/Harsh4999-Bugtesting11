@@ -32,8 +32,6 @@ import io.fabric8.kubernetes.model.annotation.Group;
 import io.fabric8.kubernetes.model.annotation.Version;
 import io.sundr.builder.annotations.Buildable;
 import io.sundr.builder.annotations.BuildableReference;
-import io.sundr.transform.annotations.TemplateTransformation;
-import io.sundr.transform.annotations.TemplateTransformations;
 import lombok.EqualsAndHashCode;
 import lombok.Setter;
 import lombok.ToString;
@@ -69,11 +67,8 @@ import lombok.experimental.Accessors;
     @BuildableReference(Volume.class),
     @BuildableReference(VolumeMount.class)
 })
-@TemplateTransformations({
-    @TemplateTransformation(value = "/manifest.vm", outputPath = "META-INF/services/io.fabric8.kubernetes.api.model.KubernetesResource", gather = true)
-})
 @Version("v1")
-@Group("acme.cert-manager.io")
+@Group("cert-manager.io")
 public class ChallengeList implements KubernetesResource, KubernetesResourceList<io.fabric8.certmanager.api.model.acme.v1.Challenge>
 {
 
@@ -83,7 +78,7 @@ public class ChallengeList implements KubernetesResource, KubernetesResourceList
      * 
      */
     @JsonProperty("apiVersion")
-    private String apiVersion = "acme.cert-manager.io/v1";
+    private String apiVersion = "cert-manager.io/v1";
     @JsonProperty("items")
     private List<io.fabric8.certmanager.api.model.acme.v1.Challenge> items = new ArrayList<io.fabric8.certmanager.api.model.acme.v1.Challenge>();
     /**

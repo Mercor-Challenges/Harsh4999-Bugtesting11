@@ -42,12 +42,12 @@ import lombok.experimental.Accessors;
     "apiVersion",
     "kind",
     "metadata",
+    "Id",
     "annotations",
     "ceAttributes",
     "conditions",
     "observedGeneration",
-    "sinkUri",
-    "webhookID"
+    "sinkUri"
 })
 @ToString
 @EqualsAndHashCode
@@ -74,6 +74,8 @@ import lombok.experimental.Accessors;
 public class GitLabSourceStatus implements KubernetesResource
 {
 
+    @JsonProperty("Id")
+    private java.lang.String id;
     @JsonProperty("annotations")
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
     private Map<String, String> annotations = new LinkedHashMap<String, String>();
@@ -87,8 +89,6 @@ public class GitLabSourceStatus implements KubernetesResource
     private Long observedGeneration;
     @JsonProperty("sinkUri")
     private java.lang.String sinkUri;
-    @JsonProperty("webhookID")
-    private Integer webhookID;
     @JsonIgnore
     private Map<java.lang.String, Object> additionalProperties = new HashMap<java.lang.String, Object>();
 
@@ -102,20 +102,30 @@ public class GitLabSourceStatus implements KubernetesResource
     /**
      * 
      * @param sinkUri
-     * @param webhookID
      * @param ceAttributes
      * @param annotations
+     * @param id
      * @param conditions
      * @param observedGeneration
      */
-    public GitLabSourceStatus(Map<String, String> annotations, List<CloudEventAttributes> ceAttributes, List<Condition> conditions, Long observedGeneration, java.lang.String sinkUri, Integer webhookID) {
+    public GitLabSourceStatus(java.lang.String id, Map<String, String> annotations, List<CloudEventAttributes> ceAttributes, List<Condition> conditions, Long observedGeneration, java.lang.String sinkUri) {
         super();
+        this.id = id;
         this.annotations = annotations;
         this.ceAttributes = ceAttributes;
         this.conditions = conditions;
         this.observedGeneration = observedGeneration;
         this.sinkUri = sinkUri;
-        this.webhookID = webhookID;
+    }
+
+    @JsonProperty("Id")
+    public java.lang.String getId() {
+        return id;
+    }
+
+    @JsonProperty("Id")
+    public void setId(java.lang.String id) {
+        this.id = id;
     }
 
     @JsonProperty("annotations")
@@ -166,16 +176,6 @@ public class GitLabSourceStatus implements KubernetesResource
     @JsonProperty("sinkUri")
     public void setSinkUri(java.lang.String sinkUri) {
         this.sinkUri = sinkUri;
-    }
-
-    @JsonProperty("webhookID")
-    public Integer getWebhookID() {
-        return webhookID;
-    }
-
-    @JsonProperty("webhookID")
-    public void setWebhookID(Integer webhookID) {
-        this.webhookID = webhookID;
     }
 
     @JsonAnyGetter

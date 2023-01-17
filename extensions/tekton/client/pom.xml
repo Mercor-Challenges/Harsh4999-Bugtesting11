@@ -21,7 +21,7 @@
   <parent>
     <groupId>io.fabric8</groupId>
     <artifactId>tekton-extension-pom</artifactId>
-    <version>6.4-SNAPSHOT</version>
+    <version>6.0-SNAPSHOT</version>
   </parent>
 
   <artifactId>tekton-client</artifactId>
@@ -33,10 +33,6 @@
       osgi.extender;
       filter:="(osgi.extender=osgi.serviceloader.registrar)"
     </osgi.require-capability>
-    <osgi.provide-capability>
-      osgi.serviceloader;
-      osgi.serviceloader=io.fabric8.kubernetes.client.extension.ExtensionAdapter
-    </osgi.provide-capability>
     <osgi.import>
       io.fabric8.kubernetes.api.builder,
       !io.fabric8.tekton.client.*,
@@ -70,11 +66,7 @@
     </dependency>
     <dependency>
       <groupId>io.fabric8</groupId>
-      <artifactId>tekton-model-triggers-v1alpha1</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>io.fabric8</groupId>
-      <artifactId>tekton-model-triggers-v1beta1</artifactId>
+      <artifactId>tekton-model-triggers</artifactId>
     </dependency>
     <dependency>
       <groupId>io.fabric8</groupId>
@@ -92,17 +84,7 @@
     </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-params</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.mockito</groupId>
-      <artifactId>mockito-core</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.assertj</groupId>
-      <artifactId>assertj-core</artifactId>
+      <artifactId>junit-jupiter-migrationsupport</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>

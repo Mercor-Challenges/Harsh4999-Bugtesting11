@@ -35,7 +35,7 @@ class ConfigMapIT {
 
   @Test
   void load() {
-    ConfigMap aConfigMap = client.configMaps().load(getClass().getResourceAsStream("/test-configmap.yml")).item();
+    ConfigMap aConfigMap = client.configMaps().load(getClass().getResourceAsStream("/test-configmap.yml")).get();
     assertThat(aConfigMap).isNotNull();
     assertEquals("game-config", aConfigMap.getMetadata().getName());
   }

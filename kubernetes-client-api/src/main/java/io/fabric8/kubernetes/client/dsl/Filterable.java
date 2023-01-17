@@ -22,7 +22,6 @@ import java.util.Map;
 
 /**
  * Each filter method applies in an additive way to the previous filter state.
- * 
  * @param <T>
  */
 public interface Filterable<T> {
@@ -31,16 +30,16 @@ public interface Filterable<T> {
 
   /**
    * @deprecated as the underlying implementation does not align with the arguments anymore.
-   *             It is possible to negate multiple values with the same key, e.g.:
-   *             foo != bar , foo != baz
-   *             To support this a multi-value map is needed, as a regular map would override the key with the new value.
+   *    It is possible to negate multiple values with the same key, e.g.:
+   *    foo != bar , foo != baz
+   *    To support this a multi-value map is needed, as a regular map would override the key with the new value.
    */
   @Deprecated
   T withoutLabels(Map<String, String> labels);
 
-  T withLabelIn(String key, String... values);
+  T withLabelIn(String key, String ... values);
 
-  T withLabelNotIn(String key, String... values);
+  T withLabelNotIn(String key, String ... values);
 
   T withLabel(String key, String value);
 
@@ -60,11 +59,11 @@ public interface Filterable<T> {
 
   /**
    * @deprecated as the underlying implementation does not align with the arguments fully.
-   *             Method is created to have a similar API as `withoutLabels`, but should eventually be replaced
-   *             with something better for the same reasons.
-   *             It is possible to negate multiple values with the same key, e.g.:
-   *             foo != bar , foo != baz
-   *             To support this a multi-value map is needed, as a regular map would override the key with the new value.
+   *    Method is created to have a similar API as `withoutLabels`, but should eventually be replaced
+   *    with something better for the same reasons.
+   *    It is possible to negate multiple values with the same key, e.g.:
+   *    foo != bar , foo != baz
+   *    To support this a multi-value map is needed, as a regular map would override the key with the new value.
    */
   @Deprecated
   T withoutFields(Map<String, String> fields);
@@ -77,9 +76,9 @@ public interface Filterable<T> {
 
   /**
    * Filter with the object that this event is about.
-   * 
    * @param objectReference {@link ObjectReference} for providing information of referred object
    * @return filtered resource
    */
   T withInvolvedObject(ObjectReference objectReference);
 }
+

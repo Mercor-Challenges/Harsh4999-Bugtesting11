@@ -51,8 +51,7 @@ import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 
 public class CertUtils {
-  private CertUtils() {
-  }
+  private CertUtils() { }
 
   private static final Logger LOG = LoggerFactory.getLogger(CertUtils.class);
   private static final String TRUST_STORE_SYSTEM_PROPERTY = "javax.net.ssl.trustStore";
@@ -61,7 +60,7 @@ public class CertUtils {
   private static final String KEY_STORE_SYSTEM_PROPERTY = "javax.net.ssl.keyStore";
   private static final String KEY_STORE_PASSWORD_SYSTEM_PROPERTY = "javax.net.ssl.keyStorePassword";
 
-  public static ByteArrayInputStream getInputStreamFromDataOrFile(String data, String file) throws IOException {
+  public static InputStream getInputStreamFromDataOrFile(String data, String file) throws IOException {
     if (data != null) {
       return createInputStreamFromBase64EncodedString(data);
     }
@@ -71,9 +70,8 @@ public class CertUtils {
     return null;
   }
 
-  public static KeyStore createTrustStore(String caCertData, String caCertFile, String trustStoreFile,
-      String trustStorePassphrase) throws IOException, CertificateException, KeyStoreException, NoSuchAlgorithmException {
-    try (ByteArrayInputStream pemInputStream = getInputStreamFromDataOrFile(caCertData, caCertFile)) {
+  public static KeyStore createTrustStore(String caCertData, String caCertFile, String trustStoreFile, String trustStorePassphrase) throws IOException, CertificateException, KeyStoreException, NoSuchAlgorithmException {
+    try (InputStream pemInputStream = getInputStreamFromDataOrFile(caCertData, caCertFile)) {
       return createTrustStore(pemInputStream, trustStoreFile, getTrustStorePassphrase(trustStorePassphrase));
     }
   }
@@ -85,9 +83,8 @@ public class CertUtils {
     return trustStorePassphrase.toCharArray();
   }
 
-  private static KeyStore createTrustStore(ByteArrayInputStream pemInputStream, String trustStoreFile,
-      char[] trustStorePassphrase)
-      throws IOException, CertificateException, KeyStoreException, NoSuchAlgorithmException {
+  private static KeyStore createTrustStore(InputStream pemInputStream, String trustStoreFile, char[] trustStorePassphrase)
+    throws IOException, CertificateException, KeyStoreException, NoSuchAlgorithmException {
 
     final String trustStoreType = System.getProperty(TRUST_STORE_TYPE_SYSTEM_PROPERTY, KeyStore.getDefaultType());
     KeyStore trustStore = KeyStore.getInstance(trustStoreType);
@@ -100,58 +97,46 @@ public class CertUtils {
       loadDefaultTrustStoreFile(trustStore, trustStorePassphrase);
     }
 
-    CertificateFactory certFactory = CertificateFactory.getInstance("X509");
     while (pemInputStream.available() > 0) {
-      try {
-        X509Certificate cert = (X509Certificate) certFactory.generateCertificate(pemInputStream);
-        String alias = cert.getSubjectX500Principal().getName() + "_" + cert.getSerialNumber().toString(16);
-        trustStore.setCertificateEntry(alias, cert);
-      } catch (CertificateException e) {
-        if (pemInputStream.available() > 0) {
-          // any remaining input means there is an actual problem with the key contents or file format
-          throw e;
-        }
-        LOG.debug("The trailing entry generated a certificate exception.  More than likely the contents end with comments.", e);
-      }
+      CertificateFactory certFactory = CertificateFactory.getInstance("X509");
+      X509Certificate cert = (X509Certificate) certFactory.generateCertificate(pemInputStream);
+      String alias = cert.getSubjectX500Principal().getName() + "_" + cert.getSerialNumber().toString(16);
+      trustStore.setCertificateEntry(alias, cert);
     }
     return trustStore;
   }
 
-  public static KeyStore createKeyStore(InputStream certInputStream, InputStream keyInputStream, String clientKeyAlgo,
-      char[] clientKeyPassphrase, String keyStoreFile, char[] keyStorePassphrase)
-      throws IOException, CertificateException, NoSuchAlgorithmException, InvalidKeySpecException, KeyStoreException {
-    CertificateFactory certFactory = CertificateFactory.getInstance("X509");
-    Collection<? extends Certificate> certificates = certFactory.generateCertificates(certInputStream);
-    PrivateKey privateKey = loadKey(keyInputStream, clientKeyAlgo);
+  public static KeyStore createKeyStore(InputStream certInputStream, InputStream keyInputStream, String clientKeyAlgo, char[] clientKeyPassphrase, String keyStoreFile, char[] keyStorePassphrase) throws IOException, CertificateException, NoSuchAlgorithmException, InvalidKeySpecException, KeyStoreException {
+      CertificateFactory certFactory = CertificateFactory.getInstance("X509");
+      Collection<? extends Certificate> certificates = certFactory.generateCertificates(certInputStream);
+      PrivateKey privateKey = loadKey(keyInputStream, clientKeyAlgo);
 
-    KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
-    if (Utils.isNotNullOrEmpty(keyStoreFile)) {
-      try (FileInputStream fis = new FileInputStream(keyStoreFile)) {
-        keyStore.load(fis, keyStorePassphrase);
+      KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
+      if (Utils.isNotNullOrEmpty(keyStoreFile)){
+        try (FileInputStream fis = new FileInputStream(keyStoreFile)) {
+          keyStore.load(fis, keyStorePassphrase);
+        }
+      } else {
+        loadDefaultKeyStoreFile(keyStore, keyStorePassphrase);
       }
-    } else {
-      loadDefaultKeyStoreFile(keyStore, keyStorePassphrase);
-    }
 
-    String alias = certificates.stream().map(cert -> ((X509Certificate) cert).getIssuerX500Principal().getName())
-        .collect(Collectors.joining("_"));
-    keyStore.setKeyEntry(alias, privateKey, clientKeyPassphrase, certificates.toArray(new Certificate[0]));
+      String alias = certificates.stream().map(cert->((X509Certificate)cert).getIssuerX500Principal().getName()).collect(Collectors.joining("_"));
+      keyStore.setKeyEntry(alias, privateKey, clientKeyPassphrase, certificates.toArray(new Certificate[0]));
 
-    return keyStore;
+      return keyStore;
   }
 
-  private static PrivateKey loadKey(InputStream keyInputStream, String clientKeyAlgo)
-      throws IOException, InvalidKeySpecException, NoSuchAlgorithmException {
-    if (clientKeyAlgo == null) {
-      clientKeyAlgo = "RSA"; // by default let's assume it's RSA
-    }
-    if (clientKeyAlgo.equals("EC")) {
-      return handleECKey(keyInputStream);
-    } else if (clientKeyAlgo.equals("RSA")) {
-      return handleOtherKeys(keyInputStream, clientKeyAlgo);
-    }
+  private static PrivateKey loadKey(InputStream keyInputStream, String clientKeyAlgo) throws IOException, InvalidKeySpecException, NoSuchAlgorithmException {
+      if(clientKeyAlgo == null) {
+        clientKeyAlgo = "RSA"; // by default let's assume it's RSA
+      }
+      if(clientKeyAlgo.equals("EC")) {
+        return handleECKey(keyInputStream);
+      } else if(clientKeyAlgo.equals("RSA")) {
+        return handleOtherKeys(keyInputStream, clientKeyAlgo);
+      }
 
-    throw new InvalidKeySpecException("Unknown type of PKCS8 Private Key, tried RSA and ECDSA");
+      throw new InvalidKeySpecException("Unknown type of PKCS8 Private Key, tried RSA and ECDSA");
   }
 
   private static PrivateKey handleECKey(InputStream keyInputStream) {
@@ -165,7 +150,10 @@ public class CertUtils {
               Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
             }
             PEMKeyPair keys = (PEMKeyPair) new PEMParser(new InputStreamReader(keyInputStream)).readObject();
-            return new JcaPEMKeyConverter().getKeyPair(keys).getPrivate();
+            return new
+              JcaPEMKeyConverter().
+              getKeyPair(keys).
+              getPrivate();
           } catch (IOException exception) {
             exception.printStackTrace();
           }
@@ -173,26 +161,26 @@ public class CertUtils {
         }
       }.call();
     } catch (NoClassDefFoundError e) {
-      throw new KubernetesClientException(
-          "JcaPEMKeyConverter is provided by BouncyCastle, an optional dependency. To use support for EC Keys you must explicitly add this dependency to classpath.");
+      throw new KubernetesClientException("JcaPEMKeyConverter is provided by BouncyCastle, an optional dependency. To use support for EC Keys you must explicitly add this dependency to classpath.");
     }
   }
 
-  private static PrivateKey handleOtherKeys(InputStream keyInputStream, String clientKeyAlgo)
-      throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
+  private static PrivateKey handleOtherKeys(InputStream keyInputStream, String clientKeyAlgo) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
     byte[] keyBytes = decodePem(keyInputStream);
+    KeyFactory keyFactory = KeyFactory.getInstance(clientKeyAlgo);
     try {
       // First let's try PKCS8
-      return KeyFactory.getInstance(clientKeyAlgo).generatePrivate(new PKCS8EncodedKeySpec(keyBytes));
+      return keyFactory.generatePrivate(new PKCS8EncodedKeySpec(keyBytes));
     } catch (InvalidKeySpecException e) {
       // Otherwise try PKCS8
       RSAPrivateCrtKeySpec keySpec = PKCS1Util.decodePKCS1(keyBytes);
-      return KeyFactory.getInstance(clientKeyAlgo).generatePrivate(keySpec);
+      return keyFactory.generatePrivate(keySpec);
     }
   }
 
+
   private static void loadDefaultTrustStoreFile(KeyStore keyStore, char[] trustStorePassphrase)
-      throws CertificateException, NoSuchAlgorithmException, IOException {
+    throws CertificateException, NoSuchAlgorithmException, IOException {
 
     File trustStoreFile = getDefaultTrustStoreFile();
 
@@ -202,8 +190,8 @@ public class CertUtils {
   }
 
   private static File getDefaultTrustStoreFile() {
-    String securityDirectory = System.getProperty("java.home") + File.separator + "lib" + File.separator + "security"
-        + File.separator;
+    String securityDirectory =
+      System.getProperty("java.home") + File.separator + "lib" + File.separator + "security" + File.separator;
 
     String trustStorePath = System.getProperty(TRUST_STORE_SYSTEM_PROPERTY);
     if (Utils.isNotNullOrEmpty(trustStorePath)) {
@@ -219,7 +207,7 @@ public class CertUtils {
   }
 
   private static void loadDefaultKeyStoreFile(KeyStore keyStore, char[] keyStorePassphrase)
-      throws CertificateException, NoSuchAlgorithmException, IOException {
+    throws CertificateException, NoSuchAlgorithmException, IOException {
 
     String keyStorePath = System.getProperty(KEY_STORE_SYSTEM_PROPERTY);
     if (Utils.isNotNullOrEmpty(keyStorePath)) {
@@ -235,7 +223,7 @@ public class CertUtils {
   private static boolean loadDefaultStoreFile(KeyStore keyStore, File fileToLoad, char[] passphrase) {
 
     String notLoadedMessage = "There is a problem with reading default keystore/truststore file %s with the passphrase %s "
-        + "- the file won't be loaded. The reason is: %s";
+      + "- the file won't be loaded. The reason is: %s";
 
     if (fileToLoad.exists() && fileToLoad.isFile() && fileToLoad.length() > 0) {
       try {
@@ -252,13 +240,12 @@ public class CertUtils {
   }
 
   public static KeyStore createKeyStore(String clientCertData, String clientCertFile, String clientKeyData,
-      String clientKeyFile, String clientKeyAlgo, String clientKeyPassphrase, String keyStoreFile,
-      String keyStorePassphrase)
-      throws IOException, CertificateException, NoSuchAlgorithmException, InvalidKeySpecException, KeyStoreException {
-    try (InputStream certInputStream = getInputStreamFromDataOrFile(clientCertData, clientCertFile);
-        InputStream keyInputStream = getInputStreamFromDataOrFile(clientKeyData, clientKeyFile)) {
+    String clientKeyFile, String clientKeyAlgo, String clientKeyPassphrase, String keyStoreFile,
+    String keyStorePassphrase)
+    throws IOException, CertificateException, NoSuchAlgorithmException, InvalidKeySpecException, KeyStoreException {
+    try (InputStream certInputStream = getInputStreamFromDataOrFile(clientCertData, clientCertFile); InputStream keyInputStream = getInputStreamFromDataOrFile(clientKeyData, clientKeyFile)) {
       return createKeyStore(certInputStream, keyInputStream, clientKeyAlgo, clientKeyPassphrase.toCharArray(),
-          keyStoreFile, getKeyStorePassphrase(keyStorePassphrase));
+        keyStoreFile, getKeyStorePassphrase(keyStorePassphrase));
     }
   }
 

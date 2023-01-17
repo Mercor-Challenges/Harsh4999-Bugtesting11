@@ -18,13 +18,11 @@ package io.fabric8.kubernetes.client.dsl.internal;
 import io.fabric8.kubernetes.api.builder.VisitableBuilder;
 import io.fabric8.kubernetes.api.model.DeletionPropagation;
 import io.fabric8.kubernetes.api.model.HasMetadata;
+import io.fabric8.kubernetes.client.BaseClient;
 import io.fabric8.kubernetes.client.Client;
 import io.fabric8.kubernetes.client.Config;
-import io.fabric8.kubernetes.client.dsl.FieldValidateable;
-import io.fabric8.kubernetes.client.dsl.FieldValidateable.Validation;
+import io.fabric8.kubernetes.client.ResourceHandler;
 import io.fabric8.kubernetes.client.http.HttpClient;
-import io.fabric8.kubernetes.client.impl.BaseClient;
-import io.fabric8.kubernetes.client.impl.ResourceHandler;
 import io.fabric8.kubernetes.client.utils.ApiVersionUtil;
 import io.fabric8.kubernetes.client.utils.Utils;
 
@@ -33,7 +31,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Executor;
-import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
@@ -49,10 +46,8 @@ public class OperationContext {
   protected String namespace;
   protected boolean defaultNamespace = true;
   protected String name;
+  protected boolean reloadingFromServer;
   protected boolean dryRun;
-  protected FieldValidateable.Validation fieldValidation;
-  protected String fieldManager;
-  protected Boolean forceConflicts;
 
   // Default to -1 to respect the value set in the resource or the Kubernetes default (30 seconds)
   protected long gracePeriodSeconds = -1L;
@@ -68,27 +63,22 @@ public class OperationContext {
 
   protected Client client;
 
-  private long timeout;
-  private TimeUnit timeoutUnit = TimeUnit.MILLISECONDS;
-
   public OperationContext() {
   }
 
   public OperationContext(OperationContext other) {
     this(other.client, other.plural, other.namespace, other.name, other.apiGroupName, other.apiGroupVersion,
         other.item, other.labels, other.labelsNot, other.labelsIn, other.labelsNotIn, other.fields,
-        other.fieldsNot, other.resourceVersion, other.gracePeriodSeconds, other.propagationPolicy,
-        other.dryRun, other.selectorAsString, other.defaultNamespace, other.fieldValidation, other.fieldManager,
-        other.forceConflicts, other.timeout, other.timeoutUnit);
+        other.fieldsNot, other.resourceVersion, other.reloadingFromServer, other.gracePeriodSeconds, other.propagationPolicy,
+        other.dryRun, other.selectorAsString, other.defaultNamespace);
   }
 
   public OperationContext(Client client, String plural, String namespace, String name,
       String apiGroupName, String apiGroupVersion, Object item, Map<String, String> labels,
       Map<String, String[]> labelsNot, Map<String, String[]> labelsIn, Map<String, String[]> labelsNotIn,
-      Map<String, String> fields, Map<String, String[]> fieldsNot, String resourceVersion,
+      Map<String, String> fields, Map<String, String[]> fieldsNot, String resourceVersion, boolean reloadingFromServer,
       long gracePeriodSeconds, DeletionPropagation propagationPolicy,
-      boolean dryRun, String selectorAsString, boolean defaultNamespace, FieldValidateable.Validation fieldValidation,
-      String fieldManager, Boolean forceConflicts, long timeout, TimeUnit timeoutUnit) {
+      boolean dryRun, String selectorAsString, boolean defaultNamespace) {
     this.client = client;
     this.item = item;
     this.plural = plural;
@@ -103,15 +93,11 @@ public class OperationContext {
     setFields(fields);
     setFieldsNot(fieldsNot);
     this.resourceVersion = resourceVersion;
+    this.reloadingFromServer = reloadingFromServer;
     this.gracePeriodSeconds = gracePeriodSeconds;
     this.propagationPolicy = propagationPolicy;
     this.dryRun = dryRun;
     this.selectorAsString = selectorAsString;
-    this.fieldValidation = fieldValidation;
-    this.fieldManager = fieldManager;
-    this.forceConflicts = forceConflicts;
-    this.timeout = timeout;
-    this.timeoutUnit = timeoutUnit;
   }
 
   private void setFieldsNot(Map<String, String[]> fieldsNot) {
@@ -231,6 +217,10 @@ public class OperationContext {
     return resourceVersion;
   }
 
+  public boolean isReloadingFromServer() {
+    return reloadingFromServer;
+  }
+
   public long getGracePeriodSeconds() {
     return gracePeriodSeconds;
   }
@@ -241,14 +231,6 @@ public class OperationContext {
 
   public boolean getDryRun() {
     return dryRun;
-  }
-
-  public long getTimeout() {
-    return timeout;
-  }
-
-  public TimeUnit getTimeoutUnit() {
-    return timeoutUnit;
   }
 
   public String getLabelQueryParam() {
@@ -439,6 +421,15 @@ public class OperationContext {
     return context;
   }
 
+  public OperationContext withReloadingFromServer(boolean reloadingFromServer) {
+    if (this.reloadingFromServer == reloadingFromServer) {
+      return this;
+    }
+    final OperationContext context = new OperationContext(this);
+    context.reloadingFromServer = reloadingFromServer;
+    return context;
+  }
+
   public OperationContext withGracePeriodSeconds(long gracePeriodSeconds) {
     if (this.gracePeriodSeconds == gracePeriodSeconds) {
       return this;
@@ -484,7 +475,7 @@ public class OperationContext {
     // operationcontext
     OperationContext newContext = HasMetadataOperationsImpl.defaultContext(client).withDryRun(getDryRun())
         .withGracePeriodSeconds(getGracePeriodSeconds()).withPropagationPolicy(getPropagationPolicy())
-        .withFieldValidation(this.fieldValidation);
+        .withReloadingFromServer(isReloadingFromServer());
 
     // check before setting to prevent flipping the default flag
     if (!Objects.equals(getNamespace(), newContext.getNamespace())
@@ -497,40 +488,6 @@ public class OperationContext {
 
   public Executor getExecutor() {
     return getClient().adapt(BaseClient.class).getExecutor();
-  }
-
-  public OperationContext withFieldValidation(Validation fieldValidation) {
-    if (this.fieldValidation == fieldValidation) {
-      return this;
-    }
-    final OperationContext context = new OperationContext(this);
-    context.fieldValidation = fieldValidation;
-    return context;
-  }
-
-  public OperationContext withFieldManager(String fieldManager) {
-    if (Objects.equals(fieldManager, this.fieldManager)) {
-      return this;
-    }
-    final OperationContext context = new OperationContext(this);
-    context.fieldManager = fieldManager;
-    return context;
-  }
-
-  public OperationContext withForceConflicts() {
-    if (Boolean.TRUE.equals(this.forceConflicts)) {
-      return this;
-    }
-    final OperationContext context = new OperationContext(this);
-    context.forceConflicts = true;
-    return context;
-  }
-
-  public OperationContext withTimeout(long timeout, TimeUnit timeUnit) {
-    final OperationContext context = new OperationContext(this);
-    context.timeout = timeout;
-    context.timeoutUnit = timeUnit == null ? TimeUnit.MILLISECONDS : timeUnit;
-    return context;
   }
 
 }

@@ -38,7 +38,7 @@ class ServiceAccountIT {
   @Test
   void load() {
     ServiceAccount svcAccount = client.serviceAccounts()
-        .load(getClass().getResourceAsStream("/test-serviceaccount.yml")).item();
+        .load(getClass().getResourceAsStream("/test-serviceaccount.yml")).get();
     assertThat(svcAccount).isNotNull();
     assertThat(svcAccount.getMetadata().getName()).isNotNull();
   }

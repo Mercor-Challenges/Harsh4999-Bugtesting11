@@ -15,6 +15,7 @@
  */
 package io.fabric8.tekton.pipeline.v1alpha1;
 
+
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -47,9 +48,9 @@ import java.util.Objects;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
-    "arrayVal",
-    "stringVal",
-    "type"
+  "arrayVal",
+  "stringVal",
+  "type"
 })
 @JsonDeserialize(using = ArrayOrString.Deserializer.class)
 @JsonSerialize(using = ArrayOrString.Serializer.class)

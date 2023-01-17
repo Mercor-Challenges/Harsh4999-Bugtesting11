@@ -45,7 +45,7 @@ public class V1HorizontalPodAutoscalerTest {
 
   @Test
   void testLoadAsPlainList() {
-    List<HasMetadata> itemsList = client.load(getClass().getResourceAsStream("/test-horizontalpodautoscaler.yml")).items();
+    List<HasMetadata> itemsList = client.load(getClass().getResourceAsStream("/test-horizontalpodautoscaler.yml")).get();
 
     assertNotNull(itemsList);
     assertEquals(1, itemsList.size());
@@ -193,7 +193,7 @@ public class V1HorizontalPodAutoscalerTest {
   @Test
   void testLoadFromFile() {
     HorizontalPodAutoscaler horizontalPodAutoscaler = client.autoscaling().v1().horizontalPodAutoscalers()
-        .load(getClass().getResourceAsStream("/test-horizontalpodautoscaler.yml")).item();
+        .load(getClass().getResourceAsStream("/test-horizontalpodautoscaler.yml")).get();
     assertEquals("php-apache", horizontalPodAutoscaler.getMetadata().getName());
   }
 

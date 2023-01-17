@@ -46,9 +46,10 @@ import lombok.experimental.Accessors;
     "conditions",
     "containerStatuses",
     "desiredReplicas",
-    "initContainerStatuses",
+    "imageDigest",
     "logUrl",
-    "observedGeneration"
+    "observedGeneration",
+    "serviceName"
 })
 @ToString
 @EqualsAndHashCode
@@ -88,13 +89,14 @@ public class RevisionStatus implements KubernetesResource
     private List<ContainerStatus> containerStatuses = new ArrayList<ContainerStatus>();
     @JsonProperty("desiredReplicas")
     private Integer desiredReplicas;
-    @JsonProperty("initContainerStatuses")
-    @JsonInclude(JsonInclude.Include.NON_EMPTY)
-    private List<ContainerStatus> initContainerStatuses = new ArrayList<ContainerStatus>();
+    @JsonProperty("imageDigest")
+    private java.lang.String imageDigest;
     @JsonProperty("logUrl")
     private java.lang.String logUrl;
     @JsonProperty("observedGeneration")
     private Long observedGeneration;
+    @JsonProperty("serviceName")
+    private java.lang.String serviceName;
     @JsonIgnore
     private Map<java.lang.String, Object> additionalProperties = new HashMap<java.lang.String, Object>();
 
@@ -113,19 +115,21 @@ public class RevisionStatus implements KubernetesResource
      * @param actualReplicas
      * @param conditions
      * @param logUrl
-     * @param initContainerStatuses
+     * @param serviceName
      * @param observedGeneration
+     * @param imageDigest
      */
-    public RevisionStatus(Integer actualReplicas, Map<String, String> annotations, List<Condition> conditions, List<ContainerStatus> containerStatuses, Integer desiredReplicas, List<ContainerStatus> initContainerStatuses, java.lang.String logUrl, Long observedGeneration) {
+    public RevisionStatus(Integer actualReplicas, Map<String, String> annotations, List<Condition> conditions, List<ContainerStatus> containerStatuses, Integer desiredReplicas, java.lang.String imageDigest, java.lang.String logUrl, Long observedGeneration, java.lang.String serviceName) {
         super();
         this.actualReplicas = actualReplicas;
         this.annotations = annotations;
         this.conditions = conditions;
         this.containerStatuses = containerStatuses;
         this.desiredReplicas = desiredReplicas;
-        this.initContainerStatuses = initContainerStatuses;
+        this.imageDigest = imageDigest;
         this.logUrl = logUrl;
         this.observedGeneration = observedGeneration;
+        this.serviceName = serviceName;
     }
 
     @JsonProperty("actualReplicas")
@@ -178,14 +182,14 @@ public class RevisionStatus implements KubernetesResource
         this.desiredReplicas = desiredReplicas;
     }
 
-    @JsonProperty("initContainerStatuses")
-    public List<ContainerStatus> getInitContainerStatuses() {
-        return initContainerStatuses;
+    @JsonProperty("imageDigest")
+    public java.lang.String getImageDigest() {
+        return imageDigest;
     }
 
-    @JsonProperty("initContainerStatuses")
-    public void setInitContainerStatuses(List<ContainerStatus> initContainerStatuses) {
-        this.initContainerStatuses = initContainerStatuses;
+    @JsonProperty("imageDigest")
+    public void setImageDigest(java.lang.String imageDigest) {
+        this.imageDigest = imageDigest;
     }
 
     @JsonProperty("logUrl")
@@ -206,6 +210,16 @@ public class RevisionStatus implements KubernetesResource
     @JsonProperty("observedGeneration")
     public void setObservedGeneration(Long observedGeneration) {
         this.observedGeneration = observedGeneration;
+    }
+
+    @JsonProperty("serviceName")
+    public java.lang.String getServiceName() {
+        return serviceName;
+    }
+
+    @JsonProperty("serviceName")
+    public void setServiceName(java.lang.String serviceName) {
+        this.serviceName = serviceName;
     }
 
     @JsonAnyGetter

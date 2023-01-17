@@ -15,6 +15,8 @@
  */
 package io.fabric8.crd.generator.v1.decorator;
 
+import static io.fabric8.crd.generator.utils.Metadata.getMetadata;
+
 import io.fabric8.crd.generator.decorator.Decorator;
 import io.fabric8.crd.generator.utils.Generics;
 import io.fabric8.kubernetes.api.builder.TypedVisitor;
@@ -22,10 +24,7 @@ import io.fabric8.kubernetes.api.builder.VisitableBuilder;
 import io.fabric8.kubernetes.api.model.ObjectMeta;
 import io.fabric8.kubernetes.api.model.apiextensions.v1.CustomResourceDefinitionVersionBuilder;
 import io.fabric8.kubernetes.client.utils.Utils;
-
 import java.util.Optional;
-
-import static io.fabric8.crd.generator.utils.Metadata.getMetadata;
 
 public abstract class CustomResourceDefinitionVersionDecorator<T> extends Decorator<VisitableBuilder> {
 
@@ -37,6 +36,7 @@ public abstract class CustomResourceDefinitionVersionDecorator<T> extends Decora
   private final CustomResourceDefinitionVersionVisitor versionSelector = new CustomResourceDefinitionVersionVisitor();
   private final VersionVisitor versionVisitor = new VersionVisitor();
 
+  
   public CustomResourceDefinitionVersionDecorator(String name, String version) {
     this.name = name;
     this.version = version;
@@ -45,11 +45,11 @@ public abstract class CustomResourceDefinitionVersionDecorator<T> extends Decora
   public String getName() {
     return this.name;
   }
-
+ 
   public String getVersion() {
     return this.version;
   }
-
+  
   @Override
   public void visit(VisitableBuilder builder) {
     Optional<ObjectMeta> objectMeta = getMetadata(builder);
@@ -82,22 +82,21 @@ public abstract class CustomResourceDefinitionVersionDecorator<T> extends Decora
 
     public Class<T> getType() {
       return (Class) Generics
-          .getTypeArguments(CustomResourceDefinitionVersionDecorator.class,
-              CustomResourceDefinitionVersionDecorator.this.getClass())
+          .getTypeArguments(CustomResourceDefinitionVersionDecorator.class, CustomResourceDefinitionVersionDecorator.this.getClass())
           .get(0);
     }
   }
 
   @Override
   public Class<? extends Decorator>[] after() {
-    return new Class[] {
-        AddCustomResourceDefinitionResourceDecorator.class,
-        AddCustomResourceDefinitionVersionDecorator.class };
+    return new Class[]{
+      AddCustomResourceDefinitionResourceDecorator.class,
+      AddCustomResourceDefinitionVersionDecorator.class};
   }
 
   @Override
   public Class<? extends Decorator>[] before() {
-    return new Class[] {};
+    return new Class[] {  };
   }
 
   @Override

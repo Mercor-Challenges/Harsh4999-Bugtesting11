@@ -3,6 +3,7 @@ package io.fabric8.tekton.pipeline.v1beta1;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
@@ -39,6 +40,7 @@ import lombok.experimental.Accessors;
     "apiVersion",
     "kind",
     "metadata",
+    "conditionChecks",
     "pipelineTaskName",
     "status",
     "whenExpressions"
@@ -68,15 +70,18 @@ import lombok.experimental.Accessors;
 public class PipelineRunTaskRunStatus implements KubernetesResource
 {
 
+    @JsonProperty("conditionChecks")
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    private Map<String, PipelineRunConditionCheckStatus> conditionChecks = new LinkedHashMap<String, PipelineRunConditionCheckStatus>();
     @JsonProperty("pipelineTaskName")
-    private String pipelineTaskName;
+    private java.lang.String pipelineTaskName;
     @JsonProperty("status")
     private TaskRunStatus status;
     @JsonProperty("whenExpressions")
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
     private List<WhenExpression> whenExpressions = new ArrayList<WhenExpression>();
     @JsonIgnore
-    private Map<String, Object> additionalProperties = new HashMap<String, Object>();
+    private Map<java.lang.String, Object> additionalProperties = new HashMap<java.lang.String, Object>();
 
     /**
      * No args constructor for use in serialization
@@ -89,22 +94,34 @@ public class PipelineRunTaskRunStatus implements KubernetesResource
      * 
      * @param pipelineTaskName
      * @param whenExpressions
+     * @param conditionChecks
      * @param status
      */
-    public PipelineRunTaskRunStatus(String pipelineTaskName, TaskRunStatus status, List<WhenExpression> whenExpressions) {
+    public PipelineRunTaskRunStatus(Map<String, PipelineRunConditionCheckStatus> conditionChecks, java.lang.String pipelineTaskName, TaskRunStatus status, List<WhenExpression> whenExpressions) {
         super();
+        this.conditionChecks = conditionChecks;
         this.pipelineTaskName = pipelineTaskName;
         this.status = status;
         this.whenExpressions = whenExpressions;
     }
 
+    @JsonProperty("conditionChecks")
+    public Map<String, PipelineRunConditionCheckStatus> getConditionChecks() {
+        return conditionChecks;
+    }
+
+    @JsonProperty("conditionChecks")
+    public void setConditionChecks(Map<String, PipelineRunConditionCheckStatus> conditionChecks) {
+        this.conditionChecks = conditionChecks;
+    }
+
     @JsonProperty("pipelineTaskName")
-    public String getPipelineTaskName() {
+    public java.lang.String getPipelineTaskName() {
         return pipelineTaskName;
     }
 
     @JsonProperty("pipelineTaskName")
-    public void setPipelineTaskName(String pipelineTaskName) {
+    public void setPipelineTaskName(java.lang.String pipelineTaskName) {
         this.pipelineTaskName = pipelineTaskName;
     }
 
@@ -129,12 +146,12 @@ public class PipelineRunTaskRunStatus implements KubernetesResource
     }
 
     @JsonAnyGetter
-    public Map<String, Object> getAdditionalProperties() {
+    public Map<java.lang.String, Object> getAdditionalProperties() {
         return this.additionalProperties;
     }
 
     @JsonAnySetter
-    public void setAdditionalProperty(String name, Object value) {
+    public void setAdditionalProperty(java.lang.String name, Object value) {
         this.additionalProperties.put(name, value);
     }
 

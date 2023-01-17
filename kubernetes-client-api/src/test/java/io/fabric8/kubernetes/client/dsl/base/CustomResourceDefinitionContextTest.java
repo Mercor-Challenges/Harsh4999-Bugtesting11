@@ -27,14 +27,14 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class CustomResourceDefinitionContextTest {
-
+  
   @Test
   @DisplayName("v1beta1CRDFromCustomResourceType correctly generates CRD builder for v1beta1 version")
   void v1beta1CRDFromCustomResourceType() {
     final CustomResourceDefinition crd = CustomResourceDefinitionContext.v1beta1CRDFromCustomResourceType(Good.class).build();
     final CustomResourceDefinitionSpec spec = crd.getSpec();
     final CustomResourceDefinitionNames names = spec.getNames();
-    final String plural = "goods";
+    final String plural =  "goods";
     Assertions.assertEquals(plural, names.getPlural());
     Assertions.assertEquals("good", names.getSingular());
     Assertions.assertEquals("Good", names.getKind());
@@ -42,12 +42,11 @@ class CustomResourceDefinitionContextTest {
     Assertions.assertEquals(Good.VERSION, spec.getVersion());
     Assertions.assertEquals(Good.VERSION, spec.getVersions().get(0).getName());
   }
-
+  
   @Test
   @DisplayName("v1CRDFromCustomResourceType correctly generates CRD builder for v1 version")
   void v1CRDFromCustomResourceType() {
-    final io.fabric8.kubernetes.api.model.apiextensions.v1.CustomResourceDefinition crd = CustomResourceDefinitionContext
-        .v1CRDFromCustomResourceType(Custom.class).build();
+    final io.fabric8.kubernetes.api.model.apiextensions.v1.CustomResourceDefinition crd = CustomResourceDefinitionContext.v1CRDFromCustomResourceType(Custom.class).build();
     final io.fabric8.kubernetes.api.model.apiextensions.v1.CustomResourceDefinitionSpec spec = crd.getSpec();
     final io.fabric8.kubernetes.api.model.apiextensions.v1.CustomResourceDefinitionNames names = spec.getNames();
     Assertions.assertEquals(Custom.PLURAL, names.getPlural());
@@ -61,7 +60,8 @@ class CustomResourceDefinitionContextTest {
   @DisplayName("fromCrd, with v1 CRD, should infer correct properties")
   void fromCrdV1() {
     // Given
-    final io.fabric8.kubernetes.api.model.apiextensions.v1.CustomResourceDefinition crd = new io.fabric8.kubernetes.api.model.apiextensions.v1.CustomResourceDefinitionBuilder()
+    final io.fabric8.kubernetes.api.model.apiextensions.v1.CustomResourceDefinition crd =
+      new io.fabric8.kubernetes.api.model.apiextensions.v1.CustomResourceDefinitionBuilder()
         .withNewMetadata().withName("foobar.the-foo.com").endMetadata()
         .withNewSpec()
         .withGroup("the-foo.com")
@@ -76,19 +76,21 @@ class CustomResourceDefinitionContextTest {
     final CustomResourceDefinitionContext result = CustomResourceDefinitionContext.fromCrd(crd);
     // Then
     assertThat(result)
-        .hasFieldOrPropertyWithValue("group", "the-foo.com")
-        .hasFieldOrPropertyWithValue("version", "v1")
-        .hasFieldOrPropertyWithValue("scope", "Namespaced")
-        .hasFieldOrPropertyWithValue("name", "foobar.the-foo.com")
-        .hasFieldOrPropertyWithValue("plural", "foobars")
-        .hasFieldOrPropertyWithValue("kind", "Foobar");
+      .hasFieldOrPropertyWithValue("group", "the-foo.com")
+      .hasFieldOrPropertyWithValue("version", "v1")
+      .hasFieldOrPropertyWithValue("scope", "Namespaced")
+      .hasFieldOrPropertyWithValue("name", "foobar.the-foo.com")
+      .hasFieldOrPropertyWithValue("plural", "foobars")
+      .hasFieldOrPropertyWithValue("kind", "Foobar");
   }
+
 
   @Test
   @DisplayName("fromCrd, with v1beta1 CRD with versions, should infer correct properties")
   void fromCrdV1beta1() {
     // Given
-    final io.fabric8.kubernetes.api.model.apiextensions.v1beta1.CustomResourceDefinition crd = new io.fabric8.kubernetes.api.model.apiextensions.v1beta1.CustomResourceDefinitionBuilder()
+    final io.fabric8.kubernetes.api.model.apiextensions.v1beta1.CustomResourceDefinition crd =
+      new io.fabric8.kubernetes.api.model.apiextensions.v1beta1.CustomResourceDefinitionBuilder()
         .withNewMetadata().withName("foobar.the-foo.com").endMetadata()
         .withNewSpec()
         .withGroup("the-foo.com")
@@ -103,19 +105,20 @@ class CustomResourceDefinitionContextTest {
     final CustomResourceDefinitionContext result = CustomResourceDefinitionContext.fromCrd(crd);
     // Then
     assertThat(result)
-        .hasFieldOrPropertyWithValue("group", "the-foo.com")
-        .hasFieldOrPropertyWithValue("version", "v1")
-        .hasFieldOrPropertyWithValue("scope", "Namespaced")
-        .hasFieldOrPropertyWithValue("name", "foobar.the-foo.com")
-        .hasFieldOrPropertyWithValue("plural", "foobars")
-        .hasFieldOrPropertyWithValue("kind", "Foobar");
+      .hasFieldOrPropertyWithValue("group", "the-foo.com")
+      .hasFieldOrPropertyWithValue("version", "v1")
+      .hasFieldOrPropertyWithValue("scope", "Namespaced")
+      .hasFieldOrPropertyWithValue("name", "foobar.the-foo.com")
+      .hasFieldOrPropertyWithValue("plural", "foobars")
+      .hasFieldOrPropertyWithValue("kind", "Foobar");
   }
 
   @Test
   @DisplayName("fromCrd, with v1beta1 CRD with spec.version, should infer correct properties")
   void fromCrdV1beta1OldVersionStyle() {
     // Given
-    final io.fabric8.kubernetes.api.model.apiextensions.v1beta1.CustomResourceDefinition crd = new io.fabric8.kubernetes.api.model.apiextensions.v1beta1.CustomResourceDefinitionBuilder()
+    final io.fabric8.kubernetes.api.model.apiextensions.v1beta1.CustomResourceDefinition crd =
+      new io.fabric8.kubernetes.api.model.apiextensions.v1beta1.CustomResourceDefinitionBuilder()
         .withNewMetadata().withName("foobar.the-foo.com").endMetadata()
         .withNewSpec()
         .withGroup("the-foo.com")
@@ -128,21 +131,19 @@ class CustomResourceDefinitionContextTest {
     final CustomResourceDefinitionContext result = CustomResourceDefinitionContext.fromCrd(crd);
     // Then
     assertThat(result)
-        .hasFieldOrPropertyWithValue("group", "the-foo.com")
-        .hasFieldOrPropertyWithValue("version", "v1")
-        .hasFieldOrPropertyWithValue("scope", "Namespaced")
-        .hasFieldOrPropertyWithValue("name", "foobar.the-foo.com")
-        .hasFieldOrPropertyWithValue("plural", "foobars")
-        .hasFieldOrPropertyWithValue("kind", "Foobar");
+      .hasFieldOrPropertyWithValue("group", "the-foo.com")
+      .hasFieldOrPropertyWithValue("version", "v1")
+      .hasFieldOrPropertyWithValue("scope", "Namespaced")
+      .hasFieldOrPropertyWithValue("name", "foobar.the-foo.com")
+      .hasFieldOrPropertyWithValue("plural", "foobars")
+      .hasFieldOrPropertyWithValue("kind", "Foobar");
   }
 
   @Test
   void isNamespaceScoped() {
     // Given
-    CustomResourceDefinitionContext crdc1 = new CustomResourceDefinitionContext.Builder().withPlural("values")
-        .withScope("Namespaced").build();
-    CustomResourceDefinitionContext crdc2 = new CustomResourceDefinitionContext.Builder().withPlural("values")
-        .withScope("Cluster").build();
+    CustomResourceDefinitionContext crdc1 = new CustomResourceDefinitionContext.Builder().withPlural("values").withScope("Namespaced").build();
+    CustomResourceDefinitionContext crdc2 = new CustomResourceDefinitionContext.Builder().withPlural("values").withScope("Cluster").build();
 
     // When + Then
     assertThat(crdc1.isNamespaceScoped()).isTrue();

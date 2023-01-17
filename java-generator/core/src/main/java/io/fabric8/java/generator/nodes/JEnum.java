@@ -17,11 +17,9 @@ package io.fabric8.java.generator.nodes;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.github.javaparser.ast.CompilationUnit;
-import com.github.javaparser.ast.Modifier;
 import com.github.javaparser.ast.body.*;
 import com.github.javaparser.ast.expr.*;
 import com.github.javaparser.ast.stmt.BlockStmt;
-import com.github.javaparser.ast.stmt.ReturnStmt;
 import io.fabric8.java.generator.Config;
 
 import java.util.ArrayList;
@@ -42,7 +40,7 @@ public class JEnum extends AbstractJSONSchema2Pojo {
 
   public JEnum(String type, List<JsonNode> values, Config config, String description, final boolean isNullable,
       JsonNode defaultValue) {
-    super(config, description, isNullable, defaultValue, null);
+    super(config, description, isNullable, defaultValue);
     this.type = AbstractJSONSchema2Pojo.sanitizeString(
         type.substring(0, 1).toUpperCase() + type.substring(1));
     this.values = values.stream().map(JsonNode::asText).collect(Collectors.toList());
@@ -58,11 +56,7 @@ public class JEnum extends AbstractJSONSchema2Pojo {
     if (config.isUppercaseEnums()) {
       ret = ret.toUpperCase(Locale.ROOT);
     }
-    if (ret.isEmpty()) {
-      return "_EMPTY";
-    } else {
-      return ret.replaceAll("[\\s|\\./]", "_");
-    }
+    return ret.replaceAll("[\\s/]", "_");
   }
 
   @Override
@@ -82,13 +76,6 @@ public class JEnum extends AbstractJSONSchema2Pojo {
                     new NameExpr("this." + VALUE),
                     new NameExpr(VALUE),
                     AssignExpr.Operator.ASSIGN)));
-
-    MethodDeclaration getValue = en
-        .addMethod("getValue", Modifier.Keyword.PUBLIC);
-    getValue.setType(JAVA_LANG_STRING);
-    getValue
-        .setBody(new BlockStmt().addStatement(new ReturnStmt(VALUE)));
-    getValue.addAnnotation("com.fasterxml.jackson.annotation.JsonValue");
 
     for (String k : this.values) {
       String constantName;

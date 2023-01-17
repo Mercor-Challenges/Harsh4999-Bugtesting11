@@ -17,7 +17,6 @@
 package io.fabric8.kubernetes;
 
 import io.fabric8.junit.jupiter.api.LoadKubernetesManifests;
-import io.fabric8.junit.jupiter.api.RequireK8sSupport;
 import io.fabric8.kubernetes.api.model.batch.v1beta1.CronJob;
 import io.fabric8.kubernetes.api.model.batch.v1beta1.CronJobBuilder;
 import io.fabric8.kubernetes.api.model.batch.v1beta1.CronJobList;
@@ -30,14 +29,13 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @LoadKubernetesManifests("/cronjob-it.yml")
-@RequireK8sSupport(CronJob.class)
 class CronJobIT {
 
   KubernetesClient client;
 
   @Test
   void load() {
-    CronJob aCronJob = client.batch().v1beta1().cronjobs().load(getClass().getResourceAsStream("/test-cronjob.yml")).item();
+    CronJob aCronJob = client.batch().v1beta1().cronjobs().load(getClass().getResourceAsStream("/test-cronjob.yml")).get();
     assertNotNull(aCronJob);
     assertEquals("hello", aCronJob.getMetadata().getName());
   }

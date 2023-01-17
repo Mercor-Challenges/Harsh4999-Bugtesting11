@@ -15,6 +15,13 @@
  */
 package io.fabric8.kubernetes.model.jackson;
 
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import com.fasterxml.jackson.annotation.JsonUnwrapped;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.BeanDescription;
@@ -30,13 +37,6 @@ import com.fasterxml.jackson.databind.introspect.BeanPropertyDefinition;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TreeTraversingParser;
 import com.fasterxml.jackson.databind.util.NameTransformer;
-
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * Desc: this is a workaround on the problem that Jackson's @JsonUnwrapped doesn't work with
@@ -72,20 +72,19 @@ public class JsonUnwrappedDeserializer<T> extends JsonDeserializer<T> implements
 
     BeanDescription description = deserializationContext.getConfig().introspect(type);
 
-    final JsonUnwrapped[] tempUnwrappedAnnotation = { null };
+    final JsonUnwrapped[] tempUnwrappedAnnotation = {null};
 
-    List<BeanPropertyDefinition> unwrappedProperties = description.findProperties().stream()
-        .filter(prop -> Arrays.asList(prop.getConstructorParameter(), prop.getMutator(), prop.getField()).stream()
-            .filter(Objects::nonNull)
-            .anyMatch(member -> {
-              JsonUnwrapped unwrappedAnnotation = member.getAnnotation(JsonUnwrapped.class);
-              if (unwrappedAnnotation != null) {
-                tempUnwrappedAnnotation[0] = unwrappedAnnotation;
-                member.getAllAnnotations().add(cancelUnwrappedAnnotation);
-              }
-              return unwrappedAnnotation != null;
-            }))
-        .collect(Collectors.toList());
+    List<BeanPropertyDefinition> unwrappedProperties = description.findProperties().stream().filter(prop ->
+      Arrays.asList(prop.getConstructorParameter(), prop.getMutator(), prop.getField()).stream()
+        .filter(Objects::nonNull)
+        .anyMatch(member -> {
+          JsonUnwrapped unwrappedAnnotation = member.getAnnotation(JsonUnwrapped.class);
+          if (unwrappedAnnotation != null) {
+            tempUnwrappedAnnotation[0] = unwrappedAnnotation;
+            member.getAllAnnotations().add(cancelUnwrappedAnnotation);
+          }
+          return unwrappedAnnotation != null;
+        })).collect(Collectors.toList());
 
     if (unwrappedProperties.isEmpty()) {
       throw new UnsupportedOperationException("@JsonUnwrapped properties not found in " + type.getTypeName());
@@ -95,8 +94,7 @@ public class JsonUnwrappedDeserializer<T> extends JsonDeserializer<T> implements
 
     BeanPropertyDefinition unwrappedProperty = unwrappedProperties.get(0);
 
-    nameTransformer = NameTransformer.simpleTransformer(tempUnwrappedAnnotation[0].prefix(),
-        tempUnwrappedAnnotation[0].suffix());
+    nameTransformer = NameTransformer.simpleTransformer(tempUnwrappedAnnotation[0].prefix(), tempUnwrappedAnnotation[0].suffix());
 
     unwrappedPropertyName = unwrappedProperty.getName();
 
@@ -104,15 +102,13 @@ public class JsonUnwrappedDeserializer<T> extends JsonDeserializer<T> implements
     ownPropertyNames.remove(unwrappedPropertyName);
     ownPropertyNames.removeAll(description.getIgnoredPropertyNames());
 
-    JsonDeserializer<Object> rawBeanDeserializer = deserializationContext.getFactory()
-        .createBeanDeserializer(deserializationContext, type, description);
+    JsonDeserializer<Object> rawBeanDeserializer = deserializationContext.getFactory().createBeanDeserializer(deserializationContext, type, description);
     ((ResolvableDeserializer) rawBeanDeserializer).resolve(deserializationContext);
     beanDeserializer = (JsonDeserializer<T>) rawBeanDeserializer;
   }
 
   @Override
-  public JsonDeserializer<?> createContextual(DeserializationContext deserializationContext, BeanProperty beanProperty)
-      throws JsonMappingException {
+  public JsonDeserializer<?> createContextual(DeserializationContext deserializationContext, BeanProperty beanProperty) throws JsonMappingException {
     return new JsonUnwrappedDeserializer<>(deserializationContext);
   }
 

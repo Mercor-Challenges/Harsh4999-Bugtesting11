@@ -21,7 +21,9 @@ import io.fabric8.kubernetes.api.model.KubernetesResource;
 
 /**
  */
-@JsonDeserialize(using = JsonDeserializer.None.class)
+@JsonDeserialize(
+    using = JsonDeserializer.None.class
+)
 public class DummySpec implements KubernetesResource {
   private String foo;
   private String bar;

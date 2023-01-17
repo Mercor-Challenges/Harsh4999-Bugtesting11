@@ -39,6 +39,7 @@ import lombok.experimental.Accessors;
     "metadata",
     "key",
     "resourceName",
+    "resourceRef",
     "type",
     "value"
 })
@@ -71,6 +72,8 @@ public class PipelineResourceResult implements KubernetesResource
     private String key;
     @JsonProperty("resourceName")
     private String resourceName;
+    @JsonProperty("resourceRef")
+    private PipelineResourceRef resourceRef;
     @JsonProperty("type")
     private Integer type;
     @JsonProperty("value")
@@ -87,15 +90,17 @@ public class PipelineResourceResult implements KubernetesResource
 
     /**
      * 
+     * @param resourceRef
      * @param resourceName
      * @param type
      * @param value
      * @param key
      */
-    public PipelineResourceResult(String key, String resourceName, Integer type, String value) {
+    public PipelineResourceResult(String key, String resourceName, PipelineResourceRef resourceRef, Integer type, String value) {
         super();
         this.key = key;
         this.resourceName = resourceName;
+        this.resourceRef = resourceRef;
         this.type = type;
         this.value = value;
     }
@@ -118,6 +123,16 @@ public class PipelineResourceResult implements KubernetesResource
     @JsonProperty("resourceName")
     public void setResourceName(String resourceName) {
         this.resourceName = resourceName;
+    }
+
+    @JsonProperty("resourceRef")
+    public PipelineResourceRef getResourceRef() {
+        return resourceRef;
+    }
+
+    @JsonProperty("resourceRef")
+    public void setResourceRef(PipelineResourceRef resourceRef) {
+        this.resourceRef = resourceRef;
     }
 
     @JsonProperty("type")

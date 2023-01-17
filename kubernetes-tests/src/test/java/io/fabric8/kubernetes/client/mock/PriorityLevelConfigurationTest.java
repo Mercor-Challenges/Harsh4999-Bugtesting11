@@ -38,7 +38,7 @@ class PriorityLevelConfigurationTest {
 
   @Test
   void load() {
-    List<HasMetadata> items = client.load(getClass().getResourceAsStream("/v1beta1-prioritylevelconfiguration.yml")).items();
+    List<HasMetadata> items = client.load(getClass().getResourceAsStream("/v1beta1-prioritylevelconfiguration.yml")).get();
     assertThat(items).isNotNull().hasSize(1);
     AssertionsForClassTypes.assertThat(items.get(0))
         .isInstanceOf(PriorityLevelConfiguration.class)

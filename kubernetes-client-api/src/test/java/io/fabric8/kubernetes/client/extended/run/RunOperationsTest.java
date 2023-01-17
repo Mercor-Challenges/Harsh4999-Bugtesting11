@@ -43,17 +43,17 @@ class RunOperationsTest {
     labels.put("first", "FIRST");
     labels.put("second", "SECOND");
     RunConfigBuilder generatorRunConfig = new RunConfigBuilder()
-        .withName("test")
-        .withImage("test:latest")
-        .withLabels(labels)
-        .withEnv(Collections.singletonMap("TEST_KEY", "TEST_VALUE"))
-        .withImagePullPolicy("IfNotPresent")
-        .withRestartPolicy("OnFailure")
-        .withServiceAccount("ribbon")
-        .withPort(5701)
-        .withLimits(limits)
-        .withRequests(requests);
-    RunOperations deploymentGenerator = new RunOperations(Mockito.mock(KubernetesClient.class), generatorRunConfig.build());
+      .withName("test")
+      .withImage("test:latest")
+      .withLabels(labels)
+      .withEnv(Collections.singletonMap("TEST_KEY", "TEST_VALUE"))
+      .withImagePullPolicy("IfNotPresent")
+      .withRestartPolicy("OnFailure")
+      .withServiceAccount("ribbon")
+      .withPort(5701)
+      .withLimits(limits)
+      .withRequests(requests);
+    RunOperations deploymentGenerator = new RunOperations(Mockito.mock(KubernetesClient.class), generatorRunConfig);
 
     // When
     Pod pod = deploymentGenerator.convertRunConfigIntoPod();

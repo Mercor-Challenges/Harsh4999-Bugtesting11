@@ -17,9 +17,8 @@
 package io.fabric8.kubernetes.client.http;
 
 import io.fabric8.kubernetes.client.Config;
-import io.fabric8.kubernetes.client.RequestConfig;
-import io.fabric8.kubernetes.client.utils.HttpClientUtils;
 
+import java.io.BufferedReader;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -33,18 +32,7 @@ public interface HttpClient extends AutoCloseable {
 
   interface Factory {
 
-    /**
-     * Create a builder that is customized by the {@link Config}. By default it
-     * will apply the common configuration {@link HttpClientUtils#applyCommonConfiguration(Config, Builder, Factory)}
-     *
-     * @param config the configuration to apply
-     * @return the configured {@link Builder}
-     */
-    default HttpClient.Builder newBuilder(Config config) {
-      Builder builder = newBuilder();
-      HttpClientUtils.applyCommonConfiguration(config, builder, this);
-      return builder;
-    }
+    HttpClient createHttpClient(Config config);
 
     HttpClient.Builder newBuilder();
 
@@ -64,79 +52,36 @@ public interface HttpClient extends AutoCloseable {
 
     HttpClient build();
 
-    /**
-     * Sets the read timeout for normal http requests. Will also
-     * be used as the connection timeout for {@link WebSocket}s
-     */
     DerivedClientBuilder readTimeout(long readTimeout, TimeUnit unit);
 
-    DerivedClientBuilder writeTimeout(long writeTimeout, TimeUnit unit);
-
-    /**
-     * Sets the HttpClient to be used to perform HTTP requests whose responses
-     * will be streamed.
-     *
-     * @return this Builder instance.
-     */
     DerivedClientBuilder forStreaming();
 
-    DerivedClientBuilder addOrReplaceInterceptor(String name, Interceptor interceptor);
-
-    /**
-     * Prevents any built-in authenticator to respond to challenges from origin server.
-     * <p>
-     * <i>OkHttp specific option.</i>
-     *
-     * @return this Builder instance.
-     */
     DerivedClientBuilder authenticatorNone();
 
-    /**
-     * Supply an {@link RequestConfig} via a {@link Config} to {@link Interceptor#withConfig(Config)}
-     *
-     * @param config
-     * @return this Builder instance.
-     */
-    DerivedClientBuilder requestConfig(Config config);
+    DerivedClientBuilder writeTimeout(long timeout, TimeUnit timeoutUnit);
+
+    DerivedClientBuilder addOrReplaceInterceptor(String name, Interceptor interceptor);
   }
 
   interface Builder extends DerivedClientBuilder {
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     HttpClient build();
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     Builder readTimeout(long readTimeout, TimeUnit unit);
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    Builder writeTimeout(long writeTimeout, TimeUnit unit);
-
     Builder connectTimeout(long connectTimeout, TimeUnit unit);
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     Builder forStreaming();
 
-    /**
-     * {@inheritDoc}
-     */
+    @Override
+    Builder writeTimeout(long timeout, TimeUnit timeoutUnit);
+
     @Override
     Builder addOrReplaceInterceptor(String name, Interceptor interceptor);
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     Builder authenticatorNone();
 
@@ -148,9 +93,38 @@ public interface HttpClient extends AutoCloseable {
 
     Builder proxyAuthorization(String credentials);
 
-    Builder tlsVersions(TlsVersion... tlsVersions);
+    Builder tlsVersions(TlsVersion[] tlsVersions);
 
     Builder preferHttp11();
+  }
+
+  /**
+   * A simplified java.util.concurrent.Flow.Subscription and a future tracking done.
+   * <br>
+   * The body should be consumed until the end or cancelled.
+   */
+  interface AsyncBody {
+    /**
+     * Called to deliver results to the {@link BodyConsumer}
+     */
+    void consume();
+
+    /**
+     * Tracks the completion of the body.
+     *
+     * @return the future
+     */
+    CompletableFuture<Void> done();
+
+    void cancel();
+  }
+
+  /**
+   * A functional interface for consuming async result bodies
+   */
+  @FunctionalInterface
+  interface BodyConsumer<T> {
+    void consume(T value, AsyncBody asyncBody) throws Exception;
   }
 
   @Override
@@ -181,18 +155,28 @@ public interface HttpClient extends AutoCloseable {
   <T> CompletableFuture<HttpResponse<T>> sendAsync(HttpRequest request, Class<T> type);
 
   /**
-   * Send a request and consume the bytes of the resulting response body
-   * <p>
-   * HtttpClient implementations will provide ByteBuffers that may be held directly.
+   * Send a request and consume the lines of the response body using the same logic as {@link BufferedReader} to
+   * break up the lines.
    *
    * @param request the HttpRequest to send
    * @param consumer the response body consumer
    * @return the future which will be ready after the headers have been read
    */
-  CompletableFuture<HttpResponse<AsyncBody>> consumeBytes(HttpRequest request, AsyncBody.Consumer<List<ByteBuffer>> consumer);
+  CompletableFuture<HttpResponse<AsyncBody>> consumeLines(HttpRequest request, BodyConsumer<String> consumer);
+
+  /**
+   * Send a request and consume the bytes of the resulting response body
+   *
+   * @param request the HttpRequest to send
+   * @param consumer the response body consumer
+   * @return the future which will be ready after the headers have been read
+   */
+  CompletableFuture<HttpResponse<AsyncBody>> consumeBytes(HttpRequest request, BodyConsumer<List<ByteBuffer>> consumer);
 
   WebSocket.Builder newWebSocketBuilder();
 
   HttpRequest.Builder newHttpRequestBuilder();
+
+  HttpClient.Factory getFactory();
 
 }

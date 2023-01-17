@@ -67,10 +67,3 @@ spec:
       - ct
   subresources:
     status: {}
----
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: test
----
-random: yaml

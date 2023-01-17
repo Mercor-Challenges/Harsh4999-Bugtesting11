@@ -16,14 +16,7 @@
 
 package io.fabric8.kubernetes.client.dsl;
 
-import java.util.concurrent.TimeUnit;
-
 public interface TimeoutImageEditReplacePatchable<T> extends
-    Timeoutable, ImageEditReplacePatchable<T> {
-
-  @Override
-  ImageEditReplacePatchable<T> withTimeout(long timeout, TimeUnit unit);
-
-  @Override
-  ImageEditReplacePatchable<T> withTimeoutInMillis(long timeoutInMillis);
+  Timeoutable<ImageEditReplacePatchable<T>>,
+  ImageEditReplacePatchable<T> {
 }

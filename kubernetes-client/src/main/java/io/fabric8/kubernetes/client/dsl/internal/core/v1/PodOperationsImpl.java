@@ -15,7 +15,6 @@
  */
 package io.fabric8.kubernetes.client.dsl.internal.core.v1;
 
-import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.DeleteOptions;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.Pod;
@@ -60,8 +59,6 @@ import io.fabric8.kubernetes.client.utils.URLUtils.URLBuilder;
 import io.fabric8.kubernetes.client.utils.Utils;
 import io.fabric8.kubernetes.client.utils.internal.Base64;
 import io.fabric8.kubernetes.client.utils.internal.PodOperationUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -74,14 +71,12 @@ import java.io.PipedOutputStream;
 import java.io.Reader;
 import java.net.InetAddress;
 import java.net.MalformedURLException;
-import java.net.URI;
 import java.net.URL;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -92,11 +87,8 @@ public class PodOperationsImpl extends HasMetadataOperation<Pod, PodList, PodRes
     implements PodResource, CopyOrReadable {
 
   public static final int HTTP_TOO_MANY_REQUESTS = 429;
-  private static final Integer DEFAULT_POD_READY_WAIT_TIMEOUT = 5;
+  private static final Integer DEFAULT_POD_LOG_WAIT_TIMEOUT = 5;
   private static final String[] EMPTY_COMMAND = { "/bin/sh", "-i" };
-  public static final String DEFAULT_CONTAINER_ANNOTATION_NAME = "kubectl.kubernetes.io/default-container";
-
-  static final transient Logger LOG = LoggerFactory.getLogger(PodOperationsImpl.class);
 
   private final PodOperationContext podOperationContext;
 
@@ -172,8 +164,8 @@ public class PodOperationsImpl extends HasMetadataOperation<Pod, PodList, PodRes
   public LogWatch watchLog(OutputStream out) {
     checkForPiped(out);
     try {
-      PodOperationUtil.waitUntilReadyOrSucceded(this,
-          getContext().getReadyWaitTimeout() != null ? getContext().getReadyWaitTimeout() : DEFAULT_POD_READY_WAIT_TIMEOUT);
+      PodOperationUtil.waitUntilReadyBeforeFetchingLogs(this,
+          getContext().getLogWaitTimeout() != null ? getContext().getLogWaitTimeout() : DEFAULT_POD_LOG_WAIT_TIMEOUT);
       // Issue Pod Logs HTTP request
       URL url = new URL(URLUtils.join(getResourceUrl().toString(), getContext().getLogParameters() + "&follow=true"));
       final LogWatchCallback callback = new LogWatchCallback(out, this.context.getExecutor());
@@ -184,21 +176,16 @@ public class PodOperationsImpl extends HasMetadataOperation<Pod, PodList, PodRes
   }
 
   @Override
-  public PodOperationsImpl withReadyWaitTimeout(Integer logWaitTimeout) {
-    return new PodOperationsImpl(getContext().withReadyWaitTimeout(logWaitTimeout), context);
-  }
-
-  @Override
   public Loggable withLogWaitTimeout(Integer logWaitTimeout) {
-    return withReadyWaitTimeout(logWaitTimeout);
+    return new PodOperationsImpl(getContext().withLogWaitTimeout(logWaitTimeout), context);
   }
 
   @Override
   public PortForward portForward(int port, ReadableByteChannel in, WritableByteChannel out) {
     try {
       return new PortForwarderWebsocket(httpClient, this.context.getExecutor()).forward(getResourceUrl(), port, in, out);
-    } catch (Exception e) {
-      throw KubernetesClientException.launderThrowable(e);
+    } catch (Throwable t) {
+      throw KubernetesClientException.launderThrowable(t);
     }
   }
 
@@ -206,8 +193,8 @@ public class PodOperationsImpl extends HasMetadataOperation<Pod, PodList, PodRes
   public LocalPortForward portForward(int port) {
     try {
       return new PortForwarderWebsocket(httpClient, this.context.getExecutor()).forward(getResourceUrl(), port);
-    } catch (Exception e) {
-      throw KubernetesClientException.launderThrowable(e);
+    } catch (Throwable t) {
+      throw KubernetesClientException.launderThrowable(t);
     }
   }
 
@@ -215,8 +202,8 @@ public class PodOperationsImpl extends HasMetadataOperation<Pod, PodList, PodRes
   public LocalPortForward portForward(int port, int localPort) {
     try {
       return new PortForwarderWebsocket(httpClient, this.context.getExecutor()).forward(getResourceUrl(), port, localPort);
-    } catch (Exception e) {
-      throw KubernetesClientException.launderThrowable(e);
+    } catch (Throwable t) {
+      throw KubernetesClientException.launderThrowable(t);
     }
   }
 
@@ -268,6 +255,9 @@ public class PodOperationsImpl extends HasMetadataOperation<Pod, PodList, PodRes
       return false;
     } catch (IOException exception) {
       throw KubernetesClientException.launderThrowable(forOperationType("evict"), exception);
+    } catch (InterruptedException interruptedException) {
+      Thread.currentThread().interrupt();
+      throw KubernetesClientException.launderThrowable(forOperationType("evict"), interruptedException);
     }
   }
 
@@ -281,89 +271,37 @@ public class PodOperationsImpl extends HasMetadataOperation<Pod, PodList, PodRes
   public ExecWatch exec(String... command) {
     String[] actualCommands = command.length >= 1 ? command : EMPTY_COMMAND;
     try {
-      URL url = getURL("exec", actualCommands);
-
-      return setupConnectionToPod(url.toURI());
-    } catch (Exception e) {
-      throw KubernetesClientException.launderThrowable(forOperationType("exec"), e);
+      URL url = getURLWithCommandParams(actualCommands);
+      HttpClient clone = httpClient.newBuilder().readTimeout(0, TimeUnit.MILLISECONDS).build();
+      final ExecWebSocketListener execWebSocketListener = new ExecWebSocketListener(getContext(), this.context.getExecutor());
+      CompletableFuture<WebSocket> startedFuture = clone.newWebSocketBuilder()
+          .subprotocol("v4.channel.k8s.io")
+          .uri(url.toURI())
+          .buildAsync(execWebSocketListener);
+      startedFuture.whenComplete((w, t) -> {
+        if (t != null) {
+          execWebSocketListener.onError(w, t);
+        }
+      });
+      Utils.waitUntilReadyOrFail(startedFuture, config.getWebsocketTimeout(), TimeUnit.MILLISECONDS);
+      return execWebSocketListener;
+    } catch (Throwable t) {
+      throw KubernetesClientException.launderThrowable(forOperationType("exec"), t);
     }
   }
 
-  @Override
-  public ExecWatch attach() {
-    try {
-      URL url = getURL("attach", null);
+  URL getURLWithCommandParams(String[] commands) throws MalformedURLException {
+    String url = URLUtils.join(getResourceUrl().toString(), "exec");
 
-      return setupConnectionToPod(url.toURI());
-    } catch (Exception e) {
-      throw KubernetesClientException.launderThrowable(forOperationType("attach"), e);
-    }
-  }
-
-  private URL getURL(String operation, String[] commands) throws MalformedURLException {
-    Pod fromServer = PodOperationUtil.waitUntilReadyOrSucceded(this,
-        getContext().getReadyWaitTimeout() != null ? getContext().getReadyWaitTimeout() : DEFAULT_POD_READY_WAIT_TIMEOUT);
-
-    String url = URLUtils.join(getResourceUrl().toString(), operation);
     URLBuilder httpUrlBuilder = new URLBuilder(url);
-    if (commands != null) {
-      for (String cmd : commands) {
-        httpUrlBuilder.addQueryParameter("command", cmd);
-      }
+
+    for (String cmd : commands) {
+      httpUrlBuilder.addQueryParameter("command", cmd);
     }
-    PodOperationContext contextToUse = getContext();
-    contextToUse = contextToUse.withContainerId(validateOrDefaultContainerId(contextToUse.getContainerId(), fromServer));
-    contextToUse.addQueryParameters(httpUrlBuilder);
+
+    getContext().addQueryParameters(httpUrlBuilder);
+
     return httpUrlBuilder.build();
-  }
-
-  /**
-   * If not specified, choose an appropriate default container id
-   */
-  String validateOrDefaultContainerId(String name, Pod pod) {
-    if (pod == null) {
-      pod = this.getItemOrRequireFromServer();
-    }
-    // spec and container null-checks are not necessary for real k8s clusters, added them to simplify some tests running in the mockserver
-    if (pod.getSpec() == null || pod.getSpec().getContainers() == null || pod.getSpec().getContainers().isEmpty()) {
-      throw new KubernetesClientException("Pod has no containers!");
-    }
-    final List<Container> containers = pod.getSpec().getContainers();
-    if (name == null) {
-      name = pod.getMetadata().getAnnotations().get(DEFAULT_CONTAINER_ANNOTATION_NAME);
-      if (name != null && !hasContainer(containers, name)) {
-        LOG.warn("Default container {} from annotation not found in pod {}", name, pod.getMetadata().getName());
-        name = null;
-      }
-      if (name == null) {
-        name = containers.get(0).getName();
-        LOG.debug("using first container {} in pod {}", name, pod.getMetadata().getName());
-      }
-    } else if (!hasContainer(containers, name)) {
-      throw new KubernetesClientException(
-          String.format("container %s not found in pod %s", name, pod.getMetadata().getName()));
-    }
-    return name;
-  }
-
-  private boolean hasContainer(List<Container> containers, String toFind) {
-    return containers.stream().map(Container::getName).anyMatch(s -> s.equals(toFind));
-  }
-
-  private ExecWebSocketListener setupConnectionToPod(URI uri) {
-    HttpClient clone = httpClient.newBuilder().readTimeout(0, TimeUnit.MILLISECONDS).build();
-    ExecWebSocketListener execWebSocketListener = new ExecWebSocketListener(getContext(), this.context.getExecutor());
-    CompletableFuture<WebSocket> startedFuture = clone.newWebSocketBuilder()
-        .subprotocol("v4.channel.k8s.io")
-        .uri(uri)
-        .buildAsync(execWebSocketListener);
-    startedFuture.whenComplete((w, t) -> {
-      if (t != null) {
-        execWebSocketListener.onError(w, t);
-      }
-    });
-    Utils.waitUntilReadyOrFail(startedFuture, config.getWebsocketTimeout(), TimeUnit.MILLISECONDS);
-    return execWebSocketListener;
   }
 
   @Override
@@ -635,7 +573,7 @@ public class PodOperationsImpl extends HasMetadataOperation<Pod, PodList, PodRes
   }
 
   public static String shellQuote(String value) {
-    return "'" + value.replace("'", "'\\''") + "'";
+    return "'" + value.replace("'", "'\\\\''") + "'";
   }
 
   @Override

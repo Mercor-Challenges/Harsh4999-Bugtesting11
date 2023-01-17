@@ -2,7 +2,6 @@
 package io.fabric8.camelk.v1;
 
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
@@ -39,7 +38,6 @@ import lombok.experimental.Accessors;
     "apiVersion",
     "kind",
     "metadata",
-    "PublishStrategyOptions",
     "baseImage",
     "buildStrategy",
     "kanikoBuildCache",
@@ -76,31 +74,28 @@ import lombok.experimental.Accessors;
 public class IntegrationPlatformBuildSpec implements KubernetesResource
 {
 
-    @JsonProperty("PublishStrategyOptions")
-    @JsonInclude(JsonInclude.Include.NON_EMPTY)
-    private Map<String, String> publishStrategyOptions = new LinkedHashMap<String, String>();
     @JsonProperty("baseImage")
-    private java.lang.String baseImage;
+    private String baseImage;
     @JsonProperty("buildStrategy")
-    private java.lang.String buildStrategy;
+    private String buildStrategy;
     @JsonProperty("kanikoBuildCache")
     private Boolean kanikoBuildCache;
     @JsonProperty("maven")
     private MavenSpec maven;
     @JsonProperty("persistentVolumeClaim")
-    private java.lang.String persistentVolumeClaim;
+    private String persistentVolumeClaim;
     @JsonProperty("publishStrategy")
-    private java.lang.String publishStrategy;
+    private String publishStrategy;
     @JsonProperty("registry")
     private RegistrySpec registry;
     @JsonProperty("runtimeProvider")
-    private java.lang.String runtimeProvider;
+    private String runtimeProvider;
     @JsonProperty("runtimeVersion")
-    private java.lang.String runtimeVersion;
+    private String runtimeVersion;
     @JsonProperty("timeout")
     private Duration timeout;
     @JsonIgnore
-    private Map<java.lang.String, Object> additionalProperties = new HashMap<java.lang.String, Object>();
+    private Map<String, Object> additionalProperties = new HashMap<String, Object>();
 
     /**
      * No args constructor for use in serialization
@@ -120,12 +115,10 @@ public class IntegrationPlatformBuildSpec implements KubernetesResource
      * @param kanikoBuildCache
      * @param publishStrategy
      * @param persistentVolumeClaim
-     * @param publishStrategyOptions
      * @param timeout
      */
-    public IntegrationPlatformBuildSpec(Map<String, String> publishStrategyOptions, java.lang.String baseImage, java.lang.String buildStrategy, Boolean kanikoBuildCache, MavenSpec maven, java.lang.String persistentVolumeClaim, java.lang.String publishStrategy, RegistrySpec registry, java.lang.String runtimeProvider, java.lang.String runtimeVersion, Duration timeout) {
+    public IntegrationPlatformBuildSpec(String baseImage, String buildStrategy, Boolean kanikoBuildCache, MavenSpec maven, String persistentVolumeClaim, String publishStrategy, RegistrySpec registry, String runtimeProvider, String runtimeVersion, Duration timeout) {
         super();
-        this.publishStrategyOptions = publishStrategyOptions;
         this.baseImage = baseImage;
         this.buildStrategy = buildStrategy;
         this.kanikoBuildCache = kanikoBuildCache;
@@ -138,33 +131,23 @@ public class IntegrationPlatformBuildSpec implements KubernetesResource
         this.timeout = timeout;
     }
 
-    @JsonProperty("PublishStrategyOptions")
-    public Map<String, String> getPublishStrategyOptions() {
-        return publishStrategyOptions;
-    }
-
-    @JsonProperty("PublishStrategyOptions")
-    public void setPublishStrategyOptions(Map<String, String> publishStrategyOptions) {
-        this.publishStrategyOptions = publishStrategyOptions;
-    }
-
     @JsonProperty("baseImage")
-    public java.lang.String getBaseImage() {
+    public String getBaseImage() {
         return baseImage;
     }
 
     @JsonProperty("baseImage")
-    public void setBaseImage(java.lang.String baseImage) {
+    public void setBaseImage(String baseImage) {
         this.baseImage = baseImage;
     }
 
     @JsonProperty("buildStrategy")
-    public java.lang.String getBuildStrategy() {
+    public String getBuildStrategy() {
         return buildStrategy;
     }
 
     @JsonProperty("buildStrategy")
-    public void setBuildStrategy(java.lang.String buildStrategy) {
+    public void setBuildStrategy(String buildStrategy) {
         this.buildStrategy = buildStrategy;
     }
 
@@ -189,22 +172,22 @@ public class IntegrationPlatformBuildSpec implements KubernetesResource
     }
 
     @JsonProperty("persistentVolumeClaim")
-    public java.lang.String getPersistentVolumeClaim() {
+    public String getPersistentVolumeClaim() {
         return persistentVolumeClaim;
     }
 
     @JsonProperty("persistentVolumeClaim")
-    public void setPersistentVolumeClaim(java.lang.String persistentVolumeClaim) {
+    public void setPersistentVolumeClaim(String persistentVolumeClaim) {
         this.persistentVolumeClaim = persistentVolumeClaim;
     }
 
     @JsonProperty("publishStrategy")
-    public java.lang.String getPublishStrategy() {
+    public String getPublishStrategy() {
         return publishStrategy;
     }
 
     @JsonProperty("publishStrategy")
-    public void setPublishStrategy(java.lang.String publishStrategy) {
+    public void setPublishStrategy(String publishStrategy) {
         this.publishStrategy = publishStrategy;
     }
 
@@ -219,22 +202,22 @@ public class IntegrationPlatformBuildSpec implements KubernetesResource
     }
 
     @JsonProperty("runtimeProvider")
-    public java.lang.String getRuntimeProvider() {
+    public String getRuntimeProvider() {
         return runtimeProvider;
     }
 
     @JsonProperty("runtimeProvider")
-    public void setRuntimeProvider(java.lang.String runtimeProvider) {
+    public void setRuntimeProvider(String runtimeProvider) {
         this.runtimeProvider = runtimeProvider;
     }
 
     @JsonProperty("runtimeVersion")
-    public java.lang.String getRuntimeVersion() {
+    public String getRuntimeVersion() {
         return runtimeVersion;
     }
 
     @JsonProperty("runtimeVersion")
-    public void setRuntimeVersion(java.lang.String runtimeVersion) {
+    public void setRuntimeVersion(String runtimeVersion) {
         this.runtimeVersion = runtimeVersion;
     }
 
@@ -249,12 +232,12 @@ public class IntegrationPlatformBuildSpec implements KubernetesResource
     }
 
     @JsonAnyGetter
-    public Map<java.lang.String, Object> getAdditionalProperties() {
+    public Map<String, Object> getAdditionalProperties() {
         return this.additionalProperties;
     }
 
     @JsonAnySetter
-    public void setAdditionalProperty(java.lang.String name, Object value) {
+    public void setAdditionalProperty(String name, Object value) {
         this.additionalProperties.put(name, value);
     }
 

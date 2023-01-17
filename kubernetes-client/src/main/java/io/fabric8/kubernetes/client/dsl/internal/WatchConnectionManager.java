@@ -33,7 +33,6 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -46,12 +45,11 @@ import static java.net.HttpURLConnection.HTTP_UNAVAILABLE;
 public class WatchConnectionManager<T extends HasMetadata, L extends KubernetesResourceList<T>>
     extends AbstractWatchManager<T> {
 
-  public static final int BACKOFF_MAX_EXPONENT = 5;
-
   private static final Logger logger = LoggerFactory.getLogger(WatchConnectionManager.class);
 
   protected WatcherWebSocketListener<T> listener;
-  private volatile CompletableFuture<WebSocket> websocketFuture;
+  private CompletableFuture<WebSocket> websocketFuture;
+  private WebSocket websocket;
 
   private volatile boolean ready;
 
@@ -80,23 +78,24 @@ public class WatchConnectionManager<T extends HasMetadata, L extends KubernetesR
       final ListOptions listOptions, final Watcher<T> watcher, final int reconnectInterval, final int reconnectLimit,
       long websocketTimeout) throws MalformedURLException {
     // Default max 32x slowdown from base interval
-    this(client, baseOperation, listOptions, watcher, reconnectInterval, reconnectLimit, websocketTimeout,
-        BACKOFF_MAX_EXPONENT);
+    this(client, baseOperation, listOptions, watcher, reconnectInterval, reconnectLimit, websocketTimeout, 5);
   }
 
   @Override
-  protected void closeRequest() {
-    if (this.listener != null) {
-      this.listener.close();
-    }
-    Optional.ofNullable(this.websocketFuture).ifPresent(theFuture -> {
-      this.websocketFuture = null;
-      theFuture.whenComplete((w, t) -> {
+  protected synchronized void closeRequest() {
+    closeWebSocket(websocket);
+    if (this.websocketFuture != null) {
+      this.websocketFuture.whenComplete((w, t) -> {
         if (w != null) {
           closeWebSocket(w);
         }
       });
-    });
+      websocketFuture = null;
+    }
+  }
+
+  synchronized WatcherWebSocketListener<T> getListener() {
+    return listener;
   }
 
   public CompletableFuture<WebSocket> getWebsocketFuture() {
@@ -136,6 +135,7 @@ public class WatchConnectionManager<T extends HasMetadata, L extends KubernetesR
       }
       if (w != null) {
         this.ready = true;
+        this.websocket = w;
       }
       return w;
     });

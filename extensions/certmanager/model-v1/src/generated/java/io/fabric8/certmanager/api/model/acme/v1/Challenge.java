@@ -66,11 +66,11 @@ import lombok.experimental.Accessors;
     @BuildableReference(Volume.class),
     @BuildableReference(VolumeMount.class)
 })
-@TemplateTransformations({
-    @TemplateTransformation(value = "/manifest.vm", outputPath = "META-INF/services/io.fabric8.kubernetes.api.model.KubernetesResource", gather = true)
-})
 @Version("v1")
-@Group("acme.cert-manager.io")
+@Group("cert-manager.io")
+@TemplateTransformations({
+    @TemplateTransformation(value = "/manifest.vm", outputPath = "model.properties", gather = true)
+})
 public class Challenge implements HasMetadata, Namespaced
 {
 
@@ -80,7 +80,7 @@ public class Challenge implements HasMetadata, Namespaced
      * 
      */
     @JsonProperty("apiVersion")
-    private String apiVersion = "acme.cert-manager.io/v1";
+    private String apiVersion = "cert-manager.io/v1";
     /**
      * 
      * (Required)

@@ -16,21 +16,9 @@
 
 package io.fabric8.kubernetes.client.okhttp;
 
-import io.fabric8.kubernetes.client.KubernetesClientException;
-import io.fabric8.kubernetes.client.http.AsyncBody;
-import io.fabric8.kubernetes.client.http.AsyncBody.Consumer;
+import io.fabric8.kubernetes.client.http.HttpClient;
 import io.fabric8.kubernetes.client.http.HttpRequest;
 import io.fabric8.kubernetes.client.http.HttpResponse;
-import io.fabric8.kubernetes.client.http.StandardHttpClient;
-import io.fabric8.kubernetes.client.http.StandardHttpHeaders;
-import io.fabric8.kubernetes.client.http.StandardHttpRequest;
-import io.fabric8.kubernetes.client.http.StandardHttpRequest.BodyContent;
-import io.fabric8.kubernetes.client.http.StandardHttpRequest.ByteArrayBodyContent;
-import io.fabric8.kubernetes.client.http.StandardHttpRequest.InputStreamBodyContent;
-import io.fabric8.kubernetes.client.http.StandardHttpRequest.StringBodyContent;
-import io.fabric8.kubernetes.client.http.StandardWebSocketBuilder;
-import io.fabric8.kubernetes.client.http.WebSocket.Listener;
-import io.fabric8.kubernetes.client.http.WebSocketResponse;
 import io.fabric8.kubernetes.client.utils.Utils;
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -38,23 +26,12 @@ import okhttp3.ConnectionPool;
 import okhttp3.Dispatcher;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
-import okio.Buffer;
-import okio.BufferedSink;
 import okio.BufferedSource;
-import okio.Okio;
-import okio.Source;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.io.BufferedInputStream;
 import java.io.IOException;
-import java.io.InterruptedIOException;
 import java.io.Reader;
-import java.net.MalformedURLException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
@@ -62,18 +39,17 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.RejectedExecutionException;
 import java.util.function.Function;
 
-public class OkHttpClientImpl extends StandardHttpClient<OkHttpClientImpl, OkHttpClientFactory, OkHttpClientBuilderImpl> {
-
-  static final transient Logger LOG = LoggerFactory.getLogger(OkHttpClientImpl.class);
+public class OkHttpClientImpl implements HttpClient {
 
   static final Map<String, MediaType> MEDIA_TYPES = new ConcurrentHashMap<>();
 
   public static final MediaType JSON = parseMediaType("application/json");
+  public static final MediaType JSON_PATCH = parseMediaType("application/json-patch+json");
+  public static final MediaType STRATEGIC_MERGE_JSON_PATCH = parseMediaType("application/strategic-merge-patch+json");
+  public static final MediaType JSON_MERGE_PATCH = parseMediaType("application/merge-patch+json");
 
   static MediaType parseMediaType(String contentType) {
     MediaType result = MediaType.parse(contentType);
@@ -81,59 +57,35 @@ public class OkHttpClientImpl extends StandardHttpClient<OkHttpClientImpl, OkHtt
     return result;
   }
 
-  abstract static class OkHttpAsyncBody<T> implements AsyncBody {
-    private final AsyncBody.Consumer<T> consumer;
+  private abstract class OkHttpAsyncBody<T> implements AsyncBody {
+    private final BodyConsumer<T> consumer;
     private final BufferedSource source;
     private final CompletableFuture<Void> done = new CompletableFuture<>();
-    private boolean consuming;
-    private boolean requested;
-    private final Executor executor;
 
-    OkHttpAsyncBody(AsyncBody.Consumer<T> consumer, BufferedSource source, Executor executor) {
+    private OkHttpAsyncBody(BodyConsumer<T> consumer, BufferedSource source) {
       this.consumer = consumer;
       this.source = source;
-      this.executor = executor;
     }
 
     @Override
     public void consume() {
-      synchronized (this) {
-        requested = true;
-        if (consuming) {
-          return;
-        }
-        consuming = true;
-      }
+      // consume should not block from a callers perspective
       try {
-        // consume should not block a caller, delegate to the dispatcher thread pool
-        executor.execute(this::doConsume);
+        httpClient.dispatcher().executorService().execute(() -> {
+          try {
+            if (!source.exhausted() && !done.isDone()) {
+              T value = process(source);
+              consumer.consume(value, this);
+            } else {
+              done.complete(null);
+            }
+          } catch (Exception e) {
+            Utils.closeQuietly(source);
+            done.completeExceptionally(e);
+          }
+        });
       } catch (Exception e) {
         // executor is likely shutdown
-        Utils.closeQuietly(source);
-        done.completeExceptionally(e);
-      }
-    }
-
-    private void doConsume() {
-      try {
-        while (true) {
-          synchronized (this) {
-            if (!requested || done.isDone()) {
-              consuming = false;
-              return;
-            }
-            requested = false;
-          }
-          if (!source.exhausted()) { // this is a blocking call
-            T value = process(source);
-            consumer.consume(value, this);
-          } else {
-            // even if we've read everything an explicit close is still needed
-            source.close();
-            done.complete(null);
-          }
-        }
-      } catch (Exception e) {
         Utils.closeQuietly(source);
         done.completeExceptionally(e);
       }
@@ -159,7 +111,7 @@ public class OkHttpClientImpl extends StandardHttpClient<OkHttpClientImpl, OkHtt
     private T body;
     private Class<T> type;
 
-    public OkHttpResponseImpl(Response response, T body) {
+    public OkHttpResponseImpl(Response response, T body) throws IOException {
       this.response = response;
       this.body = body;
     }
@@ -195,22 +147,7 @@ public class OkHttpClientImpl extends StandardHttpClient<OkHttpClientImpl, OkHtt
 
     @Override
     public HttpRequest request() {
-      String bodyString = null;
-      Request request = response.request();
-      if (request.body() != null) {
-        Buffer buffer = new Buffer();
-        try {
-          request.body().writeTo(buffer);
-          bodyString = buffer.readUtf8();
-        } catch (IOException e) {
-          // just ignore, the bodyString is only for informational purposes
-        }
-      }
-      return new StandardHttpRequest(
-          request.headers().toMultimap(),
-          request.url().uri(),
-          request.method(),
-          bodyString);
+      return new OkHttpRequestImpl(response.request());
     }
 
     @Override
@@ -229,23 +166,18 @@ public class OkHttpClientImpl extends StandardHttpClient<OkHttpClientImpl, OkHtt
       return response.headers(key);
     }
 
-    @Override
-    public Map<String, List<String>> headers() {
-      return response.headers().toMultimap();
-    }
-
   }
 
   private final okhttp3.OkHttpClient httpClient;
+  private final OkHttpClientFactory factory;
 
-  public OkHttpClientImpl(OkHttpClient client, OkHttpClientBuilderImpl builder) {
-    super(builder);
-    this.httpClient = client;
+  public OkHttpClientImpl(OkHttpClient httpClient, OkHttpClientFactory factory) {
+    this.httpClient = httpClient;
+    this.factory = factory;
   }
 
   @Override
   public void close() {
-    LOG.debug("Shutting down dispatcher " + this.httpClient.dispatcher(), new Exception());
     ConnectionPool connectionPool = httpClient.connectionPool();
     Dispatcher dispatcher = httpClient.dispatcher();
     ExecutorService executorService = httpClient.dispatcher() != null ? httpClient.dispatcher().executorService() : null;
@@ -263,34 +195,55 @@ public class OkHttpClientImpl extends StandardHttpClient<OkHttpClientImpl, OkHtt
     }
   }
 
+  @Override
+  public Builder newBuilder() {
+    return new OkHttpClientBuilderImpl(httpClient.newBuilder(), this.factory);
+  }
+
+  @Override
+  public CompletableFuture<HttpResponse<AsyncBody>> consumeLines(HttpRequest request,
+      BodyConsumer<String> consumer) {
+    Function<BufferedSource, AsyncBody> handler = s -> new OkHttpAsyncBody<String>(consumer, s) {
+      @Override
+      protected String process(BufferedSource source) throws IOException {
+        return source.readUtf8LineStrict();
+      }
+    };
+    return sendAsync(request, handler);
+  }
+
+  @Override
+  public CompletableFuture<HttpResponse<AsyncBody>> consumeBytes(HttpRequest request,
+      BodyConsumer<List<ByteBuffer>> consumer) {
+    Function<BufferedSource, AsyncBody> handler = s -> new OkHttpAsyncBody<List<ByteBuffer>>(consumer, s) {
+      @Override
+      protected List<ByteBuffer> process(BufferedSource source) throws IOException {
+        return Collections.singletonList(ByteBuffer.wrap(source.readByteArray()));
+      }
+    };
+    return sendAsync(request, handler);
+  }
+
   private CompletableFuture<HttpResponse<AsyncBody>> sendAsync(HttpRequest request,
       Function<BufferedSource, AsyncBody> handler) {
     CompletableFuture<HttpResponse<AsyncBody>> future = new CompletableFuture<>();
-    Call call = httpClient.newCall(requestBuilder((StandardHttpRequest) request).build());
-    try {
-      call.enqueue(new Callback() {
+    Call call = httpClient.newCall(((OkHttpRequestImpl) request).getRequest());
+    call.enqueue(new Callback() {
 
-        @Override
-        public void onResponse(Call call, Response response) throws IOException {
-          BufferedSource source = response.body().source();
+      @Override
+      public void onResponse(Call call, Response response) throws IOException {
+        BufferedSource source = response.body().source();
 
-          AsyncBody asyncBody = handler.apply(source);
+        AsyncBody asyncBody = handler.apply(source);
 
-          future.complete(new OkHttpResponseImpl<>(response, asyncBody));
-        }
+        future.complete(new OkHttpResponseImpl<>(response, asyncBody));
+      }
 
-        @Override
-        public void onFailure(Call call, IOException e) {
-          Throwable t = e;
-          if (e instanceof InterruptedIOException && e.getCause() instanceof RejectedExecutionException) {
-            t = wrapRejected((RejectedExecutionException) e.getCause());
-          }
-          future.completeExceptionally(t);
-        }
-      });
-    } catch (RejectedExecutionException e) {
-      throw wrapRejected(e);
-    }
+      @Override
+      public void onFailure(Call call, IOException e) {
+        future.completeExceptionally(e);
+      }
+    });
     future.whenComplete((r, t) -> {
       if (future.isCancelled()) {
         call.cancel();
@@ -299,95 +252,47 @@ public class OkHttpClientImpl extends StandardHttpClient<OkHttpClientImpl, OkHtt
     return future;
   }
 
-  private KubernetesClientException wrapRejected(RejectedExecutionException e) {
-    return new KubernetesClientException("The okhttp client executor has been shutdown.  "
-        + "More than likely this is because the KubernetesClient.close method (see debug logging) has been called "
-        + "- please ensure that is intentional. Dispatcher: " + this.httpClient.dispatcher(), e);
+  @Override
+  public <T> CompletableFuture<HttpResponse<T>> sendAsync(HttpRequest request, Class<T> type) {
+    CompletableFuture<HttpResponse<T>> future = new CompletableFuture<>();
+    Call call = httpClient.newCall(((OkHttpRequestImpl) request).getRequest());
+    call.enqueue(new Callback() {
+
+      @Override
+      public void onResponse(Call call, Response response) throws IOException {
+        future.complete(new OkHttpResponseImpl<>(response, type));
+      }
+
+      @Override
+      public void onFailure(Call call, IOException e) {
+        future.completeExceptionally(e);
+      }
+    });
+    future.whenComplete((r, t) -> {
+      if (future.isCancelled()) {
+        call.cancel();
+      }
+    });
+    return future;
+  }
+
+  @Override
+  public io.fabric8.kubernetes.client.http.WebSocket.Builder newWebSocketBuilder() {
+    return new OkHttpWebSocketImpl.BuilderImpl(this.httpClient);
   }
 
   public okhttp3.OkHttpClient getOkHttpClient() {
     return httpClient;
   }
 
-  private okhttp3.Request.Builder newRequestBuilder() {
-    return new Request.Builder();
+  @Override
+  public HttpRequest.Builder newHttpRequestBuilder() {
+    return new OkHttpRequestImpl.BuilderImpl();
   }
 
   @Override
-  public CompletableFuture<HttpResponse<AsyncBody>> consumeBytesDirect(StandardHttpRequest request,
-      Consumer<List<ByteBuffer>> consumer) {
-    Function<BufferedSource, AsyncBody> handler = s -> new OkHttpAsyncBody<List<ByteBuffer>>(consumer, s,
-        this.httpClient.dispatcher().executorService()) {
-      @Override
-      protected List<ByteBuffer> process(BufferedSource source) throws IOException {
-        // read only what is available otherwise okhttp will block trying to read
-        // a whole fetch size 8k worth
-        return Collections.singletonList(ByteBuffer.wrap(source.readByteArray(source.buffer().size())));
-      }
-    };
-    return sendAsync(request, handler);
-  }
-
-  Request.Builder requestBuilder(StandardHttpRequest request) {
-    okhttp3.Request.Builder requestBuilder = newRequestBuilder();
-
-    BodyContent body = request.body();
-    if (body != null) {
-      String contentType = request.getContentType();
-      if (body instanceof StringBodyContent) {
-        requestBuilder.method(request.method(),
-            RequestBody.create(OkHttpClientImpl.parseMediaType(contentType), ((StringBodyContent) body).getContent()));
-      } else if (body instanceof ByteArrayBodyContent) {
-        requestBuilder.method(request.method(),
-            RequestBody.create(OkHttpClientImpl.parseMediaType(contentType), ((ByteArrayBodyContent) body).getContent()));
-      } else if (body instanceof InputStreamBodyContent) {
-        InputStreamBodyContent bodyContent = (InputStreamBodyContent) body;
-        requestBuilder.method(request.method(), new RequestBody() {
-
-          @Override
-          public void writeTo(BufferedSink sink) throws IOException {
-            try (final BufferedInputStream bis = new BufferedInputStream(bodyContent.getContent());
-                final Source source = Okio.source(bis)) {
-              sink.writeAll(source);
-            }
-          }
-
-          @Override
-          public MediaType contentType() {
-            return OkHttpClientImpl.parseMediaType(contentType);
-          }
-
-          @Override
-          public long contentLength() throws IOException {
-            return bodyContent.getLength();
-          }
-        });
-      } else {
-        throw new AssertionError("Unsupported body content");
-      }
-    }
-
-    request.headers().entrySet().stream()
-        .forEach(e -> e.getValue().stream().forEach(v -> requestBuilder.addHeader(e.getKey(), v)));
-    try {
-      requestBuilder.url(request.uri().toURL());
-    } catch (MalformedURLException e) {
-      throw new IllegalArgumentException(request.uri().toString(), e);
-    }
-    if (request.isExpectContinue()) {
-      requestBuilder.header(StandardHttpHeaders.EXPECT, StandardHttpHeaders.EXPECT_CONTINUE);
-    }
-    return requestBuilder;
-  }
-
-  @Override
-  public CompletableFuture<WebSocketResponse> buildWebSocketDirect(StandardWebSocketBuilder standardWebSocketBuilder,
-      Listener listener) {
-    Request.Builder requestBuilder = requestBuilder(standardWebSocketBuilder.asHttpRequest());
-    if (standardWebSocketBuilder.getSubprotocol() != null) {
-      requestBuilder.header("Sec-WebSocket-Protocol", standardWebSocketBuilder.getSubprotocol());
-    }
-    return OkHttpWebSocketImpl.buildAsync(httpClient, requestBuilder.build(), listener);
+  public Factory getFactory() {
+    return this.factory;
   }
 
 }

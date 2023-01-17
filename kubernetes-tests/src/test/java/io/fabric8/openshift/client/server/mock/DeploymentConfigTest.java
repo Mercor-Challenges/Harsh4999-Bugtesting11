@@ -255,7 +255,7 @@ class DeploymentConfigTest {
   @Test
   void testGetLog() {
     // Given
-    server.expect().get().withPath("/apis/apps.openshift.io/v1/namespaces/ns1/deploymentconfigs/dc1/log?pretty=false")
+    server.expect().get().withPath("/apis/apps.openshift.io/v1/namespaces/ns1/deploymentconfigs/dc1/log")
         .andReturn(HttpURLConnection.HTTP_OK, "testlog")
         .times(2);
 
@@ -277,7 +277,7 @@ class DeploymentConfigTest {
     LogWatch logWatch = client.deploymentConfigs().inNamespace("ns1").withName("dc1").watchLog(byteArrayOutputStream);
 
     // Then
-    await().atMost(10, TimeUnit.SECONDS).until(() -> byteArrayOutputStream.toString().length() > 0);
+    await().atMost(2, TimeUnit.SECONDS).until(() -> byteArrayOutputStream.toString().length() > 0);
     assertNotNull(byteArrayOutputStream.toString());
     assertEquals("testlog", byteArrayOutputStream.toString());
     logWatch.close();
@@ -299,75 +299,9 @@ class DeploymentConfigTest {
     InputStreamPumper.pump(is, byteArrayOutputStream::write, exec);
 
     // Then
-    await().atMost(10, TimeUnit.SECONDS).until(() -> byteArrayOutputStream.toString().length() > 0);
+    await().atMost(2, TimeUnit.SECONDS).until(() -> byteArrayOutputStream.toString().length() > 0);
     assertNotNull(byteArrayOutputStream.toString());
     assertEquals("testlog", byteArrayOutputStream.toString());
-    // graceful close
-    assertEquals(-1, is.read());
-    logWatch.close();
-  }
-
-  @Test
-  void testGetLogWithTimestamps() {
-    // Given
-    server.expect().get()
-        .withPath("/apis/apps.openshift.io/v1/namespaces/ns1/deploymentconfigs/dc1/log?pretty=false&timestamps=true")
-        .andReturn(HttpURLConnection.HTTP_OK, "testlogtimestamps")
-        .times(2);
-
-    // When
-    String log = client.deploymentConfigs().inNamespace("ns1").withName("dc1").usingTimestamps().getLog();
-
-    // Then
-    assertNotNull(log);
-    assertEquals("testlogtimestamps", log);
-  }
-
-  @Test
-  void testWatchLogWithTimestamps() {
-    // Given
-    setupWatchLog();
-    server.expect().get()
-        .withPath(
-            "/apis/apps.openshift.io/v1/namespaces/ns1/deploymentconfigs/dc1/log?pretty=false&timestamps=true&follow=true")
-        .andReturn(HttpURLConnection.HTTP_OK, "testlogtimestamps")
-        .once();
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-
-    // When
-    LogWatch logWatch = client.deploymentConfigs().inNamespace("ns1").withName("dc1").usingTimestamps()
-        .watchLog(byteArrayOutputStream);
-
-    // Then
-    await().atMost(2, TimeUnit.SECONDS).until(() -> byteArrayOutputStream.toString().length() > 0);
-    assertNotNull(byteArrayOutputStream.toString());
-    assertEquals("testlogtimestamps", byteArrayOutputStream.toString());
-    logWatch.close();
-  }
-
-  @Test
-  void testWatchLogOutputWithTimestamps() throws IOException {
-    // Given
-    setupWatchLog();
-    server.expect().get()
-        .withPath(
-            "/apis/apps.openshift.io/v1/namespaces/ns1/deploymentconfigs/dc1/log?pretty=false&timestamps=true&follow=true")
-        .andReturn(HttpURLConnection.HTTP_OK, "testlogtimestamps")
-        .once();
-    // When
-    LogWatch logWatch = client.deploymentConfigs().inNamespace("ns1").withName("dc1").usingTimestamps().watchLog();
-    InputStream is = logWatch.getOutput();
-
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-
-    Executor exec = Executors.newSingleThreadExecutor();
-
-    InputStreamPumper.pump(is, byteArrayOutputStream::write, exec);
-
-    // Then
-    await().atMost(2, TimeUnit.SECONDS).until(() -> byteArrayOutputStream.toString().length() > 0);
-    assertNotNull(byteArrayOutputStream.toString());
-    assertEquals("testlogtimestamps", byteArrayOutputStream.toString());
     // graceful close
     assertEquals(-1, is.read());
     logWatch.close();
@@ -389,8 +323,7 @@ class DeploymentConfigTest {
                 .build())
             .build())
         .always();
-    server.expect().get()
-        .withPath("/apis/apps.openshift.io/v1/namespaces/ns1/deploymentconfigs/dc1/log?pretty=false&follow=true")
+    server.expect().get().withPath("/apis/apps.openshift.io/v1/namespaces/ns1/deploymentconfigs/dc1/log?follow=true")
         .andReturn(HttpURLConnection.HTTP_OK, "testlog")
         .once();
   }
@@ -405,8 +338,7 @@ class DeploymentConfigTest {
         .withReplicas(1).withAvailableReplicas(1)
         .endStatus().build();
     server.expect().get()
-        .withPath(
-            "/apis/apps.openshift.io/v1/namespaces/ns1/deploymentconfigs?fieldSelector=metadata.name%3Ddc1&resourceVersion=0")
+        .withPath("/apis/apps.openshift.io/v1/namespaces/ns1/deploymentconfigs?fieldSelector=metadata.name%3Ddc1")
         .andReturn(HttpURLConnection.HTTP_OK,
             new DeploymentConfigListBuilder().withItems(deploymentConfig).withMetadata(new ListMeta()).build())
         .always();

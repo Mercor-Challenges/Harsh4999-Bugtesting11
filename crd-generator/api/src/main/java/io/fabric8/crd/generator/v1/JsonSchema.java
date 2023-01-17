@@ -22,7 +22,6 @@ import io.fabric8.kubernetes.api.model.apiextensions.v1.JSONSchemaPropsBuilder;
 import io.sundr.model.Property;
 import io.sundr.model.TypeDef;
 import io.sundr.model.TypeRef;
-
 import java.util.List;
 
 public class JsonSchema extends AbstractJsonSchema<JSONSchemaProps, JSONSchemaPropsBuilder> {
@@ -30,11 +29,11 @@ public class JsonSchema extends AbstractJsonSchema<JSONSchemaProps, JSONSchemaPr
   private static final JsonSchema instance = new JsonSchema();
 
   private static final JSONSchemaProps JSON_SCHEMA_INT_OR_STRING = new JSONSchemaPropsBuilder()
-      .withXKubernetesIntOrString(true)
-      .withAnyOf(
-          new JSONSchemaPropsBuilder().withType("integer").build(),
-          new JSONSchemaPropsBuilder().withType("string").build())
-      .build();
+    .withXKubernetesIntOrString(true)
+    .withAnyOf(
+      new JSONSchemaPropsBuilder().withType("integer").build(),
+      new JSONSchemaPropsBuilder().withType("string").build())
+    .build();
 
   /**
    * Creates the JSON schema for the particular {@link TypeDef}.
@@ -49,32 +48,15 @@ public class JsonSchema extends AbstractJsonSchema<JSONSchemaProps, JSONSchemaPr
 
   @Override
   public JSONSchemaPropsBuilder newBuilder() {
-    return newBuilder("object");
-  }
-
-  @Override
-  public JSONSchemaPropsBuilder newBuilder(String type) {
     final JSONSchemaPropsBuilder builder = new JSONSchemaPropsBuilder();
-    builder.withType(type);
+    builder.withType("object");
     return builder;
   }
 
   @Override
   public void addProperty(Property property, JSONSchemaPropsBuilder builder,
-      JSONSchemaProps schema, SchemaPropsOptions options) {
+    JSONSchemaProps schema) {
     if (schema != null) {
-      options.getMin().ifPresent(schema::setMinimum);
-      options.getMax().ifPresent(schema::setMaximum);
-      options.getPattern().ifPresent(schema::setPattern);
-
-      if (options.isNullable()) {
-        schema.setNullable(true);
-      }
-
-      if (options.isPreserveUnknownFields()) {
-        schema.setXKubernetesPreserveUnknownFields(true);
-      }
-
       builder.addToProperties(property.getName(), schema);
     }
   }
@@ -91,21 +73,21 @@ public class JsonSchema extends AbstractJsonSchema<JSONSchemaProps, JSONSchemaPr
   @Override
   protected JSONSchemaProps arrayLikeProperty(JSONSchemaProps schema) {
     return new JSONSchemaPropsBuilder()
-        .withType("array")
-        .withNewItems()
-        .withSchema(schema)
-        .and()
-        .build();
+      .withType("array")
+      .withNewItems()
+      .withSchema(schema)
+      .and()
+      .build();
   }
 
   @Override
   protected JSONSchemaProps mapLikeProperty(JSONSchemaProps schema) {
     return new JSONSchemaPropsBuilder()
-        .withType("object")
-        .withNewAdditionalProperties()
-        .withSchema(schema)
-        .endAdditionalProperties()
-        .build();
+      .withType("object")
+      .withNewAdditionalProperties()
+      .withSchema(schema)
+      .endAdditionalProperties()
+      .build();
   }
 
   @Override
@@ -126,7 +108,7 @@ public class JsonSchema extends AbstractJsonSchema<JSONSchemaProps, JSONSchemaPr
   @Override
   protected JSONSchemaProps addDescription(JSONSchemaProps schema, String description) {
     return new JSONSchemaPropsBuilder(schema)
-        .withDescription(description)
-        .build();
+      .withDescription(description)
+      .build();
   }
 }

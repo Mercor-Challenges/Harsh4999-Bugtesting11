@@ -16,107 +16,88 @@
 
 package io.fabric8.kubernetes.client.okhttp;
 
-import io.fabric8.kubernetes.client.http.StandardHttpClientBuilder;
+import io.fabric8.kubernetes.client.KubernetesClientException;
+import io.fabric8.kubernetes.client.http.HttpClient.Builder;
+import io.fabric8.kubernetes.client.http.TlsVersion;
+import io.fabric8.kubernetes.client.internal.SSLUtils;
+import io.fabric8.kubernetes.client.okhttp.OkHttpClientImpl.OkHttpResponseImpl;
 import okhttp3.Authenticator;
 import okhttp3.ConnectionSpec;
-import okhttp3.Dispatcher;
 import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
 import okhttp3.Protocol;
+import okhttp3.Request;
+import okhttp3.Response;
 import okhttp3.logging.HttpLoggingInterceptor;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
+import javax.net.ssl.KeyManager;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
 import static okhttp3.ConnectionSpec.CLEARTEXT;
 
-class OkHttpClientBuilderImpl
-    extends StandardHttpClientBuilder<OkHttpClientImpl, OkHttpClientFactory, OkHttpClientBuilderImpl> {
+class OkHttpClientBuilderImpl implements Builder {
 
-  private okhttp3.OkHttpClient.Builder builder;
+  static final class InteceptorAdapter implements Interceptor {
+    private final io.fabric8.kubernetes.client.http.Interceptor interceptor;
+    private final String name;
 
-  public OkHttpClientBuilderImpl(OkHttpClientFactory clientFactory, okhttp3.OkHttpClient.Builder builder) {
-    super(clientFactory);
-    this.builder = builder;
+    InteceptorAdapter(io.fabric8.kubernetes.client.http.Interceptor interceptor, String name) {
+      this.interceptor = interceptor;
+      this.name = name;
+    }
+
+    @Override
+    public Response intercept(Chain chain) throws IOException {
+      Request.Builder requestBuilder = chain.request().newBuilder();
+      OkHttpRequestImpl.BuilderImpl builderImpl = new OkHttpRequestImpl.BuilderImpl(requestBuilder);
+      interceptor.before(new OkHttpRequestImpl.BuilderImpl(requestBuilder), new OkHttpRequestImpl(chain.request()));
+      Response response = chain.proceed(requestBuilder.build());
+      if (!response.isSuccessful()) {
+        // for okhttp this token refresh will be blocking
+        try {
+          boolean call = interceptor.afterFailure(builderImpl, new OkHttpResponseImpl<>(response, InputStream.class)).get();
+          if (call) {
+            response.close();
+            return chain.proceed(requestBuilder.build());
+          }
+        } catch (InterruptedException | ExecutionException e) {
+          throw KubernetesClientException.launderThrowable(e);
+        }
+      }
+      return response;
+    }
+
+    public String getName() {
+      return name;
+    }
   }
 
-  okhttp3.OkHttpClient.Builder getBuilder() {
-    return builder;
+  private boolean streaming;
+  private OkHttpClient.Builder builder;
+  private OkHttpClientFactory factory;
+
+  public OkHttpClientBuilderImpl(okhttp3.OkHttpClient.Builder newBuilder, OkHttpClientFactory factory) {
+    this.builder = newBuilder;
+    this.factory = factory;
   }
 
   @Override
   public OkHttpClientImpl build() {
-    if (client != null) {
-      return derivedBuild(this.client.getOkHttpClient().newBuilder());
-    }
-    return initialBuild(builder);
-  }
-
-  public OkHttpClientImpl initialBuild(okhttp3.OkHttpClient.Builder builder) {
-    // configure the main properties
-    if (connectTimeout != null) {
-      builder.connectTimeout(this.connectTimeout);
-    }
-    if (sslContext != null) {
-      X509TrustManager trustManager = null;
-      if (trustManagers != null && trustManagers.length == 1) {
-        trustManager = (X509TrustManager) trustManagers[0];
-      }
-      builder.sslSocketFactory(sslContext.getSocketFactory(), trustManager);
-    }
-    if (followRedirects) {
-      builder.followRedirects(true).followSslRedirects(true);
-    }
-    if (proxyAddress == null) {
-      builder.proxy(Proxy.NO_PROXY);
-    } else {
-      builder.proxy(new Proxy(Proxy.Type.HTTP, proxyAddress));
-    }
-    if (proxyAuthorization != null) {
-      builder.proxyAuthenticator(
-          (route, response) -> response.request().newBuilder().header("Proxy-Authorization", proxyAuthorization).build());
-    }
-    if (tlsVersions != null) {
-      ConnectionSpec spec = new ConnectionSpec.Builder(ConnectionSpec.MODERN_TLS)
-          .tlsVersions(Arrays.asList(tlsVersions)
-              .stream()
-              .map(tls -> okhttp3.TlsVersion.valueOf(tls.name()))
-              .toArray(okhttp3.TlsVersion[]::new))
-          .build();
-      builder.connectionSpecs(Arrays.asList(spec, CLEARTEXT));
-    }
-    if (preferHttp11) {
-      builder.protocols(Collections.singletonList(Protocol.HTTP_1_1));
-    }
-    Dispatcher dispatcher = new Dispatcher();
-    // websockets and long running http requests count against this and eventually starve
-    // the work that can be done
-    dispatcher.setMaxRequests(Integer.MAX_VALUE);
-    // long running http requests count against this and eventually exhaust
-    // the work that can be done
-    dispatcher.setMaxRequestsPerHost(Integer.MAX_VALUE);
-    builder.dispatcher(dispatcher);
-    return derivedBuild(builder);
-  }
-
-  private OkHttpClientImpl derivedBuild(okhttp3.OkHttpClient.Builder builder) {
-    if (readTimeout != null) {
-      builder.readTimeout(this.readTimeout);
-    }
-    if (writeTimeout != null) {
-      builder.writeTimeout(this.writeTimeout);
-    }
-    if (authenticatorNone) {
-      builder.authenticator(Authenticator.NONE);
-    }
-    if (forStreaming) {
-      builder.cache(null);
-    }
     OkHttpClient client = builder.build();
-    if (this.forStreaming) {
+
+    if (streaming) {
       // If we set the HttpLoggingInterceptor's logging level to Body (as it is by default), it does
       // not let us stream responses from the server.
       for (Interceptor i : client.networkInterceptors()) {
@@ -127,12 +108,113 @@ class OkHttpClientBuilderImpl
       }
     }
 
-    return new OkHttpClientImpl(client, this);
+    return new OkHttpClientImpl(client, factory);
   }
 
   @Override
-  protected OkHttpClientBuilderImpl newInstance(OkHttpClientFactory clientFactory) {
-    return new OkHttpClientBuilderImpl(clientFactory, this.builder);
+  public Builder readTimeout(long readTimeout, TimeUnit unit) {
+    builder.readTimeout(readTimeout, unit);
+    return this;
+  }
+
+  @Override
+  public Builder connectTimeout(long connectTimeout, TimeUnit unit) {
+    builder.connectTimeout(connectTimeout, unit);
+    return this;
+  }
+
+  @Override
+  public Builder writeTimeout(long timeout, TimeUnit timeoutUnit) {
+    builder.writeTimeout(timeout, timeoutUnit);
+    return this;
+  }
+
+  @Override
+  public Builder forStreaming() {
+    builder.cache(null);
+    this.streaming = true;
+    return this;
+  }
+
+  @Override
+  public Builder addOrReplaceInterceptor(String name, io.fabric8.kubernetes.client.http.Interceptor interceptor) {
+    List<Interceptor> interceptors = builder.interceptors();
+    for (int i = 0; i < interceptors.size(); i++) {
+      Interceptor exiting = interceptors.get(i);
+      if (exiting instanceof InteceptorAdapter) {
+        InteceptorAdapter adapter = (InteceptorAdapter) exiting;
+        if (adapter.getName().equals(name)) {
+          if (interceptor == null) {
+            interceptors.remove(i);
+          } else {
+            interceptors.set(i, new InteceptorAdapter(interceptor, name));
+          }
+          return this;
+        }
+      }
+    }
+    if (interceptor != null) {
+      builder.addInterceptor(new InteceptorAdapter(interceptor, name));
+    }
+    return this;
+  }
+
+  @Override
+  public Builder authenticatorNone() {
+    builder.authenticator(Authenticator.NONE);
+    return this;
+  }
+
+  @Override
+  public Builder sslContext(KeyManager[] keyManagers, TrustManager[] trustManagers) {
+    X509TrustManager trustManager = null;
+    if (trustManagers != null && trustManagers.length == 1) {
+      trustManager = (X509TrustManager) trustManagers[0];
+    }
+    SSLContext sslContext = SSLUtils.sslContext(keyManagers, trustManagers);
+    builder.sslSocketFactory(sslContext.getSocketFactory(), trustManager);
+    return this;
+  }
+
+  @Override
+  public Builder followAllRedirects() {
+    builder.followRedirects(true).followSslRedirects(true);
+    return this;
+  }
+
+  @Override
+  public Builder proxyAddress(InetSocketAddress proxyAddress) {
+    if (proxyAddress == null) {
+      builder.proxy(Proxy.NO_PROXY);
+    } else {
+      builder.proxy(new Proxy(Proxy.Type.HTTP, proxyAddress));
+    }
+    return this;
+  }
+
+  @Override
+  public Builder proxyAuthorization(String credentials) {
+    builder.proxyAuthenticator(
+        (route, response) -> response.request().newBuilder().header("Proxy-Authorization", credentials).build());
+    return this;
+  }
+
+  @Override
+  public Builder tlsVersions(TlsVersion[] tlsVersions) {
+    ConnectionSpec spec = new ConnectionSpec.Builder(ConnectionSpec.MODERN_TLS)
+        .tlsVersions(Arrays.asList(tlsVersions)
+            .stream()
+            .map(tls -> okhttp3.TlsVersion.valueOf(tls.name()))
+            .toArray(okhttp3.TlsVersion[]::new))
+        .build();
+    builder.connectionSpecs(Arrays.asList(spec, CLEARTEXT));
+    return this;
+  }
+
+  @Override
+  public Builder preferHttp11() {
+    builder.protocols(Collections.singletonList(Protocol.HTTP_1_1));
+    return this;
   }
 
 }
