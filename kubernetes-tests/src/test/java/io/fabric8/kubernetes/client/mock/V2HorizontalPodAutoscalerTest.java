@@ -32,7 +32,6 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 
@@ -44,7 +43,7 @@ class V2HorizontalPodAutoscalerTest {
 
   @Test
   void load() {
-    List<HasMetadata> itemsList = client.load(getClass().getResourceAsStream("/test-v2-hpa.yml")).items();
+    List<HasMetadata> itemsList = client.load(getClass().getResourceAsStream("/test-v2-hpa.yml")).get();
 
     assertThat(itemsList)
         .hasSize(1)
@@ -210,7 +209,7 @@ class V2HorizontalPodAutoscalerTest {
   @Test
   void loadFromFile() {
     HorizontalPodAutoscaler horizontalPodAutoscaler = client.autoscaling().v2().horizontalPodAutoscalers()
-        .load(getClass().getResourceAsStream("/test-v2-hpa.yml")).item();
+        .load(getClass().getResourceAsStream("/test-v2-hpa.yml")).get();
     assertThat(horizontalPodAutoscaler)
         .hasFieldOrPropertyWithValue("metadata.name", "php-apache");
   }

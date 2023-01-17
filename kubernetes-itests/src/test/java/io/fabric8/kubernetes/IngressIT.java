@@ -37,7 +37,7 @@ class IngressIT {
 
   @Test
   void load() {
-    Ingress aIngress = client.network().v1().ingresses().load(getClass().getResourceAsStream("/test-ingress.yml")).item();
+    Ingress aIngress = client.network().v1().ingresses().load(getClass().getResourceAsStream("/test-ingress.yml")).get();
     assertThat(aIngress).isNotNull();
     assertEquals("test-multiple-paths", aIngress.getMetadata().getName());
   }

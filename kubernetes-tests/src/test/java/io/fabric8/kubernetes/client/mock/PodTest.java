@@ -670,7 +670,7 @@ class PodTest {
 
   @Test
   void testLoad() {
-    Pod pod = client.pods().load(getClass().getResourceAsStream("/test-pod.yml")).item();
+    Pod pod = client.pods().load(getClass().getResourceAsStream("/test-pod.yml")).get();
     assertEquals("nginx", pod.getMetadata().getName());
   }
 
@@ -704,7 +704,7 @@ class PodTest {
 
     server.expect()
         .get()
-        .withPath("/api/v1/namespaces/test/pods?fieldSelector=metadata.name%3Dpod1&resourceVersion=0")
+        .withPath("/api/v1/namespaces/test/pods?fieldSelector=metadata.name%3Dpod1")
         .andReturn(200, notReady)
         .once();
 
@@ -896,7 +896,7 @@ class PodTest {
         .andReturn(200, serverPod)
         .once();
 
-    List<HasMetadata> resources = client.resourceList(clientPod).get();
+    List<HasMetadata> resources = client.resourceList(clientPod).fromServer().get();
 
     assertNotNull(resources);
     assertEquals(1, resources.size());

@@ -236,7 +236,7 @@ class TemplateTest {
   @Test
   void shouldGetTemplateWithNumberParameters() {
     OpenShiftClient client = new DefaultOpenShiftClient(new OpenShiftConfigBuilder().withDisableApiGroupCheck(true).build());
-    Template template = client.templates().load(getClass().getResourceAsStream("/template-with-number-params.yml")).item();
+    Template template = client.templates().load(getClass().getResourceAsStream("/template-with-number-params.yml")).get();
     assertThat(template)
         .extracting(Template::getObjects)
         .asList()
@@ -250,7 +250,7 @@ class TemplateTest {
 
   @Test
   void shouldGetTemplateFromServerWithNumberParameters() {
-    Template template = client.templates().load(getClass().getResourceAsStream("/template-with-number-params.yml")).item();
+    Template template = client.templates().load(getClass().getResourceAsStream("/template-with-number-params.yml")).get();
 
     server.expect()
         .withPath("/apis/template.openshift.io/v1/namespaces/test/templates/foo")
@@ -273,7 +273,7 @@ class TemplateTest {
   @Test
   void shouldGetTemplateWithMultipleObjects() {
     OpenShiftClient client = new DefaultOpenShiftClient(new OpenShiftConfigBuilder().withDisableApiGroupCheck(true).build());
-    Template template = client.templates().load(getClass().getResourceAsStream("/template-with-multiple-objects.yml")).item();
+    Template template = client.templates().load(getClass().getResourceAsStream("/template-with-multiple-objects.yml")).get();
     assertThat(template)
         .extracting(Template::getObjects)
         .asList()

@@ -62,7 +62,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.function.Function;
@@ -81,18 +80,16 @@ public class OkHttpClientImpl extends StandardHttpClient<OkHttpClientImpl, OkHtt
     return result;
   }
 
-  abstract static class OkHttpAsyncBody<T> implements AsyncBody {
+  private abstract class OkHttpAsyncBody<T> implements AsyncBody {
     private final AsyncBody.Consumer<T> consumer;
     private final BufferedSource source;
     private final CompletableFuture<Void> done = new CompletableFuture<>();
     private boolean consuming;
     private boolean requested;
-    private final Executor executor;
 
-    OkHttpAsyncBody(AsyncBody.Consumer<T> consumer, BufferedSource source, Executor executor) {
+    private OkHttpAsyncBody(AsyncBody.Consumer<T> consumer, BufferedSource source) {
       this.consumer = consumer;
       this.source = source;
-      this.executor = executor;
     }
 
     @Override
@@ -106,7 +103,7 @@ public class OkHttpClientImpl extends StandardHttpClient<OkHttpClientImpl, OkHtt
       }
       try {
         // consume should not block a caller, delegate to the dispatcher thread pool
-        executor.execute(this::doConsume);
+        httpClient.dispatcher().executorService().execute(this::doConsume);
       } catch (Exception e) {
         // executor is likely shutdown
         Utils.closeQuietly(source);
@@ -128,8 +125,6 @@ public class OkHttpClientImpl extends StandardHttpClient<OkHttpClientImpl, OkHtt
             T value = process(source);
             consumer.consume(value, this);
           } else {
-            // even if we've read everything an explicit close is still needed
-            source.close();
             done.complete(null);
           }
         }
@@ -159,7 +154,7 @@ public class OkHttpClientImpl extends StandardHttpClient<OkHttpClientImpl, OkHtt
     private T body;
     private Class<T> type;
 
-    public OkHttpResponseImpl(Response response, T body) {
+    public OkHttpResponseImpl(Response response, T body) throws IOException {
       this.response = response;
       this.body = body;
     }
@@ -316,8 +311,7 @@ public class OkHttpClientImpl extends StandardHttpClient<OkHttpClientImpl, OkHtt
   @Override
   public CompletableFuture<HttpResponse<AsyncBody>> consumeBytesDirect(StandardHttpRequest request,
       Consumer<List<ByteBuffer>> consumer) {
-    Function<BufferedSource, AsyncBody> handler = s -> new OkHttpAsyncBody<List<ByteBuffer>>(consumer, s,
-        this.httpClient.dispatcher().executorService()) {
+    Function<BufferedSource, AsyncBody> handler = s -> new OkHttpAsyncBody<List<ByteBuffer>>(consumer, s) {
       @Override
       protected List<ByteBuffer> process(BufferedSource source) throws IOException {
         // read only what is available otherwise okhttp will block trying to read

@@ -31,6 +31,7 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -146,21 +147,10 @@ public class HttpClientUtils {
   }
 
   public static HttpClient.Factory getHttpClientFactory() {
-    HttpClient.Factory factory = getFactory(
-        ServiceLoader.load(HttpClient.Factory.class, Thread.currentThread().getContextClassLoader()));
-    if (factory == null) {
-      factory = getFactory(ServiceLoader.load(HttpClient.Factory.class, HttpClientUtils.class.getClassLoader()));
-      if (factory == null) {
-        throw new KubernetesClientException(
-            "No httpclient implementations found on the context classloader, please ensure your classpath includes an implementation jar");
-      }
-    }
-    return factory;
-  }
-
-  private static HttpClient.Factory getFactory(ServiceLoader<HttpClient.Factory> loader) {
+    ServiceLoader<HttpClient.Factory> loader = ServiceLoader.load(HttpClient.Factory.class);
     HttpClient.Factory factory = null;
-    for (HttpClient.Factory possible : loader) {
+    for (Iterator<HttpClient.Factory> iter = loader.iterator(); iter.hasNext();) {
+      HttpClient.Factory possible = iter.next();
       if (factory != null && MULTIPLE_HTTP_CLIENT_WARNING_LOGGED.compareAndSet(false, true)) {
         LOGGER.warn("There are multiple httpclient implementation in the classpath, "
             + "choosing the first non-default implementation. "
@@ -169,6 +159,10 @@ public class HttpClientUtils {
       if (factory == null || (factory.isDefault() && !possible.isDefault())) {
         factory = possible;
       }
+    }
+    if (factory == null) {
+      throw new KubernetesClientException(
+          "No httpclient implementations found on the context classloader, please ensure your classpath includes an implementation jar");
     }
     return factory;
   }

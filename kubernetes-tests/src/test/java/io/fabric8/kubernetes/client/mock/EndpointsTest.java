@@ -172,7 +172,7 @@ public class EndpointsTest {
 
   @Test
   public void testLoad() {
-    Endpoints endpoints = client.endpoints().load(getClass().getResourceAsStream("/test-endpoints.yml")).item();
+    Endpoints endpoints = client.endpoints().load(getClass().getResourceAsStream("/test-endpoints.yml")).get();
     assertNotNull(endpoints);
     assertEquals("external-web", endpoints.getMetadata().getName());
   }

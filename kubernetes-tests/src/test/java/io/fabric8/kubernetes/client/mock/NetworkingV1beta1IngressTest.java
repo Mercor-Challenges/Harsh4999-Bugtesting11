@@ -45,7 +45,7 @@ class NetworkingV1beta1IngressTest {
 
   @Test
   void testLoad() {
-    List<HasMetadata> itemList = client.load(getClass().getResourceAsStream("/test-v1beta1-ingress.yml")).items();
+    List<HasMetadata> itemList = client.load(getClass().getResourceAsStream("/test-v1beta1-ingress.yml")).get();
 
     assertEquals(1, itemList.size());
     Ingress ingress = (Ingress) itemList.get(0);

@@ -140,7 +140,7 @@ public abstract class RollableScalableResourceOperation<T extends HasMetadata, L
       return super.edit(function);
     }
     try {
-      T oldObj = getItemOrRequireFromServer();
+      T oldObj = getMandatory();
       T newObj = function.apply(Serialization.clone(oldObj));
       return getRollingUpdater(context.getTimeout(), context.getTimeoutUnit()).rollUpdate(oldObj, newObj);
     } catch (Exception e) {
@@ -153,7 +153,7 @@ public abstract class RollableScalableResourceOperation<T extends HasMetadata, L
     if (!rollingOperationContext.isRolling()) {
       return super.replace(t);
     }
-    return getRollingUpdater(context.getTimeout(), context.getTimeoutUnit()).rollUpdate(getItemOrRequireFromServer(), t);
+    return getRollingUpdater(context.getTimeout(), context.getTimeoutUnit()).rollUpdate(getMandatory(), t);
   }
 
   @Override
@@ -161,7 +161,7 @@ public abstract class RollableScalableResourceOperation<T extends HasMetadata, L
     if (!rollingOperationContext.isRolling() || patchContext == null || patchContext.getPatchType() != PatchType.JSON) {
       return super.patch(patchContext, item);
     }
-    return getRollingUpdater(context.getTimeout(), context.getTimeoutUnit()).rollUpdate(getItemOrRequireFromServer(), item);
+    return getRollingUpdater(context.getTimeout(), context.getTimeoutUnit()).rollUpdate(getMandatory(), item);
   }
 
   public abstract RollableScalableResourceOperation<T, L, R> newInstance(PodOperationContext context,
@@ -169,12 +169,7 @@ public abstract class RollableScalableResourceOperation<T extends HasMetadata, L
 
   @Override
   public Loggable withLogWaitTimeout(Integer logWaitTimeout) {
-    return withReadyWaitTimeout(logWaitTimeout);
-  }
-
-  @Override
-  public Loggable withReadyWaitTimeout(Integer timeout) {
-    return newInstance(rollingOperationContext.withReadyWaitTimeout(timeout), context);
+    return newInstance(rollingOperationContext.withLogWaitTimeout(logWaitTimeout), context);
   }
 
   @Override

@@ -75,7 +75,7 @@ class CustomResourceTest {
   @Test
   void testLoad() throws IOException {
     GenericKubernetesResource customResource = client.genericKubernetesResources(customResourceDefinitionContext)
-        .load(getClass().getResourceAsStream("/test-hello-cr.yml")).item();
+        .load(getClass().getResourceAsStream("/test-hello-cr.yml")).get();
     assertThat(customResource)
         .isNotNull()
         .hasFieldOrPropertyWithValue("metadata.name", "example-hello");

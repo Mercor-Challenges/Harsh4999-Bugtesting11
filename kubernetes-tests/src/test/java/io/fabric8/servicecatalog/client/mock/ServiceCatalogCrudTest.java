@@ -126,7 +126,7 @@ class ServiceCatalogCrudTest {
   void testLoadFromFile() {
 
     ClusterServiceBroker brokerFromFile = client.clusterServiceBrokers()
-        .load(getClass().getResourceAsStream("/test-broker.yml")).item();
+        .load(getClass().getResourceAsStream("/test-broker.yml")).get();
 
     client.clusterServiceBrokers().create(brokerFromFile);
 

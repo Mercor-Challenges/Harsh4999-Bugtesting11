@@ -41,7 +41,7 @@ class RouteIT {
 
   @Test
   void load() {
-    Route aRoute = client.routes().load(getClass().getResourceAsStream("/test-route.yml")).item();
+    Route aRoute = client.routes().load(getClass().getResourceAsStream("/test-route.yml")).get();
     assertThat(aRoute).isNotNull();
     assertEquals("host-route", aRoute.getMetadata().getName());
   }

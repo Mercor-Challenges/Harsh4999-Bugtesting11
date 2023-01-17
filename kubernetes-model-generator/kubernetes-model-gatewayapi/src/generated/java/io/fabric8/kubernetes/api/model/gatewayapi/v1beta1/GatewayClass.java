@@ -15,6 +15,7 @@ import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.IntOrString;
 import io.fabric8.kubernetes.api.model.LabelSelector;
 import io.fabric8.kubernetes.api.model.LocalObjectReference;
+import io.fabric8.kubernetes.api.model.Namespaced;
 import io.fabric8.kubernetes.api.model.ObjectReference;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.PodTemplateSpec;
@@ -62,7 +63,7 @@ import lombok.experimental.Accessors;
 })
 @Version("v1beta1")
 @Group("gateway.networking.k8s.io")
-public class GatewayClass implements HasMetadata
+public class GatewayClass implements HasMetadata, Namespaced
 {
 
     /**

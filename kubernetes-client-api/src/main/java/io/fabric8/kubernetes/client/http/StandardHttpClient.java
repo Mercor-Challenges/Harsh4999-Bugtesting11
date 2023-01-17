@@ -18,9 +18,7 @@ package io.fabric8.kubernetes.client.http;
 
 import io.fabric8.kubernetes.client.http.AsyncBody.Consumer;
 import io.fabric8.kubernetes.client.http.WebSocket.Listener;
-import io.fabric8.kubernetes.client.utils.Utils;
 
-import java.io.Closeable;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -48,35 +46,23 @@ public abstract class StandardHttpClient<C extends HttpClient, F extends HttpCli
   }
 
   @Override
-  public <V> CompletableFuture<HttpResponse<V>> sendAsync(HttpRequest request, Class<V> type) {
-    CompletableFuture<HttpResponse<V>> upstream = HttpResponse.SupportedResponses.from(type).sendAsync(request, this);
-    return withUpstreamCancellation(upstream, b -> {
-      if (b instanceof Closeable) {
-        Utils.closeQuietly((Closeable) b);
-      }
-    });
-  }
-
-  @Override
   public CompletableFuture<HttpResponse<AsyncBody>> consumeBytes(HttpRequest request, Consumer<List<ByteBuffer>> consumer) {
     StandardHttpRequest standardHttpRequest = (StandardHttpRequest) request;
     StandardHttpRequest.Builder copy = standardHttpRequest.newBuilder();
-    for (Interceptor interceptor : builder.getInterceptors().values()) {
+    for (Interceptor interceptor : builder.interceptors.values()) {
       Interceptor.useConfig(builder.requestConfig).apply(interceptor).before(copy, standardHttpRequest);
       standardHttpRequest = copy.build();
     }
 
     CompletableFuture<HttpResponse<AsyncBody>> cf = consumeBytesDirect(standardHttpRequest, consumer);
 
-    for (Interceptor interceptor : builder.getInterceptors().values()) {
+    for (Interceptor interceptor : builder.interceptors.values()) {
       cf = cf.thenCompose(response -> {
         if (!HttpResponse.isSuccessful(response.code())) {
           return Interceptor.useConfig(builder.requestConfig).apply(interceptor)
               .afterFailure(copy, response)
               .thenCompose(b -> {
                 if (Boolean.TRUE.equals(b)) {
-                  // before starting another request, make sure the old one is cancelled / closed
-                  response.body().cancel();
                   return consumeBytesDirect(copy.build(), consumer);
                 }
                 return CompletableFuture.completedFuture(response);
@@ -86,23 +72,7 @@ public abstract class StandardHttpClient<C extends HttpClient, F extends HttpCli
       });
     }
 
-    return withUpstreamCancellation(cf, AsyncBody::cancel);
-  }
-
-  static <V> CompletableFuture<HttpResponse<V>> withUpstreamCancellation(CompletableFuture<HttpResponse<V>> cf,
-      java.util.function.Consumer<V> cancel) {
-    final CompletableFuture<HttpResponse<V>> result = new CompletableFuture<>();
-    cf.whenComplete((r, t) -> {
-      if (t != null) {
-        result.completeExceptionally(t);
-      } else {
-        // if already completed, take responsibility to proactively close
-        if (!result.complete(r)) {
-          cancel.accept(r.body());
-        }
-      }
-    });
-    return result;
+    return cf;
   }
 
   @Override
@@ -154,10 +124,7 @@ public abstract class StandardHttpClient<C extends HttpClient, F extends HttpCli
         if (r.wshse != null) {
           result.completeExceptionally(r.wshse);
         } else {
-          // if already completed, take responsibility to proactively close
-          if (!result.complete(r.webSocket)) {
-            r.webSocket.sendClose(1000, null);
-          }
+          result.complete(r.webSocket);
         }
       } else {
         // shouldn't happen

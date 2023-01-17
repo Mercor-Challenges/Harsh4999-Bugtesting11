@@ -17,15 +17,12 @@
 package io.fabric8.kubernetes.client.dsl;
 
 /**
- * @deprecated It is no longer necessary to associate parameters prior to deserialization.
- *             <p>
- *             reference {@link MixedOperation} instead
+ * A {@link Parameterizable} {@link MixedOperation}
  *
  * @param <T> The Kubernetes resource type.
  * @param <L> The list variant of the Kubernetes resource type.
  * @param <R> The resource operations.
  */
-@Deprecated
 public interface ParameterMixedOperation<T, L, R extends Resource<T>>
     extends MixedOperation<T, L, R>, Parameterizable<MixedOperation<T, L, R>> {
 }

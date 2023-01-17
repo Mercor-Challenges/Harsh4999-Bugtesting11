@@ -24,5 +24,4 @@ public class OkHttpAsyncBodyTest extends AbstractAsyncBodyTest {
   protected HttpClient.Factory getHttpClientFactory() {
     return new OkHttpClientFactory();
   }
-
 }

@@ -78,19 +78,7 @@ public interface Loggable {
    *
    * @param logWaitTimeout timeout in milliseconds
    * @return {@link Loggable} for fetching logs
-   *
-   * @deprecated use {@link #withReadyWaitTimeout(Integer)}
    */
-  @Deprecated
   Loggable withLogWaitTimeout(Integer logWaitTimeout);
-
-  /**
-   * While waiting for Pod logs, how long shall we wait until a Pod
-   * becomes ready and starts producing logs
-   *
-   * @param timeout in milliseconds
-   * @return {@link Loggable} for fetching logs
-   */
-  Loggable withReadyWaitTimeout(Integer timeout);
 
 }

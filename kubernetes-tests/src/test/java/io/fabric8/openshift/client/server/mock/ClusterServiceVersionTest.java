@@ -30,7 +30,7 @@ class ClusterServiceVersionTest {
   void testLoad() {
     ClusterServiceVersion clusterServiceVersion = client.operatorHub().clusterServiceVersions()
         .load(getClass().getResourceAsStream("/test-clusterserviceversion.yml"))
-        .item();
+        .get();
 
     assertThat(clusterServiceVersion)
         .isNotNull()

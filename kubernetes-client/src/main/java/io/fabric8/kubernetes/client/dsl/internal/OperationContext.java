@@ -49,6 +49,7 @@ public class OperationContext {
   protected String namespace;
   protected boolean defaultNamespace = true;
   protected String name;
+  protected boolean reloadingFromServer;
   protected boolean dryRun;
   protected FieldValidateable.Validation fieldValidation;
   protected String fieldManager;
@@ -77,7 +78,7 @@ public class OperationContext {
   public OperationContext(OperationContext other) {
     this(other.client, other.plural, other.namespace, other.name, other.apiGroupName, other.apiGroupVersion,
         other.item, other.labels, other.labelsNot, other.labelsIn, other.labelsNotIn, other.fields,
-        other.fieldsNot, other.resourceVersion, other.gracePeriodSeconds, other.propagationPolicy,
+        other.fieldsNot, other.resourceVersion, other.reloadingFromServer, other.gracePeriodSeconds, other.propagationPolicy,
         other.dryRun, other.selectorAsString, other.defaultNamespace, other.fieldValidation, other.fieldManager,
         other.forceConflicts, other.timeout, other.timeoutUnit);
   }
@@ -85,7 +86,7 @@ public class OperationContext {
   public OperationContext(Client client, String plural, String namespace, String name,
       String apiGroupName, String apiGroupVersion, Object item, Map<String, String> labels,
       Map<String, String[]> labelsNot, Map<String, String[]> labelsIn, Map<String, String[]> labelsNotIn,
-      Map<String, String> fields, Map<String, String[]> fieldsNot, String resourceVersion,
+      Map<String, String> fields, Map<String, String[]> fieldsNot, String resourceVersion, boolean reloadingFromServer,
       long gracePeriodSeconds, DeletionPropagation propagationPolicy,
       boolean dryRun, String selectorAsString, boolean defaultNamespace, FieldValidateable.Validation fieldValidation,
       String fieldManager, Boolean forceConflicts, long timeout, TimeUnit timeoutUnit) {
@@ -103,6 +104,7 @@ public class OperationContext {
     setFields(fields);
     setFieldsNot(fieldsNot);
     this.resourceVersion = resourceVersion;
+    this.reloadingFromServer = reloadingFromServer;
     this.gracePeriodSeconds = gracePeriodSeconds;
     this.propagationPolicy = propagationPolicy;
     this.dryRun = dryRun;
@@ -229,6 +231,10 @@ public class OperationContext {
 
   public String getResourceVersion() {
     return resourceVersion;
+  }
+
+  public boolean isReloadingFromServer() {
+    return reloadingFromServer;
   }
 
   public long getGracePeriodSeconds() {
@@ -439,6 +445,15 @@ public class OperationContext {
     return context;
   }
 
+  public OperationContext withReloadingFromServer(boolean reloadingFromServer) {
+    if (this.reloadingFromServer == reloadingFromServer) {
+      return this;
+    }
+    final OperationContext context = new OperationContext(this);
+    context.reloadingFromServer = reloadingFromServer;
+    return context;
+  }
+
   public OperationContext withGracePeriodSeconds(long gracePeriodSeconds) {
     if (this.gracePeriodSeconds == gracePeriodSeconds) {
       return this;
@@ -484,7 +499,7 @@ public class OperationContext {
     // operationcontext
     OperationContext newContext = HasMetadataOperationsImpl.defaultContext(client).withDryRun(getDryRun())
         .withGracePeriodSeconds(getGracePeriodSeconds()).withPropagationPolicy(getPropagationPolicy())
-        .withFieldValidation(this.fieldValidation);
+        .withReloadingFromServer(isReloadingFromServer()).withFieldValidation(this.fieldValidation);
 
     // check before setting to prevent flipping the default flag
     if (!Objects.equals(getNamespace(), newContext.getNamespace())

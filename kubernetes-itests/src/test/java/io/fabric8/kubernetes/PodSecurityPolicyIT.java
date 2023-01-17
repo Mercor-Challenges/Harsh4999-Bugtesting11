@@ -42,7 +42,7 @@ class PodSecurityPolicyIT {
   void load() {
 
     PodSecurityPolicy loadedPodSecurityPolicy = client.policy().v1beta1().podSecurityPolicies()
-        .load(getClass().getResourceAsStream("/test-podsecuritypolicy.yml")).item();
+        .load(getClass().getResourceAsStream("/test-podsecuritypolicy.yml")).get();
 
     assertNotNull(loadedPodSecurityPolicy);
     assertEquals("example", loadedPodSecurityPolicy.getMetadata().getName());
